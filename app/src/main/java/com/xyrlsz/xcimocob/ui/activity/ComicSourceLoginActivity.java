@@ -163,12 +163,13 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
 //            }));
             mkomiicLogin.setTitle(getString(R.string.logined));
             mKomiicLogout.setVisibility(View.VISIBLE);
-        } else {
-            CharSequence tmp = mkomiicLogin.getSummary();
-            KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
-                mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
-            }));
         }
+//        else {
+//            CharSequence tmp = mkomiicLogin.getSummary();
+//            KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
+//                mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
+//            }));
+//        }
 
         String vomicmhUsername = getSharedPreferences(VOMIC_SHARED, MODE_PRIVATE).getString(VOMIC_SHARED_USERNAME, "");
         if (!vomicmhUsername.isEmpty()) {
@@ -204,7 +205,10 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
         findViewById(R.id.comic_login_zai_login).setOnClickListener(v -> onZaiLoginClick());
         findViewById(R.id.comic_login_zai_logout).setOnClickListener(v -> onZaiLogoutClick());
         findViewById(R.id.comic_login_zai_auto_sign).setOnClickListener(v -> onZaiAutoSignClick());
-        findViewById(R.id.comic_login_zai_auto_sign).setOnLongClickListener(v -> { onZaiAutoSignLongClick(); return true; });
+        findViewById(R.id.comic_login_zai_auto_sign).setOnLongClickListener(v -> {
+            onZaiAutoSignLongClick();
+            return true;
+        });
 
     }
 
@@ -420,13 +424,13 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
                     runOnUiThread(() -> {
                         mkomiicLogin.setSummary(username);
                         mkomiicLogin.setTitle(getString(R.string.logined));
-                        KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
-                            mkomiicLogin.setSummary(username + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
-                            CharSequence tmp = mkomiicLogin.getSummary();
-                            KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
-                                mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.empty_account_limit) + res);
-                            }));
-                        }));
+//                        KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
+//                            mkomiicLogin.setSummary(username + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
+//                            CharSequence tmp = mkomiicLogin.getSummary();
+//                            KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
+//                                mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.empty_account_limit) + res);
+//                            }));
+//                        }));
                         mKomiicLogout.setVisibility(View.VISIBLE);
                     });
                     onLoginSuccess();
