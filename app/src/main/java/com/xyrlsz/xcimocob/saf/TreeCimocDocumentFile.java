@@ -15,11 +15,11 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by Hiroshi on 2017/3/24.
@@ -62,7 +62,7 @@ class TreeCimocDocumentFile extends CimocDocumentFile {
     }
 
     private void list() {
-        mSubFiles = new HashMap<>();
+        mSubFiles = new ConcurrentHashMap<>();
 
         ContentResolver resolver = mContext.getContentResolver();
         Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(mUri, DocumentsContract.getDocumentId(mUri));

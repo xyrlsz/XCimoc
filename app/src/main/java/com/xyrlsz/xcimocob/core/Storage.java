@@ -18,6 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -77,15 +78,15 @@ public class Storage {
                                    CimocDocumentFile parent, io.reactivex.rxjava3.core.ObservableEmitter<? super String> emitter) {
         if (src.isDirectory()) {
             CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(parent, src.getName());
-            for (CimocDocumentFile file : src.listFiles()) {
+            CimocDocumentFile[] children = src.listFiles();
+            // 并行复制子文件和子目录，充分利用 I/O 吞吐量
+            return Arrays.stream(children).parallel().allMatch(file -> {
                 if (file.isDirectory()) {
-                    if (!copyDir(resolver, file, dir, emitter)) {
-                        return false;
-                    }
-                } else if (!copyFile(resolver, file, dir, emitter)) {
-                    return false;
+                    return copyDir(resolver, file, dir, emitter);
+                } else {
+                    return copyFile(resolver, file, dir, emitter);
                 }
-            }
+            });
         }
         return true;
     }
@@ -124,9 +125,10 @@ public class Storage {
                         if (copyDir(resolver, root, dst, BACKUP, emitter)
                                 && copyDir(resolver, root, dst, DOWNLOAD, emitter)
                                 && copyDir(resolver, root, dst, PICTURE, emitter)) {
-                            deleteDir(root, BACKUP, emitter);
-                            deleteDir(root, DOWNLOAD, emitter);
-                            deleteDir(root, PICTURE, emitter);
+                            // 复制完成后，先刷新根目录确保缓存最新，再并行删除源目录
+                            root.refresh();
+                            Arrays.asList(BACKUP, DOWNLOAD, PICTURE).parallelStream()
+                                    .forEach(name -> deleteDir(root, name, emitter));
                             emitter.onComplete();
                             return;
                         }

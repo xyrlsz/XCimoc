@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -42,16 +43,32 @@ class RawCimocDocumentFile extends CimocDocumentFile {
     }
 
     private static boolean deleteContents(File dir) {
-        File[] files = dir.listFiles();
+        // 使用基于栈的迭代后序遍历替代递归，避免深度递归导致的栈溢出
+        // 同时减少方法调用开销
+        LinkedList<File> stack = new LinkedList<>();
+        LinkedList<File> deleteOrder = new LinkedList<>();
+        stack.push(dir);
+
+        while (!stack.isEmpty()) {
+            File current = stack.pop();
+            deleteOrder.push(current);
+            File[] files = current.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isDirectory()) {
+                        stack.push(file);
+                    } else {
+                        deleteOrder.push(file);
+                    }
+                }
+            }
+        }
+
+        // 按后序遍历顺序删除（先子后父）
         boolean success = true;
-        if (files != null) {
-            for (File file : files) {
-                if (file.isDirectory()) {
-                    success &= deleteContents(file);
-                }
-                if (!file.delete()) {
-                    success = false;
-                }
+        for (File file : deleteOrder) {
+            if (file != dir && !file.delete()) {
+                success = false;
             }
         }
         return success;

@@ -289,13 +289,19 @@ public class Download {
         }).subscribeOn(Schedulers.io());
     }
 
+    /**
+     * 批量删除章节，并行删除各章节目录以提升速度。
+     * 对于 RawCimocDocumentFile（本地文件系统）和 TreeCimocDocumentFile（SAF），
+     * TreeCimocDocumentFile 的 mSubFiles 已改为 ConcurrentHashMap，支持并发访问。
+     */
     public static void delete(CimocDocumentFile root, Comic comic, List<Chapter> list, String title) {
-        for (Chapter chapter : list) {
+        // 使用 parallelStream 并行删除各章节目录
+        list.parallelStream().forEach(chapter -> {
             CimocDocumentFile dir = getChapterDir(root, comic, chapter, title);
             if (dir != null) {
                 dir.delete();
             }
-        }
+        });
     }
 
     public static void delete(CimocDocumentFile root, Comic comic, String title) {
