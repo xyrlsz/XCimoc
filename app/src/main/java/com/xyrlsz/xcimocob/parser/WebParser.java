@@ -17,6 +17,7 @@ import com.xyrlsz.xcimocob.utils.StringUtils;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Headers;
 
@@ -26,6 +27,10 @@ public class WebParser {
     private static final int MAX_SCROLL = 512; // 最多滚动次数
     private static final int SAME_LIMIT = 3; // 高度连续不变次数
     private static final int SCROLL_DELAY = 50;
+    /** 总超时时间：120 秒后强制释放 latch，防止线程永久阻塞 */
+    private static final long TOTAL_TIMEOUT_MS = 120_000;
+    /** 同步获取 HTML 的超时时间 */
+    private static final long AWAIT_TIMEOUT_MS = 130_000;
     private final String url;
     private final Headers headers;
     private final CountDownLatch latch;
@@ -38,6 +43,7 @@ public class WebParser {
     private int scrollCount = 0;
 
     private int errTimes = 0;
+    private volatile boolean released = false;
 
     public WebParser(Context context, String url, Headers headers) {
         this(context, url, headers, "");
@@ -55,9 +61,27 @@ public class WebParser {
                 initWebView();
             } catch (Exception e) {
                 Log.e("WebParser", "WebView init error", e);
-                latch.countDown();
+                releaseLatch();
             }
         });
+
+        // 总超时 watchdog：防止 WebView 过程卡死导致线程永久阻塞
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!released) {
+                Log.w("WebParser", "Total timeout reached, forcing release for url: " + url);
+                releaseLatch();
+            }
+        }, TOTAL_TIMEOUT_MS);
+    }
+
+    /**
+     * 安全释放 latch，防止重复 countDown
+     */
+    private void releaseLatch() {
+        if (!released) {
+            released = true;
+            latch.countDown();
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -187,8 +211,8 @@ public class WebParser {
                     new Handler(Looper.getMainLooper()).postDelayed(this::autoScroll, SCROLL_DELAY);
                     errTimes++;
                 } else {
-                    latch.countDown();
                     htmlStr = null;
+                    releaseLatch();
                 }
             }
         });
@@ -210,7 +234,7 @@ public class WebParser {
                                     .replace("\\t", "    ")
                                     .replace("\\\\/", "\\/");
 
-                            latch.countDown();
+                            releaseLatch();
                         }
                     });
         }, 300); // 最后缓冲
@@ -220,7 +244,7 @@ public class WebParser {
      * 同步获取 HTML
      */
     public String getHtmlStrSync() throws InterruptedException {
-        latch.await();
+        latch.await(AWAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         return htmlStr;
     }
 }
