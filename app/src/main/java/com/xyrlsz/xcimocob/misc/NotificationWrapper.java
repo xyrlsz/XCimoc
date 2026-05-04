@@ -72,6 +72,24 @@ public class NotificationWrapper {
         post(content, 0, 0);
     }
 
+    /**
+     * 显示不定进度条（循环动画），适用于无法确定具体进度的后台任务
+     */
+    public void postIndeterminate(String content, boolean ongoing) {
+        if (mManager == null) {
+            Log.e("NotificationWrapper", "postIndeterminate skipped: mManager is null");
+            return;
+        }
+        try {
+            mBuilder.setContentText(content).setTicker(content);
+            mBuilder.setOngoing(ongoing);
+            mBuilder.setProgress(0, 0, true);
+            mManager.notify(mId, mBuilder.build());
+        } catch (Exception e) {
+            Log.e("NotificationWrapper", "postIndeterminate error", e);
+        }
+    }
+
     public void cancel() {
         if (mManager == null) {
             Log.e("NotificationWrapper", "cancel skipped: mManager is null");

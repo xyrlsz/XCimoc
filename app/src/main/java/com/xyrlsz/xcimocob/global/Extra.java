@@ -21,5 +21,6 @@ public class Extra {
     public static final String EXTRA_IS_STREAM = "cimoc.intent.extra.EXTRA_IS_STREAM";
     public static final String EXTAR_STSAME = "cimoc.intent.extra.EXTAR_STSAME";
     public static final String EXTRA_SEARCH_TYPE = "cimoc.intent.extra.EXTRA_SEARCH_TYPE";
+    public static final String EXTRA_EXPORT_TYPE = "cimoc.intent.extra.EXTRA_EXPORT_TYPE";
 
 }

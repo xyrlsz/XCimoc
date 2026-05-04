@@ -22,4 +22,6 @@ public interface DownloadView extends GridView {
 
     void onTaskLoadSuccess(ArrayList<Task> list);
 
+    void onExportResult(boolean success, String message);
+
 }

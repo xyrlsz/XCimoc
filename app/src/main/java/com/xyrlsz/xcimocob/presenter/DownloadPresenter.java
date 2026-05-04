@@ -78,6 +78,14 @@ public class DownloadPresenter extends BasePresenter<DownloadView> {
                 mBaseView.onDownloadStop();
             }
         });
+        addSubscription(RxEvent.EVENT_EXPORT_RESULT, new Consumer<RxEvent>() {
+            @Override
+            public void accept(RxEvent rxEvent) {
+                boolean success = (boolean) rxEvent.getData(0);
+                String message = (String) rxEvent.getData(1);
+                mBaseView.onExportResult(success, message);
+            }
+        });
     }
 
     public void deleteComic(long id) {

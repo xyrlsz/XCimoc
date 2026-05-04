@@ -313,6 +313,9 @@
     <string name="download_action_confirm">是否开始或暂停下载</string>
     <string name="download_delete">删除漫画</string>
     <string name="download_output">导出漫画</string>
+    <string name="download_output_doing">正在导出: %s</string>
+    <string name="download_output_success">导出完成</string>
+    <string name="download_output_fail">导出失败</string>
     <string name="download_delete_confirm">是否删除下载</string>
 
     <string name="task_parse">正在解析</string>

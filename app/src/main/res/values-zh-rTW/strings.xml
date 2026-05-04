@@ -295,6 +295,9 @@
     <string name="download_action_confirm">是否開始或暫停下載</string>
     <string name="download_delete">刪除漫畫</string>
     <string name="download_output">匯出漫畫</string>
+    <string name="download_output_doing">正在匯出: %s</string>
+    <string name="download_output_success">匯出完成</string>
+    <string name="download_output_fail">匯出失敗</string>
     <string name="download_delete_confirm">是否刪除下載</string>
 
     <string name="task_parse">正在解析</string>

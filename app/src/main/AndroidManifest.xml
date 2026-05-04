@@ -131,6 +131,14 @@
             android:name="com.xyrlsz.xcimocob.service.DownloadService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
+        <service
+            android:name="com.xyrlsz.xcimocob.service.CheckUpdateService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
+        <service
+            android:name="com.xyrlsz.xcimocob.service.ExportService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

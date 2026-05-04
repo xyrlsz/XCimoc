@@ -15,10 +15,10 @@ import com.xyrlsz.xcimocob.ui.activity.TaskActivity;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.ItemDialogFragment;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.MessageDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.DownloadView;
+import com.xyrlsz.xcimocob.service.ExportService;
 import com.xyrlsz.xcimocob.utils.ComicUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.ServiceUtils;
-import com.xyrlsz.xcimocob.utils.ThreadRunUtils;
 
 import java.util.ArrayList;
 
@@ -70,28 +70,9 @@ public class DownloadFragment extends GridFragment implements DownloadView {
     }
 
     private void outputComic(int type) {
-        // showProgressDialog();
-        ComicUtils.OutputDownloadedComic(this, getContext(), type, mPresenter.load(mSavedId), new ComicUtils.OutputComicCallback() {
-            @Override
-            public void onSuccess(String path) {
-                ThreadRunUtils.runOnMainThread(() -> {
-                    hideProgressDialog();
-                    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-                    builder.setMessage("已导出至: " + path)
-                            .setTitle(R.string.common_execute_success)
-                            .setPositiveButton(R.string.app_dialog_ok, null)
-                            .show();
-                });
-//                HintUtils.showToast(getActivity(), getString(R.string.common_execute_success) + ": " + path);
-
-            }
-
-            @Override
-            public void onFailure(String message) {
-                ThreadRunUtils.runOnMainThread(() -> hideProgressDialog());
-                HintUtils.showToast(getActivity(), message);
-            }
-        });
+        long comicId = mPresenter.load(mSavedId).getId();
+        Intent intent = ExportService.createIntent(getContext(), comicId, type);
+        requireActivity().startService(intent);
     }
 
     @Override
@@ -143,34 +124,21 @@ public class DownloadFragment extends GridFragment implements DownloadView {
                     HintUtils.showToast(getActivity(), R.string.download_ask_stop);
                 } else {
                     showProgressDialog();
-                    ThreadRunUtils.runOnIOThread(() -> {
-                        int output = bundle.getInt(EXTRA_DIALOG_RESULT_INDEX);
-                        switch (output) {
-                            case OPERATION_OUTPUT_SIMPLE:
-                                outputComic(ComicUtils.SIMPLE);
-                                break;
-                            case OPERATION_OUTPUT_ZIP:
-                                outputComic(ComicUtils.ZIP);
-                                break;
-                            case OPERATION_OUTPUT_EPUB:
-                                outputComic(ComicUtils.EPUB);
-                                break;
-                            case OPERATION_OUTPUT_CBZ:
-                                outputComic(ComicUtils.CBZ);
-                                break;
-                        }
-                    }, new ThreadRunUtils.TaskCallback() {
-                        @Override
-                        public void onSuccess() {
-
-                        }
-
-                        @Override
-                        public void onError(String msg) {
-                            hideProgressDialog();
-                            HintUtils.showToast(getActivity(), msg);
-                        }
-                    });
+                    int output = bundle.getInt(EXTRA_DIALOG_RESULT_INDEX);
+                    switch (output) {
+                        case OPERATION_OUTPUT_SIMPLE:
+                            outputComic(ComicUtils.SIMPLE);
+                            break;
+                        case OPERATION_OUTPUT_ZIP:
+                            outputComic(ComicUtils.ZIP);
+                            break;
+                        case OPERATION_OUTPUT_EPUB:
+                            outputComic(ComicUtils.EPUB);
+                            break;
+                        case OPERATION_OUTPUT_CBZ:
+                            outputComic(ComicUtils.CBZ);
+                            break;
+                    }
                 }
 
                 break;
@@ -214,6 +182,20 @@ public class DownloadFragment extends GridFragment implements DownloadView {
         hideProgressDialog();
         mGridAdapter.removeItemById(id);
         HintUtils.showToast(getActivity(), R.string.common_execute_success);
+    }
+
+    @Override
+    public void onExportResult(boolean success, String message) {
+        hideProgressDialog();
+        if (success) {
+            AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            builder.setMessage(getString(R.string.common_execute_success) + ": " + message)
+                    .setTitle(R.string.common_execute_success)
+                    .setPositiveButton(R.string.app_dialog_ok, null)
+                    .show();
+        } else {
+            HintUtils.showToast(getActivity(), message);
+        }
     }
 
     @Override

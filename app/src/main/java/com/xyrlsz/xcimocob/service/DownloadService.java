@@ -73,6 +73,10 @@ public class DownloadService extends Service implements AppGetter {
     private ComicManager mComicManager;
     private ChapterManager mChapterManager;
     private ContentResolver mContentResolver;
+    private int mTaskTotalCount;      // 总任务数（含已完成）
+    private int mTaskDoneCount;       // 已完成任务数
+    private int mCumulativeMax;       // 累计总页数（所有任务合计）
+    private int mCumulativeProgress;  // 累计已下载页数
 
     public static Intent createIntent(Context context, Task task) {
         ArrayList<Task> list = new ArrayList<>(1);
@@ -109,6 +113,10 @@ public class DownloadService extends Service implements AppGetter {
         mContentResolver = getContentResolver();
         mChapterManager = ChapterManager.getInstance(this);
         mComicManager = ComicManager.getInstance(this);
+        mTaskTotalCount = 0;
+        mTaskDoneCount = 0;
+        mCumulativeMax = 0;
+        mCumulativeProgress = 0;
     }
 
     @Override
@@ -118,7 +126,7 @@ public class DownloadService extends Service implements AppGetter {
             if (mNotification == null) {
                 mNotification = new NotificationWrapper(this, NOTIFICATION_DOWNLOAD,
                         R.drawable.ic_file_download_white_24dp, true);
-                mNotification.post(getString(R.string.download_service_doing), true);
+                mNotification.postIndeterminate(getString(R.string.download_service_doing), true);
                 try {
                     startForeground(NOTIFICATION_DOWNLOAD.hashCode(), mNotification.getNotification());
                 } catch (Exception e) {
@@ -127,11 +135,15 @@ public class DownloadService extends Service implements AppGetter {
                 }
             }
             List<Task> list = intent.getParcelableArrayListExtra(Extra.EXTRA_TASK);
+            int taskCount = list != null ? list.size() : 0;
+            mTaskTotalCount += taskCount;
             for (Task task : Objects.requireNonNull(list)) {
                 Worker worker = new Worker(task);
                 Future future = mExecutorService.submit(worker);
                 addWorker(task.getId(), worker, future);
             }
+            // 使用聚合进度更新通知
+            updateNotification();
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -165,10 +177,22 @@ public class DownloadService extends Service implements AppGetter {
     }
 
     public synchronized void completeDownload(long id) {
+        // 记录已完成任务的页数到累计进度
+        Pair<Worker, Future> pair = mWorkerArray.get(id);
+        if (pair != null) {
+            Task task = pair.first.mTask;
+            if (task.getMax() > 0) {
+                mCumulativeProgress += task.getMax();
+            }
+        }
         mWorkerArray.remove(id);
+        mTaskDoneCount++;
         if (mWorkerArray.isEmpty()) {
             notifyCompleted();
             stopSelf();
+        } else {
+            // 还有剩余任务，刷新聚合通知
+            updateNotification();
         }
     }
 
@@ -184,7 +208,65 @@ public class DownloadService extends Service implements AppGetter {
             mNotification = null;
         }
         mWorkerArray.clear();
+        mTaskTotalCount = 0;
+        mTaskDoneCount = 0;
+        mCumulativeMax = 0;
+        mCumulativeProgress = 0;
         RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_DOWNLOAD_STOP));
+    }
+
+    /**
+     * 计算所有 Worker 的聚合进度并更新通知
+     * 显示格式： "下载中 (2/5) — 45%"  或 "下载中 (3) — 解析中"
+     */
+    public synchronized void updateNotification() {
+        if (mNotification == null) return;
+        try {
+            // 统计当前活跃的 Worker 进度（尚未完成的）
+            int activeMax = 0;
+            int activeProgress = 0;
+            int parsingCount = 0;
+
+            for (int i = 0; i < mWorkerArray.size(); i++) {
+                Worker w = mWorkerArray.valueAt(i).first;
+                Task task = w.mTask;
+                int state = task.getState();
+                if (state == Task.STATE_PARSE) {
+                    parsingCount++;
+                } else if (state == Task.STATE_DOING && task.getMax() > 0) {
+                    activeMax += task.getMax();
+                    activeProgress += task.getProgress();
+                }
+            }
+
+            // 总进度 = 已完成 + 进行中
+            int totalMax = mCumulativeMax;
+            int totalProgress = mCumulativeProgress + activeProgress;
+
+            int totalTasks = mTaskTotalCount;
+
+            if (totalMax > 0) {
+                // 有确定进度 → 显示百分比
+                int percent = totalProgress * 100 / totalMax;
+                String content = getString(R.string.download_service_doing)
+                        + " (" + mTaskDoneCount + "/" + totalTasks + ") "
+                        + percent + "%";
+                mNotification.post(content, totalProgress, totalMax);
+            } else if (parsingCount > 0) {
+                // 都在解析中 → 显示不定进度
+                String content = getString(R.string.download_service_doing)
+                        + " (" + mTaskDoneCount + "/" + totalTasks + ") "
+                        + getString(R.string.task_parse);
+                mNotification.postIndeterminate(content, true);
+            } else {
+                // 其他情况（如刚启动，总页数尚未解析出来）
+                String content = getString(R.string.download_service_doing)
+                        + " (" + mTaskDoneCount + "/" + totalTasks + ")";
+                mNotification.postIndeterminate(content, true);
+            }
+        } catch (Exception e) {
+            Log.e("DownloadService", "updateNotification failed", e);
+        }
     }
 
     public synchronized void initTask(List<Task> list) {
@@ -216,6 +298,10 @@ public class DownloadService extends Service implements AppGetter {
                     if (dir != null) {
                         mTask.setMax(size);
                         mTask.setState(Task.STATE_DOING);
+                        // 累加总页数
+                        mCumulativeMax += size;
+                        // 更新聚合进度通知
+                        updateNotification();
                         boolean success = false;
                         for (int i = mTask.getProgress(); i < size; ++i) {
                             onDownloadProgress(i);
@@ -372,6 +458,8 @@ public class DownloadService extends Service implements AppGetter {
             mTask.setProgress(progress);
             mTaskManager.update(mTask);
             RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_TASK_PROCESS, mTask.getId(), progress, mTask.getMax()));
+            // 刷新聚合进度通知（所有任务的合计进度）
+            updateNotification();
         }
 
     }

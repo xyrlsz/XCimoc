@@ -1,15 +1,16 @@
 package com.xyrlsz.xcimocob.ui.fragment.recyclerview.grid;
 
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
-import com.xyrlsz.xcimocob.misc.NotificationWrapper;
 import com.xyrlsz.xcimocob.model.MiniComic;
 import com.xyrlsz.xcimocob.presenter.BasePresenter;
 import com.xyrlsz.xcimocob.presenter.FavoritePresenter;
+import com.xyrlsz.xcimocob.service.CheckUpdateService;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.MessageDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.FavoriteView;
 import com.xyrlsz.xcimocob.utils.HintUtils;
@@ -29,10 +30,7 @@ public class FavoriteFragment extends GridFragment implements FavoriteView {
     private static final int OPERATION_INFO = 0;
     private static final int OPERATION_DELETE = 1;
 
-    private static final String NOTIFICATION_CHECK_UPDATE = "NOTIFICATION_CHECK_UPDATE";
-
     private FavoritePresenter mPresenter;
-    private NotificationWrapper mNotification;
 
     @Override
     protected BasePresenter initPresenter() {
@@ -50,18 +48,6 @@ public class FavoriteFragment extends GridFragment implements FavoriteView {
     @Override
     protected void initData() {
         mPresenter.load();
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        if (mNotification != null) {
-            try {
-                mNotification.cancel();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     @Override
@@ -107,14 +93,8 @@ public class FavoriteFragment extends GridFragment implements FavoriteView {
     }
 
     private void checkUpdate() {
-        if (mNotification == null) {
-            mPresenter.checkUpdate();
-            mNotification = new NotificationWrapper(requireActivity(), NOTIFICATION_CHECK_UPDATE,
-                    R.drawable.ic_sync_white_24dp, true);
-            mNotification.post(getString(R.string.favorite_check_update_doing), 0, 0);
-        } else {
-            HintUtils.showToast(getActivity(), R.string.favorite_check_update_doing);
-        }
+        Intent intent = new Intent(requireActivity(), CheckUpdateService.class);
+        requireActivity().startService(intent);
     }
 
     @Override
@@ -168,35 +148,15 @@ public class FavoriteFragment extends GridFragment implements FavoriteView {
             mGridAdapter.remove(comic);
             mGridAdapter.add(0, comic);
         }
-        mNotification.post(progress, max);
     }
 
     @Override
     public void onComicCheckFail() {
-        try {
-            if (mNotification != null) {
-                mNotification.post(getString(R.string.favorite_check_update_fail), false);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            mNotification = null;
-        }
         HintUtils.showToast(getActivity(), R.string.favorite_check_update_fail);
     }
 
     @Override
     public void onComicCheckComplete() {
-        try {
-            if (mNotification != null) {
-                mNotification.post(getString(R.string.favorite_check_update_done), false);
-                mNotification.cancel();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            mNotification = null;
-        }
         HintUtils.showToast(getActivity(), R.string.favorite_check_update_done);
     }
 

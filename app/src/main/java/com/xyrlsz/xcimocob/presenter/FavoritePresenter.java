@@ -71,6 +71,28 @@ public class FavoritePresenter extends BasePresenter<FavoriteView> {
                 mBaseView.onHighlightCancel((MiniComic) rxEvent.getData());
             }
         });
+        addSubscription(RxEvent.EVENT_CHECK_UPDATE_PROGRESS, new Consumer<RxEvent>() {
+            @Override
+            public void accept(RxEvent rxEvent) {
+                int progress = (int) rxEvent.getData(0);
+                int max = (int) rxEvent.getData(1);
+                Comic comic = (Comic) rxEvent.getData(2);
+                MiniComic miniComic = comic != null ? new MiniComic(comic) : null;
+                mBaseView.onComicCheckSuccess(miniComic, progress, max);
+            }
+        });
+        addSubscription(RxEvent.EVENT_CHECK_UPDATE_COMPLETE, new Consumer<RxEvent>() {
+            @Override
+            public void accept(RxEvent rxEvent) {
+                mBaseView.onComicCheckComplete();
+            }
+        });
+        addSubscription(RxEvent.EVENT_CHECK_UPDATE_FAIL, new Consumer<RxEvent>() {
+            @Override
+            public void accept(RxEvent rxEvent) {
+                mBaseView.onComicCheckFail();
+            }
+        });
     }
 
     public Comic load(long id) {
