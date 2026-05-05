@@ -117,7 +117,9 @@ public class Comic {
         if (update != null) {
             this.update = update;
         }
-        this.intro = intro;
+        if (intro != null) {
+            this.intro = intro;
+        }
         if (author != null) {
             this.author = author;
         }

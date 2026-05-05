@@ -176,7 +176,7 @@ public class SourceFragment extends RecyclerViewFragment implements SourceView, 
     @Override
     public void onSourceLoadSuccess(List<Source> list) {
         hideProgressBar();
-        mSourceAdapter.addAll(list);
+        mSourceAdapter.setData(list);
     }
 
     @Override
