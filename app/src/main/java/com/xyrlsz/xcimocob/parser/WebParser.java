@@ -16,9 +16,10 @@ import com.xyrlsz.xcimocob.utils.StringUtils;
 
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.subjects.PublishSubject;
 import okhttp3.Headers;
 
 
@@ -27,15 +28,12 @@ public class WebParser {
     private static final int MAX_SCROLL = 512; // 最多滚动次数
     private static final int SAME_LIMIT = 3; // 高度连续不变次数
     private static final int SCROLL_DELAY = 50;
-    /** 总超时时间：120 秒后强制释放 latch，防止线程永久阻塞 */
+    /** 总超时时间：120 秒后强制完成，防止永久阻塞 */
     private static final long TOTAL_TIMEOUT_MS = 120_000;
-    /** 同步获取 HTML 的超时时间 */
-    private static final long AWAIT_TIMEOUT_MS = 130_000;
     private final String url;
     private final Headers headers;
-    private final CountDownLatch latch;
+    private final PublishSubject<String> htmlSubject = PublishSubject.create();
     private WebView webView;
-    private String htmlStr;
     private String UA = "";
     // 滚动控制
     private int lastHeight = 0;
@@ -43,7 +41,7 @@ public class WebParser {
     private int scrollCount = 0;
 
     private int errTimes = 0;
-    private volatile boolean released = false;
+    private volatile boolean emitted = false;
 
     public WebParser(Context context, String url, Headers headers) {
         this(context, url, headers, "");
@@ -53,7 +51,6 @@ public class WebParser {
         this.url = url;
         this.headers = headers;
         this.UA = UA;
-        this.latch = new CountDownLatch(1);
 
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
@@ -61,26 +58,26 @@ public class WebParser {
                 initWebView();
             } catch (Exception e) {
                 Log.e("WebParser", "WebView init error", e);
-                releaseLatch();
+                emitError(e);
             }
         });
-
-        // 总超时 watchdog：防止 WebView 过程卡死导致线程永久阻塞
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (!released) {
-                Log.w("WebParser", "Total timeout reached, forcing release for url: " + url);
-                releaseLatch();
-            }
-        }, TOTAL_TIMEOUT_MS);
     }
 
     /**
-     * 安全释放 latch，防止重复 countDown
+     * 安全发射结果，防止重复发射
      */
-    private void releaseLatch() {
-        if (!released) {
-            released = true;
-            latch.countDown();
+    private void emitResult(String html) {
+        if (!emitted) {
+            emitted = true;
+            htmlSubject.onNext(html);
+            htmlSubject.onComplete();
+        }
+    }
+
+    private void emitError(Throwable e) {
+        if (!emitted) {
+            emitted = true;
+            htmlSubject.onError(e);
         }
     }
 
@@ -211,8 +208,7 @@ public class WebParser {
                     new Handler(Looper.getMainLooper()).postDelayed(this::autoScroll, SCROLL_DELAY);
                     errTimes++;
                 } else {
-                    htmlStr = null;
-                    releaseLatch();
+                    emitError(new Exception("WebParser: autoScroll failed after retries"));
                 }
             }
         });
@@ -226,7 +222,7 @@ public class WebParser {
             webView.evaluateJavascript(
                     "(function(){return document.documentElement.outerHTML})()", value -> {
                         if (value != null) {
-                            htmlStr = value.replace("\\u003C", "<")
+                            String result = value.replace("\\u003C", "<")
                                     .replace("\\u003E", ">")
                                     .replace("\\n", "\n")
                                     .replace("\\\"", "\"")
@@ -234,17 +230,21 @@ public class WebParser {
                                     .replace("\\t", "    ")
                                     .replace("\\\\/", "\\/");
 
-                            releaseLatch();
+                            emitResult(result);
+                        } else {
+                            emitError(new Exception("WebParser: failed to get HTML"));
                         }
                     });
         }, 300); // 最后缓冲
     }
 
     /**
-     * 同步获取 HTML
+     * 获取 HTML 的 Observable
      */
-    public String getHtmlStrSync() throws InterruptedException {
-        latch.await(AWAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        return htmlStr;
+    public Observable<String> getHtmlObservable() {
+        return htmlSubject
+                .timeout(TOTAL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .firstElement()
+                .toObservable();
     }
 }

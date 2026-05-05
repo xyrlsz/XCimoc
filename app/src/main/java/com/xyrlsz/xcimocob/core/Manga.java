@@ -100,54 +100,46 @@ public class Manga {
 //        }).subscribeOn(Schedulers.io());
 //    }
     public static Observable<Comic> getSearchResult(final MangaParser parser, final String keyword, final int page, final boolean strictSearch, final boolean stSame) {
-        return Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Comic>) emitter -> {
-            try {
-                Request request = parser.getSearchRequest(keyword, page);
-                Random random = new Random();
-                String html;
-                if (parser.isGetSearchUseWebParser()) {
-                    WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
-                    html = webParser.getHtmlStrSync();
-                } else {
-                    html = getResponseBody(App.getHttpClient(), request);
-                }
+        return Observable.defer(() -> {
+            Request request = parser.getSearchRequest(keyword, page);
+            Observable<String> htmlObs = parser.isGetSearchUseWebParser()
+                    ? new WebParser(App.getAppContext(), request.url().toString(), request.headers()).getHtmlObservable()
+                    : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), request));
+            return htmlObs.flatMap(html -> {
                 SearchIterator iterator = parser.getSearchIterator(html, page);
                 if (iterator == null || iterator.empty()) {
-                    throw new Exception();
+                    return Observable.error(new Exception());
                 }
+                Random random = new Random();
+                List<Comic> result = new ArrayList<>();
                 while (iterator.hasNext()) {
                     Comic comic = iterator.next();
                     if (comic != null
                             && (indexOfIgnoreCase(comic.getTitle(), keyword, stSame)
                             || indexOfIgnoreCase(comic.getAuthor(), keyword, stSame)
                             || (!strictSearch))) {
-                        emitter.onNext(comic);
+                        result.add(comic);
                         Thread.sleep(random.nextInt(200));
                     }
                 }
-                emitter.onComplete();
-            } catch (Exception e) {
-                emitter.onError(e);
-            }
+                return Observable.fromIterable(result);
+            });
         }).subscribeOn(Schedulers.io());
     }
 
     public static Observable<Comic> getSearchResult(final MangaParser parser, final String keyword, final int page, final boolean strictSearch, final boolean stSame, final int searchType) {
-        return Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Comic>) emitter -> {
-            try {
-                Request request = parser.getSearchRequest(keyword, page);
-                Random random = new Random();
-                String html;
-                if (parser.isGetSearchUseWebParser()) {
-                    WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
-                    html = webParser.getHtmlStrSync();
-                } else {
-                    html = getResponseBody(App.getHttpClient(), request);
-                }
+        return Observable.defer(() -> {
+            Request request = parser.getSearchRequest(keyword, page);
+            Observable<String> htmlObs = parser.isGetSearchUseWebParser()
+                    ? new WebParser(App.getAppContext(), request.url().toString(), request.headers()).getHtmlObservable()
+                    : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), request));
+            return htmlObs.flatMap(html -> {
                 SearchIterator iterator = parser.getSearchIterator(html, page);
                 if (iterator == null || iterator.empty()) {
-                    throw new Exception();
+                    return Observable.error(new Exception());
                 }
+                Random random = new Random();
+                List<Comic> result = new ArrayList<>();
                 while (iterator.hasNext()) {
                     Comic comic = iterator.next();
 
@@ -155,7 +147,7 @@ public class Manga {
                         if (comic != null
                                 && (indexOfIgnoreCase(comic.getTitle().strip(), keyword.strip(), stSame)
                                 || (!strictSearch))) {
-                            emitter.onNext(comic);
+                            result.add(comic);
                             Thread.sleep(random.nextInt(200));
                         }
                     } else if (searchType == SEARCH_AUTHOR) {
@@ -173,60 +165,55 @@ public class Manga {
                             }
 
                             if (findAuthor || (!strictSearch)) {
-                                emitter.onNext(comic);
+                                result.add(comic);
                                 Thread.sleep(random.nextInt(200));
                             }
                         }
                     }
                 }
-                emitter.onComplete();
-            } catch (Exception e) {
-                emitter.onError(e);
-            }
+                return Observable.fromIterable(result);
+            });
         }).subscribeOn(Schedulers.io());
     }
 
     public static Observable<List<Chapter>> getComicInfo(final MangaParser parser, final Comic comic) {
-        return Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<List<Chapter>>) emitter -> {
-            try {
-                List<Chapter> list = new ArrayList<>();
-
-                if (list.isEmpty()) {
-                    comic.setUrl(parser.getUrl(comic.getCid()));
-                    Request request = parser.getInfoRequest(comic.getCid());
-                    String html;
-                    if (parser.isParseInfoUseWebParser()) {
-                        WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
-                        html = webParser.getHtmlStrSync();
-                    } else {
-                        html = getResponseBody(App.getHttpClient(), request);
-                    }
-                    Comic newComic = parser.parseInfo(html, comic);
-                    RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_UPDATE_INFO, newComic));
-                    request = parser.getChapterRequest(html, comic.getCid());
-                    if (request != null) {
-                        if (parser.isParseChapterUseWebParser()) {
-                            WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
-                            html = webParser.getHtmlStrSync();
-                        } else {
-                            html = getResponseBody(App.getHttpClient(), request);
+        return Observable.defer(() -> {
+            comic.setUrl(parser.getUrl(comic.getCid()));
+            Request infoRequest = parser.getInfoRequest(comic.getCid());
+            Observable<String> infoHtmlObs = parser.isParseInfoUseWebParser()
+                    ? new WebParser(App.getAppContext(), infoRequest.url().toString(), infoRequest.headers()).getHtmlObservable()
+                    : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), infoRequest));
+            return infoHtmlObs.flatMap(html -> {
+                Comic newComic = parser.parseInfo(html, comic);
+                RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_UPDATE_INFO, newComic));
+                Request chapterReq = parser.getChapterRequest(html, comic.getCid());
+                if (chapterReq != null) {
+                    Observable<String> chapterHtmlObs = parser.isParseChapterUseWebParser()
+                            ? new WebParser(App.getAppContext(), chapterReq.url().toString(), chapterReq.headers()).getHtmlObservable()
+                            : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), chapterReq));
+                    return chapterHtmlObs.flatMap(chapterHtml -> {
+                        Long sourceComic = IdCreator.createSourceComic(comic);
+                        List<Chapter> list = parser.parseChapter(chapterHtml, comic, sourceComic);
+                        if (list == null) {
+                            list = parser.parseChapter(chapterHtml);
                         }
-                    }
+                        if (list.isEmpty()) {
+                            return Observable.error(new ParseErrorException());
+                        }
+                        return Observable.just(list);
+                    });
+                } else {
                     Long sourceComic = IdCreator.createSourceComic(comic);
-                    list = parser.parseChapter(html, comic, sourceComic);
+                    List<Chapter> list = parser.parseChapter(html, comic, sourceComic);
                     if (list == null) {
                         list = parser.parseChapter(html);
                     }
+                    if (list.isEmpty()) {
+                        return Observable.error(new ParseErrorException());
+                    }
+                    return Observable.just(list);
                 }
-                if (!list.isEmpty()) {
-                    emitter.onNext(list);
-                    emitter.onComplete();
-                } else {
-                    throw new ParseErrorException();
-                }
-            } catch (Exception e) {
-                emitter.onError(e);
-            }
+            });
         }).subscribeOn(Schedulers.io());
     }
 
@@ -253,40 +240,24 @@ public class Manga {
                                                              final MangaParser parser,
                                                              final String cid,
                                                              final String path) {
-        return Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<List<ImageUrl>>) emitter -> {
-            String html;
-            List<ImageUrl> list = new ArrayList<>();
-            try {
-                if (list.isEmpty()) {
-                    Request request = parser.getImagesRequest(cid, path);
-                    if (parser.isParseImagesUseWebParser()) {
-                        String url = request.url().toString();
-                        WebParser webParser = new WebParser(App.getAppContext(), url, request.headers());
-
-                        html = webParser.getHtmlStrSync(); // 同步获取 HTML
-                        list = parser.parseImages(html, chapter);
-
-                    } else {
-                        html = getResponseBody(App.getHttpClient(), request);
-                        list = parser.parseImages(html, chapter);
-                        if (list == null || list.isEmpty()) {
-                            list = parser.parseImages(html);
-                        }
-                    }
+        return Observable.defer(() -> {
+            Request request = parser.getImagesRequest(cid, path);
+            Observable<String> htmlObs = parser.isParseImagesUseWebParser()
+                    ? new WebParser(App.getAppContext(), request.url().toString(), request.headers()).getHtmlObservable()
+                    : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), request));
+            return htmlObs.flatMap(html -> {
+                List<ImageUrl> list = parser.parseImages(html, chapter);
+                if (list == null || list.isEmpty()) {
+                    list = parser.parseImages(html);
                 }
-
                 if (list.isEmpty()) {
-                    throw new Exception();
-                } else {
-                    for (ImageUrl imageUrl : list) {
-                        imageUrl.setChapter(path);
-                    }
-                    emitter.onNext(list);
-                    emitter.onComplete();
+                    return Observable.error(new Exception());
                 }
-            } catch (Exception e) {
-                emitter.onError(e);
-            }
+                for (ImageUrl imageUrl : list) {
+                    imageUrl.setChapter(path);
+                }
+                return Observable.just(list);
+            });
         }).subscribeOn(Schedulers.io());
     }
 
@@ -317,7 +288,7 @@ public class Manga {
             } else {
                 WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
 
-                String html = webParser.getHtmlStrSync();
+                String html = webParser.getHtmlObservable().blockingFirst();
                 List<Chapter> chapter = mChapterManager.getChapter(path, title);
                 if (chapter != null && !chapter.isEmpty()) {
                     list.addAll(parser.parseImages(html, chapter.get(0)));
@@ -347,7 +318,7 @@ public class Manga {
             if (response.isSuccessful()) {
                 if (parser.isParseImagesLazyUseWebParser()) {
                     WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
-                    return parser.parseLazy(webParser.getHtmlStrSync(), url);
+                    return parser.parseLazy(webParser.getHtmlObservable().blockingFirst(), url);
                 }
                 return parser.parseLazy(response.body().string(), url);
             } else {
@@ -366,28 +337,19 @@ public class Manga {
     }
 
     public static Observable<String> loadLazyUrl(final MangaParser parser, final String url) {
-        return Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<String>) emitter -> {
+        return Observable.defer(() -> {
             Request request = parser.getLazyRequest(url);
-            try {
-                String newUrl;
-                if (parser.isParseImagesLazyUseWebParser()) {
-                    WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
-                    newUrl = parser.parseLazy(webParser.getHtmlStrSync(), url);
-                } else {
-                    newUrl = parser.parseLazy(getResponseBody(App.getHttpClient(), request), url);
-                }
+            Observable<String> htmlObs = parser.isParseImagesLazyUseWebParser()
+                    ? new WebParser(App.getAppContext(), request.url().toString(), request.headers()).getHtmlObservable()
+                    : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), request));
+            return htmlObs.flatMap(html -> {
+                String newUrl = parser.parseLazy(html, url);
                 if (newUrl != null) {
-                    emitter.onNext(newUrl);
-                    emitter.onComplete();
-                    return;
+                    return Observable.just(newUrl);
                 } else {
-                    emitter.onError(new Exception("loadLazyUrl returned null"));
-                    return;
+                    return Observable.error(new Exception("loadLazyUrl returned null"));
                 }
-            } catch (Exception e) {
-                emitter.onError(e);
-                return;
-            }
+            });
         }).subscribeOn(Schedulers.io());
     }
 
