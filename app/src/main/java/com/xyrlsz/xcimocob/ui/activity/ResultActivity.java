@@ -183,7 +183,7 @@ public class ResultActivity extends BackActivity implements ResultView, BaseAdap
     @Override
     public void onLoadSuccess(List<Comic> list) {
         hideProgressBar();
-        mResultAdapter.addAll(list);
+        mResultAdapter.setData(list);
     }
 
     @Override
