@@ -155,7 +155,8 @@ public class LocalFragment extends GridFragment implements LocalView {
     @Override
     public void onLocalScanSuccess(List<Object> list) {
         hideProgressDialog();
-        mGridAdapter.addAll(list);
+        // 重新从数据库加载完整列表，避免多次扫描追加导致重复
+        mPresenter.load();
     }
 
     @Override

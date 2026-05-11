@@ -134,7 +134,10 @@ public abstract class BaseAdapter<T> extends RecyclerView.Adapter<RecyclerView.V
             @Override
             public void onClick(View v) {
                 if (mClickListener != null && isClickValid()) {
-                    mClickListener.onItemClick(v, holder.getAdapterPosition());
+                    int adapterPosition = holder.getAdapterPosition();
+                    if (adapterPosition != RecyclerView.NO_POSITION) {
+                        mClickListener.onItemClick(v, adapterPosition);
+                    }
                 }
             }
         });
@@ -144,7 +147,11 @@ public abstract class BaseAdapter<T> extends RecyclerView.Adapter<RecyclerView.V
                 if (mLongClickListener == null) {
                     return false;
                 }
-                return mLongClickListener.onItemLongClick(v, holder.getAdapterPosition());
+                int adapterPosition = holder.getAdapterPosition();
+                if (adapterPosition != RecyclerView.NO_POSITION) {
+                    return mLongClickListener.onItemLongClick(v, adapterPosition);
+                }
+                return false;
             }
         });
     }

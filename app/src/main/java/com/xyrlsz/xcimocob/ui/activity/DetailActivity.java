@@ -289,7 +289,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 
     @Override
     public void onItemClick(View view, int position) {
-        if (position != 0) {
+        if (position > 0 && position - 1 < mDetailAdapter.getDateSet().size()) {
             String path = mDetailAdapter.getItem(position - 1).getPath();
             if (!StringUtils.isEmpty(path)) {
                 startReader(path);

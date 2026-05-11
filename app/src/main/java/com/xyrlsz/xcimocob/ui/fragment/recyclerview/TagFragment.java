@@ -132,7 +132,7 @@ public class TagFragment extends RecyclerViewFragment implements TagView {
 
     @Override
     public void onTagRestore(List<Tag> list) {
-        mTagAdapter.addAll(list);
+        mTagAdapter.setData(list);
     }
 
     @Override
@@ -151,7 +151,7 @@ public class TagFragment extends RecyclerViewFragment implements TagView {
     @Override
     public void onTagLoadSuccess(List<Tag> list) {
         hideProgressBar();
-        mTagAdapter.addAll(list);
+        mTagAdapter.setData(list);
     }
 
     @Override
