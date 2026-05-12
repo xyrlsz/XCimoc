@@ -311,16 +311,13 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
             textViewMessage.setTextIsSelectable(true);
             textViewTitle.setTextIsSelectable(true);
 
-//            if (ThemeUtils.isDarkMode(this)) {
-//                textViewTitle.setTextColor(Color.WHITE);
-//                textViewMessage.setTextColor(Color.WHITE);
-//            } else {
-//                textViewTitle.setTextColor(Color.BLACK);
-//                textViewMessage.setTextColor(Color.BLACK);
-//            }
-
-            textViewTitle.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.colorAutoBW));
-            textViewMessage.setTextColor(ContextCompat.getColor(getApplicationContext(), R.color.colorAutoBW));
+            if (ThemeUtils.isDarkMode(this)) {
+                textViewTitle.setTextColor(Color.WHITE);
+                textViewMessage.setTextColor(Color.WHITE);
+            } else {
+                textViewTitle.setTextColor(Color.BLACK);
+                textViewMessage.setTextColor(Color.BLACK);
+            }
            
             builder.setView(dialogView)
                     .setPositiveButton(R.string.dialog_close, null)
