@@ -111,7 +111,7 @@ jobs:
           echo "GIT_REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
 
       - name: Download APK artifact from build job
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: app-universal-release
           path: app/build/outputs/apk/release/
