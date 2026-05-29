@@ -33,4 +33,36 @@ public interface BackupView extends BaseView, DialogCaller {
     void onUploadSuccess();
 
     void onUploadFail();
+
+    // ========== 数据同步服务器回调（上传） ==========
+
+    void onDataSyncLoginSuccess(String username);
+
+    void onDataSyncLogoutSuccess();
+
+    void onDataSyncStart();
+
+    void onDataSyncComicSuccess(int synced, int skipped);
+
+    void onDataSyncSettingSuccess(int synced);
+
+    void onDataSyncTagSuccess();
+
+    void onDataSyncAllSuccess();
+
+    void onDataSyncError(String message);
+
+    // ========== 数据同步服务器回调（下载/恢复） ==========
+
+    void onDataSyncDownloadStart();
+
+    void onDataSyncDownloadComicSuccess(int count);
+
+    void onDataSyncDownloadSettingSuccess(int count);
+
+    void onDataSyncDownloadTagSuccess();
+
+    void onDataSyncDownloadAllSuccess();
+
+    void onDataSyncDownloadError(String message);
 }

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cimoc 数据同步服务器 - 管理后台</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif; background: #f5f5f5; color: #333; }
+    .app { max-width: 800px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22px; margin-bottom: 20px; color: #1a1a1a; }
+    h2 { font-size: 17px; margin-bottom: 12px; color: #333; }
+    .card { background: #fff; border-radius: 8px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    .form-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    input { flex: 1; min-width: 140px; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; }
+    input:focus { border-color: #4a90d9; }
+    .btn { padding: 8px 18px; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .btn-primary { background: #4a90d9; color: #fff; }
+    .btn-primary:hover { background: #357abd; }
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-outline { background: #fff; color: #666; border: 1px solid #ddd; }
+    .btn-outline:hover { background: #f5f5f5; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 14px; }
+    .msg-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .msg-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { font-weight: 600; color: #666; font-size: 13px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; }
+    .badge-admin { background: #fff3cd; color: #856404; }
+    .badge-user { background: #e2e3e5; color: #383d41; }
+    .login-box { max-width: 360px; margin: 80px auto; }
+    .login-box .card { padding: 32px; }
+    .login-box h1 { text-align: center; margin-bottom: 24px; font-size: 20px; }
+    .login-box .form-row { margin-bottom: 16px; }
+    .login-box input { width: 100%; }
+    .login-box .btn { width: 100%; padding: 10px; }
+    .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #eee; }
+    .nav-user { font-size: 14px; color: #666; }
+    .nav-user span { color: #333; font-weight: 600; }
+    .empty { text-align: center; color: #999; padding: 32px; font-size: 14px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- 登录页 -->
+  <div v-if="!token" class="login-box">
+    <div class="card">
+      <h1>Cimoc 管理后台</h1>
+      <div class="form-row"><input v-model="loginUsername" placeholder="管理员用户名" @keyup.enter="doLogin" /></div>
+      <div class="form-row"><input v-model="loginPassword" type="password" placeholder="密码" @keyup.enter="doLogin" /></div>
+      <div v-if="loginMsg" :class="'msg ' + (loginMsgType === 'ok' ? 'msg-success' : 'msg-error')">{{ loginMsg }}</div>
+      <button class="btn btn-primary" @click="doLogin" :disabled="loading">登录</button>
+    </div>
+    <div style="text-align:center;margin-top:12px;font-size:13px;color:#999;">
+      首次启动会在服务器日志中生成随机管理员密码
+    </div>
+  </div>
+
+  <!-- 管理页 -->
+  <div v-else class="app">
+    <div class="nav">
+      <h1 style="margin:0">用户管理</h1>
+      <div class="nav-user">
+        <span>{{ username }}</span> · <button class="btn btn-outline" style="padding:4px 12px;font-size:13px" @click="logout">退出</button>
+      </div>
+    </div>
+
+    <div v-if="msg" :class="'msg ' + (msgType === 'ok' ? 'msg-success' : 'msg-error')">{{ msg }}</div>
+
+    <!-- 添加用户 -->
+    <div class="card">
+      <h2>添加用户</h2>
+      <div class="form-row">
+        <input v-model="newUsername" placeholder="用户名" />
+        <input v-model="newPassword" type="password" placeholder="密码" />
+        <button class="btn btn-primary" @click="addUser" :disabled="loading">添加</button>
+      </div>
+    </div>
+
+    <!-- 修改我的密码 -->
+    <div class="card">
+      <h2>修改我的密码</h2>
+      <div class="form-row">
+        <input :value="username" disabled style="background:#f5f5f5;color:#999;flex:0 0 auto;width:100px" />
+        <input v-model="myNewPassword" type="password" placeholder="新密码" @keyup.enter="changeMyPwd" />
+        <button class="btn btn-primary" @click="changeMyPwd" :disabled="loading">修改</button>
+      </div>
+    </div>
+
+    <!-- 修改任意用户密码 -->
+    <div class="card">
+      <h2>修改任意用户密码</h2>
+      <div class="form-row">
+        <input v-model="chgUsername" placeholder="用户名" />
+        <input v-model="chgPassword" type="password" placeholder="新密码" @keyup.enter="changePwd" />
+        <button class="btn btn-primary" @click="changePwd" :disabled="loading">修改</button>
+      </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="card">
+      <h2>用户列表</h2>
+      <table v-if="users.length > 0">
+        <thead><tr><th>ID</th><th>用户名</th><th>角色</th><th>创建时间</th></tr></thead>
+        <tbody>
+          <tr v-for="u in users" :key="u.id">
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td><span :class="'badge ' + (u.is_admin ? 'badge-admin' : 'badge-user')">{{ u.is_admin ? '管理员' : '普通用户' }}</span></td>
+            <td>{{ u.created_at }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="empty">暂无用户</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, onMounted } = Vue;
+
+createApp({
+  setup() {
+    const token = ref(localStorage.getItem('admin_token') || '');
+    const username = ref(localStorage.getItem('admin_username') || '');
+    const users = ref([]);
+    const loading = ref(false);
+    const msg = ref(''); const msgType = ref('ok');
+    const loginUsername = ref(''); const loginPassword = ref('');
+    const loginMsg = ref(''); const loginMsgType = ref('ok');
+    const newUsername = ref(''); const newPassword = ref('');
+    const myNewPassword = ref('');
+    const chgUsername = ref(''); const chgPassword = ref('');
+
+    const apiBase = window.location.origin;
+
+    // 解码 JWT payload 获取 exp
+    function jwtExp(jwtToken) {
+      try {
+        const payload = JSON.parse(atob(jwtToken.split('.')[1]));
+        return payload.exp ? payload.exp * 1000 : 0;
+      } catch (e) { return 0; }
+    }
+
+    // token 是否即将过期（7天内）
+    function isTokenExpiringSoon(jwtToken) {
+      const exp = jwtExp(jwtToken);
+      if (!exp) return false;
+      return (exp - Date.now()) < 7 * 24 * 60 * 60 * 1000;
+    }
+
+    // 刷新 token
+    async function refreshTokenIfNeeded() {
+      if (!token.value || !isTokenExpiringSoon(token.value)) return;
+      try {
+        const resp = await fetch(apiBase + '/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token.value },
+          body: '{}',
+        }).then(r => r.json().catch(() => ({})));
+        if (resp.token) {
+          token.value = resp.token;
+          localStorage.setItem('admin_token', resp.token);
+        }
+      } catch (e) { /* 刷新失败静默处理 */ }
+    }
+
+    async function api(path, body) {
+      await refreshTokenIfNeeded();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token.value) headers['Authorization'] = 'Bearer ' + token.value;
+      let resp = await fetch(apiBase + path, {
+        method: body ? 'POST' : 'GET',
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      // 如果 401 可能是 token 过期，尝试刷新后重试一次
+      if (resp.status === 401 && token.value) {
+        try {
+          const refreshResp = await fetch(apiBase + '/api/auth/refresh', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token.value },
+            body: '{}',
+          }).then(r => r.json().catch(() => ({})));
+          if (refreshResp.token) {
+            token.value = refreshResp.token;
+            localStorage.setItem('admin_token', refreshResp.token);
+            headers['Authorization'] = 'Bearer ' + token.value;
+            resp = await fetch(apiBase + path, {
+              method: body ? 'POST' : 'GET',
+              headers,
+              body: body ? JSON.stringify(body) : undefined,
+            });
+          }
+        } catch (e) { /* 重试失败 */ }
+      }
+      return resp.json().catch(() => ({ error: '请求失败' }));
+    }
+
+    async function doLogin() {
+      if (!loginUsername.value || !loginPassword.value) return;
+      loading.value = true; loginMsg.value = '';
+      try {
+        const resp = await api('/api/auth/login', { username: loginUsername.value, password: loginPassword.value });
+        if (resp.token) {
+          if (!resp.user.is_admin) {
+            loginMsg.value = '该用户不是管理员，无法登录管理后台'; loginMsgType.value = 'err';
+            return;
+          }
+          token.value = resp.token; username.value = resp.user.username;
+          localStorage.setItem('admin_token', resp.token);
+          localStorage.setItem('admin_username', resp.user.username);
+          loginMsg.value = '';
+          loadUsers();
+        } else {
+          loginMsg.value = resp.error || '登录失败'; loginMsgType.value = 'err';
+        }
+      } catch (e) {
+        loginMsg.value = '网络错误'; loginMsgType.value = 'err';
+      } finally { loading.value = false; }
+    }
+
+    function logout() {
+      token.value = ''; username.value = '';
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_username');
+    }
+
+    async function loadUsers() {
+      const resp = await api('/api/admin/users');
+      if (resp.users) users.value = resp.users;
+    }
+
+    async function addUser() {
+      if (!newUsername.value || !newPassword.value) return;
+      loading.value = true; msg.value = '';
+      try {
+        const resp = await api('/api/admin/users', { username: newUsername.value, password: newPassword.value });
+        if (resp.message) {
+          msg.value = resp.message; msgType.value = 'ok';
+          newUsername.value = ''; newPassword.value = '';
+          loadUsers();
+        } else {
+          msg.value = resp.error || '添加失败'; msgType.value = 'err';
+        }
+      } catch (e) {
+        msg.value = '网络错误'; msgType.value = 'err';
+      } finally { loading.value = false; }
+    }
+
+    async function changeMyPwd() {
+      if (!myNewPassword.value) return;
+      loading.value = true; msg.value = '';
+      try {
+        const resp = await api('/api/admin/password', { username: username.value, new_password: myNewPassword.value });
+        if (resp.message) {
+          msg.value = resp.message; msgType.value = 'ok';
+          myNewPassword.value = '';
+        } else {
+          msg.value = resp.error || '修改失败'; msgType.value = 'err';
+        }
+      } catch (e) {
+        msg.value = '网络错误'; msgType.value = 'err';
+      } finally { loading.value = false; }
+    }
+
+    async function changePwd() {
+      if (!chgUsername.value || !chgPassword.value) return;
+      loading.value = true; msg.value = '';
+      try {
+        const resp = await api('/api/admin/password', { username: chgUsername.value, new_password: chgPassword.value });
+        if (resp.message) {
+          msg.value = resp.message; msgType.value = 'ok';
+          chgUsername.value = ''; chgPassword.value = '';
+        } else {
+          msg.value = resp.error || '修改失败'; msgType.value = 'err';
+        }
+      } catch (e) {
+        msg.value = '网络错误'; msgType.value = 'err';
+      } finally { loading.value = false; }
+    }
+
+    if (token.value) loadUsers();
+
+    return { token, username, users, loading, msg, msgType, loginUsername, loginPassword, loginMsg, loginMsgType, newUsername, newPassword, myNewPassword, chgUsername, chgPassword, doLogin, logout, addUser, changeMyPwd, changePwd };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>

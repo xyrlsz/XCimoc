@@ -65,11 +65,13 @@ public class ComicManager {
     }
 
     public Observable<List<Comic>> listFavoriteOrHistoryInRx() {
-        return Observable.fromCallable(() -> {
-            QueryBuilder<Comic> queryBuilder =
-                    mComicBox.query(Comic_.favorite.notNull().or(Comic_.history.notNull()));
-            return queryBuilder.build().find();
-        });
+        return Observable.fromCallable(this::listFavoriteOrHistory);
+    }
+
+    public List<Comic> listFavoriteOrHistory() {
+        QueryBuilder<Comic> queryBuilder =
+                mComicBox.query(Comic_.favorite.notNull().or(Comic_.history.notNull()));
+        return queryBuilder.build().find();
     }
 
     public List<Comic> listFavorite() {

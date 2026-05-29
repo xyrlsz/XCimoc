@@ -78,6 +78,10 @@
 -keep interface okhttp3.** { *; }
 -dontwarn okhttp3.**
 
+# DataSync models (used by Gson)
+-keep class com.xyrlsz.xcimocob.network.sync.DataSyncModels.** { *; }
+-keepclassmembers class com.xyrlsz.xcimocob.network.sync.DataSyncModels.** { *; }
+
 # rhino
 -dontwarn org.mozilla.javascript.**
 -dontwarn org.mozilla.classfile.**

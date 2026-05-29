@@ -4,9 +4,11 @@ import static com.xyrlsz.xcimocob.core.Backup.BACKUP;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.LinearLayout;
 
+import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.Constants;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
@@ -17,6 +19,7 @@ import com.xyrlsz.xcimocob.saf.WebDavCimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.ChoiceDialogFragment;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.MessageDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.BackupView;
+import com.xyrlsz.xcimocob.ui.widget.DataServerLoginDialog;
 import com.xyrlsz.xcimocob.ui.widget.WebDavConfDialog;
 import com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference;
 import com.xyrlsz.xcimocob.utils.DocumentUtils;
@@ -42,6 +45,7 @@ public class BackupActivity extends BackActivity implements BackupView {
     View mLayoutView;
     CheckBoxPreference mSaveComicAuto;
     CheckBoxPreference mSaveComicCloudAuto;
+    CheckBoxPreference mDataServerAutoSync;
     LinearLayout mWebDavLayout;
     private BackupPresenter mPresenter;
 
@@ -58,6 +62,7 @@ public class BackupActivity extends BackActivity implements BackupView {
         mLayoutView = findViewById(R.id.backup_layout);
         mSaveComicAuto = findViewById(R.id.backup_save_comic_auto);
         mSaveComicCloudAuto = findViewById(R.id.backup_cloud_sync);
+        mDataServerAutoSync = findViewById(R.id.backup_data_server_auto_sync);
         mWebDavLayout = findViewById(R.id.webdav_layout);
     }
 
@@ -66,6 +71,7 @@ public class BackupActivity extends BackActivity implements BackupView {
         super.initView();
         mSaveComicAuto.bindPreference(PreferenceManager.PREF_BACKUP_SAVE_COMIC, true);
         mSaveComicCloudAuto.bindPreference(PreferenceManager.PREF_BACKUP_SAVE_COMIC_CLOUD, false);
+        mDataServerAutoSync.bindPreference(PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC, true);
         SharedPreferences sharedPreferences = getSharedPreferences(Constants.WEBDAV_SHARED, MODE_PRIVATE);
         String webdavUrl = sharedPreferences.getString(Constants.WEBDAV_SHARED_URL, "");
         String webdavUsername = sharedPreferences.getString(Constants.WEBDAV_SHARED_USERNAME, "");
@@ -91,6 +97,127 @@ public class BackupActivity extends BackActivity implements BackupView {
         findViewById(R.id.backup_save_settings_cloud).setOnClickListener(v -> onSaveSettingsCloudClick());
         findViewById(R.id.backup_restore_settings_cloud).setOnClickListener(v -> onRestoreSettingsCloudClick());
 
+        // 数据同步服务器
+        findViewById(R.id.backup_data_server_config).setOnClickListener(v -> onDataServerConfigClick());
+        findViewById(R.id.backup_data_server_login).setOnClickListener(v -> onDataServerLoginClick());
+        findViewById(R.id.backup_data_server_sync_all).setOnClickListener(v -> onDataServerSyncAllClick());
+        findViewById(R.id.backup_data_server_sync_comic).setOnClickListener(v -> onDataServerSyncComicClick());
+        findViewById(R.id.backup_data_server_sync_setting).setOnClickListener(v -> onDataServerSyncSettingClick());
+        findViewById(R.id.backup_data_server_sync_tag).setOnClickListener(v -> onDataServerSyncTagClick());
+        findViewById(R.id.backup_data_server_restore_all).setOnClickListener(v -> onDataServerRestoreAllClick());
+        findViewById(R.id.backup_data_server_restore_comic).setOnClickListener(v -> onDataServerRestoreComicClick());
+        findViewById(R.id.backup_data_server_restore_setting).setOnClickListener(v -> onDataServerRestoreSettingClick());
+        findViewById(R.id.backup_data_server_restore_tag).setOnClickListener(v -> onDataServerRestoreTagClick());
+        findViewById(R.id.backup_data_server_logout).setOnClickListener(v -> onDataServerLogoutClick());
+        updateDataServerLoginStatus();
+
+    }
+
+    /**
+     * 更新数据同步服务器登录状态显示
+     */
+    private void updateDataServerLoginStatus() {
+        String token = App.getPreferenceManager().getString(PreferenceManager.PREFERENCES_USER_TOCKEN, "");
+        String username = App.getPreferenceManager().getString(PreferenceManager.PREFERENCES_USER_NAME, "");
+        if (!TextUtils.isEmpty(token) && !TextUtils.isEmpty(username)) {
+            findViewById(R.id.backup_data_server_login).setVisibility(View.GONE);
+            findViewById(R.id.backup_data_server_logout).setVisibility(View.VISIBLE);
+            // 更新登录选项的摘要显示用户名
+            com.xyrlsz.xcimocob.ui.widget.Option loginOption = findViewById(R.id.backup_data_server_login);
+            loginOption.setSummary(getString(R.string.data_sync_login_success) + " (" + username + ")");
+        } else {
+            findViewById(R.id.backup_data_server_login).setVisibility(View.VISIBLE);
+            findViewById(R.id.backup_data_server_logout).setVisibility(View.GONE);
+            com.xyrlsz.xcimocob.ui.widget.Option loginOption = findViewById(R.id.backup_data_server_login);
+            loginOption.setSummary(getString(R.string.backup_data_server_login_summary));
+        }
+    }
+
+    // ==================== 数据同步服务器点击处理 ====================
+
+    void onDataServerConfigClick() {
+        // 显示服务器配置对话框
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, ThemeUtils.getDialogThemeById(ThemeUtils.getThemeId()));
+        builder.setTitle(R.string.data_server_config_title);
+
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(48, 24, 48, 24);
+
+        final android.widget.EditText urlInput = new android.widget.EditText(this);
+        urlInput.setHint(R.string.data_server_url_hint);
+        urlInput.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        String currentUrl = App.getPreferenceManager().getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
+        urlInput.setText(currentUrl);
+        layout.addView(urlInput);
+
+        android.widget.TextView summary = new android.widget.TextView(this);
+        summary.setText(R.string.data_server_url_dialog_summary);
+        summary.setTextSize(12);
+        summary.setPadding(0, 8, 0, 0);
+        layout.addView(summary);
+
+        builder.setView(layout);
+        builder.setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+            String url = urlInput.getText().toString().trim();
+            App.getPreferenceManager().putString(PreferenceManager.PREF_DATA_SERVER_URL, url);
+            showSnackbar("服务器地址已保存");
+        });
+        builder.setNegativeButton(R.string.dialog_negative, null);
+        builder.show();
+    }
+
+    void onDataServerLoginClick() {
+        int theme = ThemeUtils.getThemeId();
+        DataServerLoginDialog dialog = new DataServerLoginDialog(this,
+                ThemeUtils.getDialogThemeById(theme),
+                (username, password) -> mPresenter.dataSyncLogin(username, password));
+        dialog.show();
+    }
+
+    void onDataServerSyncAllClick() {
+        mPresenter.dataSyncAll();
+    }
+
+    void onDataServerSyncComicClick() {
+        mPresenter.dataSyncComic();
+    }
+
+    void onDataServerSyncSettingClick() {
+        mPresenter.dataSyncSetting();
+    }
+
+    void onDataServerSyncTagClick() {
+        mPresenter.dataSyncTag();
+    }
+
+    // ========== 从服务器恢复 ==========
+
+    void onDataServerRestoreAllClick() {
+        mPresenter.dataSyncDownloadAll();
+    }
+
+    void onDataServerRestoreComicClick() {
+        mPresenter.dataSyncDownloadComic();
+    }
+
+    void onDataServerRestoreSettingClick() {
+        mPresenter.dataSyncDownloadSetting();
+    }
+
+    void onDataServerRestoreTagClick() {
+        mPresenter.dataSyncDownloadTag();
+    }
+
+    void onDataServerLogoutClick() {
+        new android.app.AlertDialog.Builder(this, ThemeUtils.getDialogThemeById(ThemeUtils.getThemeId()))
+                .setTitle(R.string.user_login_logout)
+                .setMessage(R.string.user_login_logout_tips)
+                .setPositiveButton(R.string.dialog_positive, (dialog, which) -> {
+                    mPresenter.dataSyncLogout();
+                })
+                .setNegativeButton(R.string.dialog_negative, null)
+                .show();
     }
 
     void onSaveFavoriteClick() {
@@ -322,6 +449,94 @@ public class BackupActivity extends BackActivity implements BackupView {
     public void onBackupSaveFail() {
         hideProgressDialog();
         showSnackbar(R.string.common_execute_fail);
+    }
+
+    // ==================== 数据同步服务器回调 ====================
+
+    @Override
+    public void onDataSyncLoginSuccess(String username) {
+        hideProgressDialog();
+        updateDataServerLoginStatus();
+        showSnackbar(getString(R.string.data_sync_login_success) + " (" + username + ")");
+    }
+
+    @Override
+    public void onDataSyncLogoutSuccess() {
+        hideProgressDialog();
+        updateDataServerLoginStatus();
+        showSnackbar(R.string.data_sync_logout_success);
+    }
+
+    @Override
+    public void onDataSyncStart() {
+        showProgressDialog();
+    }
+
+    @Override
+    public void onDataSyncComicSuccess(int synced, int skipped) {
+        hideProgressDialog();
+        showSnackbar(getString(R.string.data_sync_comic_success) + " (同步:" + synced + ", 跳过:" + skipped + ")");
+    }
+
+    @Override
+    public void onDataSyncSettingSuccess(int synced) {
+        hideProgressDialog();
+        showSnackbar(getString(R.string.data_sync_setting_success) + " (同步:" + synced + ")");
+    }
+
+    @Override
+    public void onDataSyncTagSuccess() {
+        hideProgressDialog();
+        showSnackbar(R.string.data_sync_tag_success);
+    }
+
+    @Override
+    public void onDataSyncAllSuccess() {
+        hideProgressDialog();
+        showSnackbar(R.string.data_sync_all_success);
+    }
+
+    @Override
+    public void onDataSyncError(String message) {
+        hideProgressDialog();
+        showSnackbar(StringUtils.format(getString(R.string.data_sync_fail), message));
+    }
+
+    // ========== 数据同步服务器回调（下载/恢复） ==========
+
+    @Override
+    public void onDataSyncDownloadStart() {
+        showProgressDialog();
+    }
+
+    @Override
+    public void onDataSyncDownloadComicSuccess(int count) {
+        hideProgressDialog();
+        showSnackbar(StringUtils.format(getString(R.string.data_sync_download_comic_success), count));
+    }
+
+    @Override
+    public void onDataSyncDownloadSettingSuccess(int count) {
+        hideProgressDialog();
+        showSnackbar(StringUtils.format(getString(R.string.data_sync_download_setting_success), count));
+    }
+
+    @Override
+    public void onDataSyncDownloadTagSuccess() {
+        hideProgressDialog();
+        showSnackbar(R.string.data_sync_download_tag_success);
+    }
+
+    @Override
+    public void onDataSyncDownloadAllSuccess() {
+        hideProgressDialog();
+        showSnackbar(R.string.data_sync_download_all_success);
+    }
+
+    @Override
+    public void onDataSyncDownloadError(String message) {
+        hideProgressDialog();
+        showSnackbar(StringUtils.format(getString(R.string.data_sync_fail), message));
     }
 
     @Override

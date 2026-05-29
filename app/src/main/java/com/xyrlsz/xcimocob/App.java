@@ -10,6 +10,8 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -30,6 +32,7 @@ import com.xyrlsz.xcimocob.helper.UpdateHelper;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.misc.ActivityLifecycle;
+import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.model.MyObjectBox;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.activity.MainActivity;
@@ -191,6 +194,44 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
         manager_wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
         // 获取栈顶Activity以及当前App上下文
         mApp = this;
+
+        // 初始化自动数据同步管理器
+        DataSyncManager dataSyncManager = DataSyncManager.getInstance();
+        dataSyncManager.init();
+
+        // 冷启动完成，尝试首次同步（此时 Activity 尚未创建，延迟到主线程执行）
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            dataSyncManager.onAppStart();
+        });
+
+        // 注册前后台切换监听，用于自动同步
+        registerActivityLifecycleCallbacks(new android.app.Application.ActivityLifecycleCallbacks() {
+            private int mActiveCount = 0;
+
+            @Override
+            public void onActivityStarted(@NonNull android.app.Activity activity) {
+                if (mActiveCount == 0) {
+                    // 应用从后台切到前台
+                    dataSyncManager.onForeground();
+                }
+                mActiveCount++;
+            }
+
+            @Override
+            public void onActivityStopped(@NonNull android.app.Activity activity) {
+                mActiveCount--;
+                if (mActiveCount == 0) {
+                    // 应用进入后台
+                    dataSyncManager.onBackground();
+                }
+            }
+
+            @Override public void onActivityCreated(@NonNull android.app.Activity activity, android.os.Bundle savedInstanceState) {}
+            @Override public void onActivityResumed(@NonNull android.app.Activity activity) {}
+            @Override public void onActivityPaused(@NonNull android.app.Activity activity) {}
+            @Override public void onActivitySaveInstanceState(@NonNull android.app.Activity activity, @NonNull android.os.Bundle outState) {}
+            @Override public void onActivityDestroyed(@NonNull android.app.Activity activity) {}
+        });
 
         // 检测并且关闭TestMode
         SharedPreferences testShared = getSharedPreferences(Constants.APP_SHARED, MODE_PRIVATE);

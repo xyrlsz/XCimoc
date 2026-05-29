@@ -159,6 +159,11 @@ public class PreferenceManager {
     public static final String PREF_HHAAZZ_SW = "pref_hhaazz_sw";
     public static final String PREF_DETAIL_TEXT_ST = "pref_detail_text_st";
     public static final String PREF_ST_ENGINE = "pref_st_engine";
+
+    // 数据同步服务器配置
+    public static final String PREF_DATA_SERVER_URL = "pref_data_server_url";
+    public static final String PREF_DATA_SERVER_AUTO_SYNC = "pref_data_server_auto_sync";
+
     private static final String PREFERENCES_NAME = "cimoc_preferences";
     private final SharedPreferences mSharedPreferences;
 

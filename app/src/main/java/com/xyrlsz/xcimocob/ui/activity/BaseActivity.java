@@ -186,14 +186,19 @@ public abstract class BaseActivity extends AppCompatActivity implements BaseView
 
     public void showProgressDialog() {
         ThreadRunUtils.runOnMainThread(() -> {
-            mProgressDialog.show(getSupportFragmentManager(), null);
+            if (!isFinishing() && !mProgressDialog.isAdded()) {
+                mProgressDialog.show(getSupportFragmentManager(), null);
+            }
         });
     }
 
     public void hideProgressDialog() {
         ThreadRunUtils.runOnMainThread(() -> {
             // 可能 onSaveInstanceState 后任务结束，需要取消对话框，直接 dismiss 会抛异常
-            mProgressDialog.dismissAllowingStateLoss();
+            // 也可能 Activity 已销毁，Fragment 不再关联 FragmentManager
+            if (mProgressDialog.isAdded()) {
+                mProgressDialog.dismissAllowingStateLoss();
+            }
         });
     }
 

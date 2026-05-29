@@ -32,3 +32,5 @@ captures/
 /app/debug/
 app/libs/xyropencc-sources.jar
 app/libs/xyropencc.aar
+data_server/xcimoc-data-server.exe
+data_server/data/cimoc.db

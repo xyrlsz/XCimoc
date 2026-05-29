@@ -102,6 +102,113 @@
 
                     </LinearLayout>
 
+                    <!-- ========== 数据同步服务器 ========== -->
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="16dp"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginRight="16dp"
+                        android:layout_marginBottom="10dp"
+                        android:text="@string/backup_data_server"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="14sp" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
+                        android:id="@+id/backup_data_server_auto_sync"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_auto_sync"
+                        app:summary="@string/backup_data_server_auto_sync_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_config"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_config"
+                        app:summary="@string/backup_data_server_config_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_login"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_login"
+                        app:summary="@string/backup_data_server_login_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_sync_all"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_sync_all"
+                        app:summary="@string/backup_data_server_sync_all_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_sync_comic"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_sync_comic"
+                        app:summary="@string/backup_data_server_sync_comic_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_sync_setting"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_sync_setting"
+                        app:summary="@string/backup_data_server_sync_setting_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_sync_tag"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_sync_tag"
+                        app:summary="@string/backup_data_server_sync_tag_summary" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="16dp"
+                        android:layout_marginTop="10dp"
+                        android:layout_marginRight="16dp"
+                        android:layout_marginBottom="10dp"
+                        android:text="@string/backup_data_server_restore"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="14sp" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_restore_all"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_restore_all"
+                        app:summary="@string/backup_data_server_restore_all_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_restore_comic"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_restore_comic"
+                        app:summary="@string/backup_data_server_restore_comic_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_restore_setting"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_restore_setting"
+                        app:summary="@string/backup_data_server_restore_setting_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_restore_tag"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_restore_tag"
+                        app:summary="@string/backup_data_server_restore_tag_summary" />
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_logout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server_logout"
+                        app:summary="@string/backup_data_server_logout_summary" />
+
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

@@ -211,46 +211,107 @@
 
     <string name="settings_detail_text_st">漫畫詳情字體</string>
     <string name="settings_st_engine">繁簡轉換引擎</string>
-    <string name="backup_save">備份</string>
-    <string name="backup_save_comic_auto">自動備份</string>
-    <string name="backup_save_comic_auto_summary">自動備份收藏和歷史漫畫</string>
-    <string name="backup_save_comic">備份漫畫</string>
-    <string name="backup_save_comic_summary">備份收藏和歷史漫畫</string>
-    <string name="backup_save_tag">備份標籤</string>
-    <string name="backup_save_tag_summary">備份標籤及相應漫畫</string>
-    <string name="backup_save_settings">备份设置</string>
-    <string name="backup_save_settings_cloud">備份設定到雲端</string>
-    <string name="backup_save_settings_summary">备份所有个人配置</string>
-    <string name="backup_save_settings_cloud_summary">備份所有個人配置</string>
+    <!-- ========== 本地備份到檔案 ========== -->
+    <string name="backup_save">本地備份到檔案</string>
+    <string name="backup_save_comic_auto">自動備份到本地檔案</string>
+    <string name="backup_save_comic_auto_summary">自動備份收藏和歷史漫畫到本地檔案</string>
+    <string name="backup_save_comic">備份漫畫到本地檔案</string>
+    <string name="backup_save_comic_summary">備份收藏和歷史漫畫到本地檔案</string>
+    <string name="backup_save_tag">備份標籤到本地檔案</string>
+    <string name="backup_save_tag_summary">備份標籤及相應漫畫到本地檔案</string>
+    <string name="backup_save_settings">備份設定到本地檔案</string>
+    <string name="backup_save_settings_summary">備份所有個人設定到本地檔案</string>
     <string name="backup_save_success">備份成功 共 %d 條記錄</string>
-    <string name="backup_restore">恢復</string>
+
+    <!-- ========== 從本地檔案恢復 ========== -->
+    <string name="backup_restore">從本地檔案恢復</string>
     <string name="backup_restore_not_found">沒有找到備份檔案</string>
-    <string name="backup_restore_comic">恢復漫畫</string>
-    <string name="backup_restore_comic_summary">恢復收藏和歷史漫畫</string>
-    <string name="backup_restore_tag">恢復標籤</string>
-    <string name="backup_restore_tag_summary">恢復標籤及相應漫畫</string>
-    <string name="backup_restore_settings">恢复设置</string>
-    <string name="backup_restore_settings_cloud">從雲端恢復設定</string>
-    <string name="backup_restore_settings_summary">恢复所有个人配置</string>
-    <string name="backup_restore_settings_cloud_summary">從雲端恢復所有個人配置</string>
-    <string name="backup_cloud">雲端</string>
-    <string name="backup_cloud_webdav_tag">WebDav配置</string>
-    <string name="backup_cloud_webdav_tag_summary">點選配置WebDav</string>
-    <string name="backup_cloud_restore_tag">從雲端恢復</string>
-    <string name="backup_cloud_restore_tag_summary">從雲端恢復收藏與歷史的漫畫</string>
-    <string name="backup_cloud_clear_tag">清除雲端資料</string>
-    <string name="backup_cloud_clear_tag_summary">清除雲端同步的資料</string>
-    <string name="backup_cloud_backup_tag">備份到雲端</string>
-    <string name="backup_cloud_backup_tag_summary">備份收藏與歷史漫畫到雲端</string>
-    <string name="backup_cloud_sync_tag">自動備份</string>
-    <string name="backup_cloud_sync_tag_summary">自動備份收藏和歷史到雲端</string>
-    <string name="backup_cloud_upload_tag_summary">本地漫畫備份檔案上傳到雲端</string>
-    <string name="backup_clear">清除</string>
-    <string name="backup_clear_record">清除备份记录</string>
-    <string name="backup_clear_record_summary">清除所有备份记录，清除后请尽快备份以免数据丢失</string>
+    <string name="backup_restore_comic">從本地檔案恢復漫畫</string>
+    <string name="backup_restore_comic_summary">從本地檔案恢復收藏和歷史漫畫</string>
+    <string name="backup_restore_tag">從本地檔案恢復標籤</string>
+    <string name="backup_restore_tag_summary">從本地檔案恢復標籤及相應漫畫</string>
+    <string name="backup_restore_settings">從本地檔案恢復設定</string>
+    <string name="backup_restore_settings_summary">從本地檔案恢復所有個人設定</string>
 
+    <!-- ========== WebDAV 雲端備份 ========== -->
+    <string name="backup_cloud">WebDAV 雲端備份</string>
+    <string name="backup_cloud_webdav_tag">WebDAV 設定</string>
+    <string name="backup_cloud_webdav_tag_summary">點擊設定 WebDAV 帳號</string>
+    <string name="backup_cloud_backup_tag">上傳漫畫到 WebDAV</string>
+    <string name="backup_cloud_backup_tag_summary">上傳收藏與歷史漫畫到 WebDAV</string>
+    <string name="backup_cloud_restore_tag">從 WebDAV 恢復漫畫</string>
+    <string name="backup_cloud_restore_tag_summary">從 WebDAV 恢復收藏與歷史漫畫</string>
+    <string name="backup_cloud_sync_tag">自動備份到 WebDAV</string>
+    <string name="backup_cloud_sync_tag_summary">自動備份收藏和歷史到 WebDAV</string>
+    <string name="backup_cloud_clear_tag">清除 WebDAV 資料</string>
+    <string name="backup_cloud_clear_tag_summary">清除 WebDAV 上的備份資料</string>
+    <string name="backup_cloud_upload_tag">本地檔案上傳到 WebDAV</string>
+    <string name="backup_cloud_upload_tag_summary">把本地備份檔案上傳到 WebDAV</string>
+    <string name="backup_save_settings_cloud">上傳設定到 WebDAV</string>
+    <string name="backup_save_settings_cloud_summary">備份所有個人設定到 WebDAV</string>
+    <string name="backup_restore_settings_cloud">從 WebDAV 恢復設定</string>
+    <string name="backup_restore_settings_cloud_summary">從 WebDAV 恢復所有個人設定</string>
 
-    <string name="backup_clear_record_notice_summary">清除後請儘快備份以免備份數據丟失，無法恢復備份內容</string>
+    <!-- ========== 清除本地備份 ========== -->
+    <string name="backup_clear">清除本地備份記錄</string>
+    <string name="backup_clear_record">清除備份記錄</string>
+    <string name="backup_clear_record_summary">清除本地收藏、歷史、個人設定的所有備份檔案</string>
+    <string name="backup_clear_record_notice_summary">清除後請儘快備份以免資料遺失，無法恢復備份內容</string>
+
+    <!-- ========== 伺服器資料同步（自建伺服器） ========== -->
+    <string name="backup_data_server">伺服器資料同步</string>
+    <string name="backup_data_server_auto_sync">自動同步到伺服器</string>
+    <string name="backup_data_server_auto_sync_summary">自動雙向同步收藏、歷史、設定、標籤到自建伺服器</string>
+    <string name="backup_data_server_config">設定伺服器位址</string>
+    <string name="backup_data_server_config_summary">設定 Cimoc Data Sync Server 位址</string>
+    <string name="backup_data_server_login">登入伺服器</string>
+    <string name="backup_data_server_login_summary">登入到自建同步伺服器</string>
+    <string name="backup_data_server_sync_comic">上傳漫畫到伺服器</string>
+    <string name="backup_data_server_sync_comic_summary">將收藏與歷史記錄上傳到伺服器</string>
+    <string name="backup_data_server_sync_setting">上傳設定到伺服器</string>
+    <string name="backup_data_server_sync_setting_summary">將個人設定上傳到伺服器</string>
+    <string name="backup_data_server_sync_tag">上傳標籤到伺服器</string>
+    <string name="backup_data_server_sync_tag_summary">將標籤上傳到伺服器</string>
+    <string name="backup_data_server_sync_all">全部上傳到伺服器</string>
+    <string name="backup_data_server_sync_all_summary">將收藏、歷史、設定、標籤全部上傳到伺服器</string>
+
+    <!-- ========== 從伺服器下載 ========== -->
+    <string name="backup_data_server_restore">從伺服器下載</string>
+    <string name="backup_data_server_restore_all">全部從伺服器下載</string>
+    <string name="backup_data_server_restore_all_summary">從伺服器下載收藏、歷史、設定、標籤並合併到本地</string>
+    <string name="backup_data_server_restore_comic">從伺服器下載漫畫</string>
+    <string name="backup_data_server_restore_comic_summary">從伺服器下載收藏與歷史漫畫並合併到本地</string>
+    <string name="backup_data_server_restore_setting">從伺服器下載設定</string>
+    <string name="backup_data_server_restore_setting_summary">從伺服器下載個人設定並覆蓋本地</string>
+    <string name="backup_data_server_restore_tag">從伺服器下載標籤</string>
+    <string name="backup_data_server_restore_tag_summary">從伺服器下載標籤並合併到本地</string>
+    <string name="backup_data_server_logout">登出</string>
+    <string name="backup_data_server_logout_summary">登出目前帳號</string>
+
+    <!-- ========== 同步相關通用 ========== -->
+    <string name="data_sync_start">開始同步…</string>
+    <string name="data_sync_comic_success">漫畫同步成功</string>
+    <string name="data_sync_setting_success">設定同步成功</string>
+    <string name="data_sync_tag_success">標籤同步成功</string>
+    <string name="data_sync_all_success">全部同步完成</string>
+    <string name="data_sync_fail">同步失敗: %s</string>
+    <string name="data_sync_login_success">登入成功</string>
+    <string name="data_sync_logout_success">已登出</string>
+    <string name="data_sync_server_not_configured">請先設定同步伺服器位址</string>
+    <string name="data_sync_not_logged_in">請先登入</string>
+    <string name="data_sync_download_comic_success">漫畫恢復成功 (%d 條)</string>
+    <string name="data_sync_download_setting_success">設定恢復成功 (%d 項)</string>
+    <string name="data_sync_download_tag_success">標籤恢復成功</string>
+    <string name="data_sync_download_all_success">全部恢復完成</string>
+
+    <!-- ========== 伺服器設定對話框 ========== -->
+    <string name="data_server_config_title">同步伺服器設定</string>
+    <string name="data_server_url_hint">伺服器位址</string>
+    <string name="data_server_url_dialog_summary">例如 http://192.168.1.100:8080</string>
+    <string name="data_server_login_title">登入同步伺服器</string>
+    <string name="data_server_username_hint">使用者名稱</string>
+    <string name="data_server_password_hint">密碼</string>
+    <string name="data_server_btn_login">登入</string>
     <string name="home_page">首頁</string>
     <string name="home_page_cimqus">Cimqus</string>
     <string name="home_page_gitter">Gitter</string>
@@ -366,7 +427,6 @@
     <string name="dmzj_should_login">請先登入動漫之家</string>
     <string name="fragment_destroy_tip">當前介面已被銷燬</string>
     <string name="commit">確定</string>
-    <string name="backup_cloud_upload_tag">本地備份上傳</string>
     <string name="common_uploud_success">上傳成功</string>
     <string name="settings_comic_login_title">登入漫畫源</string>
     <string name="settings_comic_login_summary">部分漫畫源需要登入才能使用</string>
