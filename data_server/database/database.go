@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"log"
 	"math/big"
+	"os"
+	"path/filepath"
 
 	"xcimoc-data-server/config"
 	"xcimoc-data-server/models"
@@ -19,6 +21,12 @@ var DB *gorm.DB
 const DefaultAdminUsername = "admin"
 
 func Init(cfg *config.Config) {
+	// 确保数据库文件所在目录存在
+	dbDir := filepath.Dir(cfg.DBPath)
+	if err := os.MkdirAll(dbDir, 0755); err != nil {
+		log.Fatalf("failed to create database directory %s: %v", dbDir, err)
+	}
+
 	var err error
 	DB, err = gorm.Open(sqlite.Open(cfg.DBPath), &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
