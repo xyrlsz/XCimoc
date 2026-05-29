@@ -54,8 +54,8 @@ func Init(cfg *config.Config) {
 		log.Fatalf("failed to connect database: %v", err)
 	}
 
-	// MySQL/PGSQL 可能需要关闭外键约束（TagRef 使用多表关联）
-	if cfg.DBType != "sqlite" {
+	// MySQL 需要在迁移前关闭外键检查（TagRef 使用多表关联）
+	if cfg.DBType == "mysql" {
 		DB.Exec("SET FOREIGN_KEY_CHECKS = 0")
 	}
 
@@ -70,7 +70,7 @@ func Init(cfg *config.Config) {
 		log.Fatalf("failed to migrate database: %v", err)
 	}
 
-	if cfg.DBType != "sqlite" {
+	if cfg.DBType == "mysql" {
 		DB.Exec("SET FOREIGN_KEY_CHECKS = 1")
 	}
 
