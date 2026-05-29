@@ -16,6 +16,7 @@ import (
 	"xcimoc-data-server/utils"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 //go:embed admin/index.html
@@ -46,8 +47,9 @@ func main() {
 		result := database.DB.Model(&models.User{}).
 			Where("is_admin = ?", true).
 			Updates(map[string]interface{}{
-				"password": utils.HashPassword(newPassword, salt),
-				"salt":     salt,
+				"password":      utils.HashPassword(newPassword, salt),
+				"salt":          salt,
+				"token_version": gorm.Expr("token_version + 1"),
 			})
 		if result.RowsAffected == 0 {
 			log.Fatalf("未找到管理员账户，请先启动服务器以初始化数据库")

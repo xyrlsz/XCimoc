@@ -136,6 +136,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 	user.Password = utils.HashPassword(req.NewPassword, salt)
 	user.Salt = salt
+	user.TokenVersion++ // 递增版本号，旧 token 立即失效
 	database.DB.Save(&user)
 
 	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})

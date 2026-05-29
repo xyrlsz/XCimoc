@@ -64,6 +64,8 @@
         android:id="@+id/btn_action"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="?attr/colorAccent"
+        android:textColor="@color/white"
         android:text="@string/data_server_btn_login" />
 
 </LinearLayout>

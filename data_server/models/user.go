@@ -3,13 +3,14 @@ package models
 import "time"
 
 type User struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Username  string    `gorm:"uniqueIndex;size:64;not null" json:"username"`
-	Password  string    `gorm:"size:64;not null" json:"-"` // SHA256(salt+password)  hex
-	Salt      string    `gorm:"size:64;not null" json:"-"` // 随机盐值 hex
-	IsAdmin   bool      `gorm:"not null;default:false" json:"is_admin"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           uint      `gorm:"primaryKey" json:"id"`
+	Username     string    `gorm:"uniqueIndex;size:64;not null" json:"username"`
+	Password     string    `gorm:"size:64;not null" json:"-"` // SHA256(salt+password)  hex
+	Salt         string    `gorm:"size:64;not null" json:"-"` // 随机盐值 hex
+	IsAdmin      bool      `gorm:"not null;default:false" json:"is_admin"`
+	TokenVersion int       `gorm:"not null;default:0" json:"-"` // 改密时递增，旧 token 失效
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type LoginRequest struct {

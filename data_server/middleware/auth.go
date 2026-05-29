@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"xcimoc-data-server/config"
+	"xcimoc-data-server/database"
 	"xcimoc-data-server/models"
 
 	"github.com/gin-gonic/gin"
@@ -13,25 +14,53 @@ import (
 )
 
 type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	IsAdmin  bool   `json:"is_admin"`
+	UserID       uint   `json:"user_id"`
+	Username     string `json:"username"`
+	IsAdmin      bool   `json:"is_admin"`
+	TokenVersion int    `json:"token_version"`
 	jwt.RegisteredClaims
 }
 
 func GenerateToken(user *models.User, cfg *config.Config) (string, error) {
 	claims := Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		IsAdmin:  user.IsAdmin,
+		UserID:       user.ID,
+		Username:     user.Username,
+		IsAdmin:      user.IsAdmin,
+		TokenVersion: user.TokenVersion,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)), // 7 天
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(cfg.JWTSecret))
+}
+
+// parseToken 解析 token 并校验 token_version 与数据库一致
+func parseToken(tokenStr string, cfg *config.Config, allowExpired bool) (*Claims, error) {
+	claims := &Claims{}
+	var opts []jwt.ParserOption
+	if allowExpired {
+		opts = append(opts, jwt.WithLeeway(7*24*time.Hour))
+	}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(cfg.JWTSecret), nil
+	}, opts...)
+	if err != nil || !token.Valid {
+		return nil, err
+	}
+
+	// 校验用户是否存在以及 token_version 是否匹配
+	var user models.User
+	if result := database.DB.First(&user, claims.UserID); result.Error != nil {
+		return nil, jwt.ErrSignatureInvalid // 用户不存在
+	}
+	if user.TokenVersion != claims.TokenVersion {
+		return nil, jwt.ErrSignatureInvalid // 密码已修改，旧 token 失效
+	}
+
+	return claims, nil
 }
 
 // AuthRequired 普通用户认证
@@ -65,17 +94,8 @@ func authMiddleware(cfg *config.Config, requireAdmin, allowExpired bool) gin.Han
 			return
 		}
 
-		claims := &Claims{}
-		var parserOpts []jwt.ParserOption
-		if allowExpired {
-			// refresh 场景：接受最多过期 7 天的 token
-			parserOpts = append(parserOpts, jwt.WithLeeway(7*24*time.Hour))
-		}
-		token, err := jwt.ParseWithClaims(parts[1], claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(cfg.JWTSecret), nil
-		}, parserOpts...)
-
-		if err != nil || !token.Valid {
+		claims, err := parseToken(parts[1], cfg, allowExpired)
+		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "认证令牌无效或已过期"})
 			c.Abort()
 			return

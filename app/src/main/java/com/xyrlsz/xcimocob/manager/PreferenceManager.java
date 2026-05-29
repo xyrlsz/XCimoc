@@ -180,7 +180,16 @@ public class PreferenceManager {
     }
 
     public boolean getBoolean(String key, boolean defValue) {
-        return mSharedPreferences.getBoolean(key, defValue);
+        try {
+            return mSharedPreferences.getBoolean(key, defValue);
+        } catch (ClassCastException e) {
+            // 兼容从服务器同步时存为 String 类型的情况
+            String str = mSharedPreferences.getString(key, null);
+            if (str != null) {
+                return "true".equalsIgnoreCase(str) || "1".equals(str);
+            }
+            return defValue;
+        }
     }
 
     public Number getNumber(String key, Number defValue) {
@@ -189,6 +198,19 @@ public class PreferenceManager {
 
         if (value instanceof Number) {
             return (Number) value;
+        }
+
+        // 兼容从服务器同步时存为 String 类型的情况
+        if (value instanceof String) {
+            try {
+                String str = (String) value;
+                if (str.contains(".")) {
+                    return Double.parseDouble(str);
+                } else {
+                    return Long.parseLong(str);
+                }
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         return defValue;
@@ -235,7 +257,27 @@ public class PreferenceManager {
             editor.putBoolean(key, (Boolean) value);
         }
         else if (value instanceof String) {
-            editor.putString(key, (String) value);
+            String str = (String) value;
+            // 尝试将字符串转回正确的类型（兼容从服务器同步的场景）
+            if ("true".equalsIgnoreCase(str) || "false".equalsIgnoreCase(str)) {
+                editor.putBoolean(key, Boolean.parseBoolean(str));
+            } else {
+                try {
+                    long l = Long.parseLong(str);
+                    if (l >= Integer.MIN_VALUE && l <= Integer.MAX_VALUE) {
+                        editor.putInt(key, (int) l);
+                    } else {
+                        editor.putLong(key, l);
+                    }
+                } catch (NumberFormatException e1) {
+                    try {
+                        float f = Float.parseFloat(str);
+                        editor.putFloat(key, f);
+                    } catch (NumberFormatException e2) {
+                        editor.putString(key, str);
+                    }
+                }
+            }
         }
         else if (value instanceof Number num) {
 
