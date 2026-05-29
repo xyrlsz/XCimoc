@@ -81,8 +81,13 @@ func main() {
 	settingHandler := handlers.NewSettingHandler()
 	tagHandler := handlers.NewTagHandler()
 
+	// Gin 设为 release 模式（也可通过环境变量 GIN_MODE=release）
+	gin.SetMode(gin.ReleaseMode)
+
 	// Setup router
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(gin.Logger())
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
