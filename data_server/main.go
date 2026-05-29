@@ -135,6 +135,14 @@ func main() {
 		serveAdmin(c)
 	})
 
+	// 根路径和 /login 重定向到管理后台
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/admin")
+	})
+	r.GET("/login", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/admin")
+	})
+
 	r.GET("/favicon.ico", func(c *gin.Context) {
 		c.Status(http.StatusNoContent)
 	})
