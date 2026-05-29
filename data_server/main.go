@@ -23,20 +23,31 @@ import (
 var adminHTML embed.FS
 
 func main() {
-	// 命令行修改管理员密码
-	if len(os.Args) >= 2 && strings.ToLower(os.Args[1]) == "set" {
-		if len(os.Args) < 4 || strings.ToLower(os.Args[2]) != "admin" {
-			fmt.Println("用法: xcimoc-data-server.exe set admin \"新密码\"")
-			fmt.Println("示例: xcimoc-data-server.exe set admin myNewPwd123")
-			os.Exit(1)
+	// 命令行修改管理员密码（支持 --config）
+	if hasSetAdminCommand() {
+		// 手动提取 --config 参数（如果有）
+		configPath := extractFlag("config")
+		newPassword := ""
+		if configPath != "" {
+			// 带 --config: xcimoc ... --config path set admin PWD
+			// password 是最后一个非 flag 参数
+			for i := len(os.Args) - 1; i >= 0; i-- {
+				if !strings.HasPrefix(os.Args[i], "-") {
+					newPassword = os.Args[i]
+					break
+				}
+			}
+		} else {
+			// 无 --config: xcimoc ... set admin PWD
+			// password 是 os.Args[len-1]
+			newPassword = os.Args[len(os.Args)-1]
 		}
 
-		newPassword := os.Args[3]
 		if len(newPassword) < 6 {
 			log.Fatalf("密码长度至少 6 位")
 		}
 
-		cfg := config.Load()
+		cfg := config.LoadWithConfig(configPath)
 		database.Init(cfg)
 
 		salt, err := utils.GenerateSalt()
@@ -156,6 +167,30 @@ func main() {
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}
+}
+
+// hasSetAdminCommand 检查命令行是否包含 set admin 命令
+func hasSetAdminCommand() bool {
+	for i, arg := range os.Args {
+		if strings.EqualFold(arg, "set") && i+1 < len(os.Args) && strings.EqualFold(os.Args[i+1], "admin") {
+			return true
+		}
+	}
+	return false
+}
+
+// extractFlag 从 os.Args 中提取指定 flag 的值（支持 --key=val 和 --key val）
+func extractFlag(name string) string {
+	long := "--" + name
+	for i, arg := range os.Args {
+		if strings.HasPrefix(arg, long+"=") {
+			return arg[len(long)+1:]
+		}
+		if arg == long && i+1 < len(os.Args) && !strings.HasPrefix(os.Args[i+1], "-") {
+			return os.Args[i+1]
+		}
+	}
+	return ""
 }
 
 func serveAdmin(c *gin.Context) {

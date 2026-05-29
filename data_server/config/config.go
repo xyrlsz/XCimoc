@@ -33,8 +33,19 @@ type Config struct {
 	ServerPort string
 }
 
+// LoadWithConfig 加载配置，可指定配置文件路径（用于 set admin 命令，无需 CLI flag 解析）
+func LoadWithConfig(configPath string) *Config {
+	cfg := defaultConfig()
+	if configPath != "" {
+		cfg.applyConfigFile(configPath)
+	}
+	applyEnvOverrides(cfg)
+	ensureJWT(cfg)
+	return cfg
+}
+
 func Load() *Config {
-	// 先定义 CLI 参数
+	// CLI 参数
 	configPath := flag.String("config", "", "配置文件路径 (YAML 格式)")
 	dbtype := flag.String("dbtype", "", "数据库类型: sqlite / mysql / postgres")
 	data := flag.String("data", "", "SQLite 数据库路径")
@@ -43,38 +54,17 @@ func Load() *Config {
 	port := flag.String("port", "", "监听端口")
 	flag.Parse()
 
-	// ====== 1. 默认值 ======
-	cfg := &Config{
-		DBType:     "sqlite",
-		DBPath:     "./data/cimoc.db",
-		DBDSN:      "",
-		JWTSecret:  "",
-		ServerPort: "8080",
-	}
+	cfg := defaultConfig()
 
-	// ====== 2. 从 YAML 配置文件加载 ======
+	// 从 YAML 配置文件加载
 	if *configPath != "" {
 		cfg.applyConfigFile(*configPath)
 	}
 
-	// ====== 3. 环境变量覆盖 ======
-	if v := os.Getenv("DB_TYPE"); v != "" {
-		cfg.DBType = v
-	}
-	if v := os.Getenv("DB_PATH"); v != "" {
-		cfg.DBPath = v
-	}
-	if v := os.Getenv("DB_DSN"); v != "" {
-		cfg.DBDSN = v
-	}
-	if v := os.Getenv("JWT_SECRET"); v != "" {
-		cfg.JWTSecret = v
-	}
-	if v := os.Getenv("SERVER_PORT"); v != "" {
-		cfg.ServerPort = v
-	}
+	// 环境变量覆盖
+	applyEnvOverrides(cfg)
 
-	// ====== 4. CLI 参数覆盖（优先级最高） ======
+	// CLI 参数覆盖（优先级最高）
 	if *dbtype != "" {
 		cfg.DBType = *dbtype
 	}
@@ -91,14 +81,47 @@ func Load() *Config {
 		cfg.ServerPort = *port
 	}
 
-	// ====== 最后：未设置 JWT_SECRET 时自动生成 ======
-	if cfg.JWTSecret == "" {
-		cfg.JWTSecret = generateRandomKey(32)
-		fmt.Printf("[提示] 未设置 JWT_SECRET，已自动生成: %s\n", cfg.JWTSecret)
-		fmt.Println("[提示] 建议通过配置文件、环境变量或 --jwtsecret 固定密钥，以免重启后旧 token 失效")
-	}
-
+	ensureJWT(cfg)
 	return cfg
+}
+
+// defaultConfig 返回默认配置
+func defaultConfig() *Config {
+	return &Config{
+		DBType:     "sqlite",
+		DBPath:     "./data/cimoc.db",
+		JWTSecret:  "",
+		ServerPort: "8080",
+	}
+}
+
+// applyEnvOverrides 用环境变量覆盖配置
+func applyEnvOverrides(cfg *Config) {
+	if v := os.Getenv("DB_TYPE"); v != "" {
+		cfg.DBType = v
+	}
+	if v := os.Getenv("DB_PATH"); v != "" {
+		cfg.DBPath = v
+	}
+	if v := os.Getenv("DB_DSN"); v != "" {
+		cfg.DBDSN = v
+	}
+	if v := os.Getenv("JWT_SECRET"); v != "" {
+		cfg.JWTSecret = v
+	}
+	if v := os.Getenv("SERVER_PORT"); v != "" {
+		cfg.ServerPort = v
+	}
+}
+
+// ensureJWT 确保 JWT 密钥已设置，未设置则自动生成
+func ensureJWT(cfg *Config) {
+	if cfg.JWTSecret != "" {
+		return
+	}
+	cfg.JWTSecret = generateRandomKey(32)
+	fmt.Printf("[提示] 未设置 JWT_SECRET，已自动生成: %s\n", cfg.JWTSecret)
+	fmt.Println("[提示] 建议通过配置文件、环境变量或 --jwtsecret 固定密钥，以免重启后旧 token 失效")
 }
 
 // applyConfigFile 从 YAML 文件加载配置
