@@ -1,0 +1,14 @@
+# Cimoc Data Sync Server 配置示例
+# 使用方式: ./xcimoc-data-server --config config.yaml
+
+server:
+  port: "8080" # 监听端口
+
+database:
+  type: "sqlite" # sqlite / mysql / postgres
+  path: "./data/cimoc.db" # SQLite 文件路径（sqlite 专用）postgres 和 mysql 使用 dsn 连接字符串
+  # dsn: "user:pass@tcp(127.0.0.1:3306)/cimoc?charset=utf8mb4&parseTime=True"  # MySQL
+  # dsn: "host=localhost user=user password=pass dbname=cimoc port=5432 sslmode=disable"  # PgSQL
+
+jwt:
+  secret: "" # JWT 签名密钥（为空则首次启动自动生成）
