@@ -27,6 +27,7 @@ forked from https://github.com/Haleydu/Cimoc
 - 本地漫画（Local Reader）
 - 本地备份恢复（Local Backup）
 - WebDav云备份功能(WebDav Backup)
+- **数据同步服务器**（Data Sync Server）- 跨设备同步收藏、阅读记录、应用设置
 - 下载漫画后导出漫画（Export Manga）
 
 # 软件使用说明
@@ -80,9 +81,16 @@ forked from https://github.com/Haleydu/Cimoc
 - 界面简洁为主
 - 解决apk影响体验的问题
 
-# 软件服务器
+# 数据同步服务器（可选）
 
-- 该软件不需要服务器，完全单机
+本软件支持自建数据同步服务器，实现收藏、阅读记录、应用设置的多设备同步。
+
+- **服务端程序**：位于 `data_server/` 目录，Go 语言编写
+- **部署文档**：详见 [data_server/DEPLOY.md](data_server/DEPLOY.md)
+- **功能**：跨设备同步漫画收藏、阅读进度、应用设置
+- **内置管理后台**：Web 界面管理用户和密码
+
+> 此功能为可选项，不配置服务器不影响单机使用。
 
 # 关于淘宝售卖和会员破解
 

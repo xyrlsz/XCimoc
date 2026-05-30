@@ -33,22 +33,42 @@ jobs:
           echo "GIT_REPO_NAME=$REPO_NAME" >> $GITHUB_ENV
           echo "GIT_REPO_OWNER=$REPO_OWNER" >> $GITHUB_ENV
 
-      # - name: Set up Go environment
-      #   uses: actions/setup-go@v5
-      #   with:
-      #     go-version: ">=1.22"
+      - name: Set up Go environment
+        uses: actions/setup-go@v6
+        with:
+          go-version: ">=1.25"
+          cache-dependency-path: data_server/go.sum
 
-      # - name: Install gomobile
-      #   run: |
-      #     go install golang.org/x/mobile/cmd/gomobile@latest
-      #     gomobile init
+      - name: Build Data Sync Server (cross-platform)
+        run: |
+          cd data_server
+          mkdir -p dist
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/xcimoc-data-server-linux-amd64 .
+          # Linux 386
+          GOOS=linux GOARCH=386 go build -ldflags="-s -w" -o dist/xcimoc-data-server-linux-386 .
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/xcimoc-data-server-linux-arm64 .
+          # Linux arm (32-bit, ARMv7)
+          GOOS=linux GOARCH=arm GOARM=7 go build -ldflags="-s -w" -o dist/xcimoc-data-server-linux-arm .
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/xcimoc-data-server-windows-amd64.exe .
+          # Windows 386
+          GOOS=windows GOARCH=386 go build -ldflags="-s -w" -o dist/xcimoc-data-server-windows-386.exe .
+          # macOS amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/xcimoc-data-server-darwin-amd64 .
+          # macOS arm64 (Apple Silicon)
+          GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/xcimoc-data-server-darwin-arm64 .
+          # Copy config example
+          cp config.example.yaml dist/
+          ls -lh dist/
+          cd ..
 
-      # - name: Build xyropencc
-      #   run: |
-      #     cd xyropencc
-      #     chmod +x build.sh
-      #     ./build.sh
-      #     cd ..
+      - name: Upload Data Sync Server as artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: data-server-binaries
+          path: data_server/dist/
 
       - name: Create keystore file from secret
         env:
@@ -88,6 +108,15 @@ jobs:
             app/build/outputs/apk/release/app-universal-release.apk
             app/build/outputs/apk/release/app-x86_64-release.apk
             app/build/outputs/apk/release/app-x86-release.apk
+            data_server/dist/xcimoc-data-server-linux-amd64
+            data_server/dist/xcimoc-data-server-linux-386
+            data_server/dist/xcimoc-data-server-linux-arm64
+            data_server/dist/xcimoc-data-server-linux-arm
+            data_server/dist/xcimoc-data-server-windows-amd64.exe
+            data_server/dist/xcimoc-data-server-windows-386.exe
+            data_server/dist/xcimoc-data-server-darwin-amd64
+            data_server/dist/xcimoc-data-server-darwin-arm64
+            data_server/dist/config.example.yaml
 
   gitee-sync-and-release:
     runs-on: ubuntu-latest
