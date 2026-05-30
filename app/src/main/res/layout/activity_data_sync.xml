@@ -81,13 +81,6 @@
                         app:title="@string/backup_data_server_sync_setting"
                         app:summary="@string/backup_data_server_sync_setting_summary" />
 
-                    <com.xyrlsz.xcimocob.ui.widget.Option
-                        android:id="@+id/backup_data_server_sync_tag"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:title="@string/backup_data_server_sync_tag"
-                        app:summary="@string/backup_data_server_sync_tag_summary" />
-
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -119,13 +112,6 @@
                         android:layout_height="wrap_content"
                         app:title="@string/backup_data_server_restore_setting"
                         app:summary="@string/backup_data_server_restore_setting_summary" />
-
-                    <com.xyrlsz.xcimocob.ui.widget.Option
-                        android:id="@+id/backup_data_server_restore_tag"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:title="@string/backup_data_server_restore_tag"
-                        app:summary="@string/backup_data_server_restore_tag_summary" />
 
                     <com.xyrlsz.xcimocob.ui.widget.Option
                         android:id="@+id/backup_data_server_logout"

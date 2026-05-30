@@ -41,6 +41,7 @@ public class DataSyncModels {
         public String cover;
         public String update;
         public boolean finish;
+        public boolean highlight;
         public Long favorite;  // timestamp millis, null if not favorited
         public Long history;   // timestamp millis, null if no history
         public String last;
@@ -48,7 +49,8 @@ public class DataSyncModels {
         public String chapter;
         public Integer chapter_count;
 
-        public ComicSyncItem() {}
+        public ComicSyncItem() {
+        }
     }
 
     public static class ComicSyncRequest {
@@ -78,6 +80,7 @@ public class DataSyncModels {
         public String cover;
         public String update;
         public boolean finish;
+        public boolean highlight;
         public Long favorite;
         public Long history;
         public String last;
@@ -94,7 +97,8 @@ public class DataSyncModels {
         public String key;
         public String value;
 
-        public SettingItem() {}
+        public SettingItem() {
+        }
 
         public SettingItem(String key, String value) {
             this.key = key;
@@ -126,52 +130,6 @@ public class DataSyncModels {
         public String value;
         public String created_at;
         public String updated_at;
-    }
-
-    // ========== Tag ==========
-
-    public static class TagComicRef {
-        public int source;
-        public String cid;
-
-        public TagComicRef() {}
-
-        public TagComicRef(int source, String cid) {
-            this.source = source;
-            this.cid = cid;
-        }
-    }
-
-    public static class TagSyncItem {
-        public String title;
-        public List<TagComicRef> comics;
-
-        public TagSyncItem() {}
-    }
-
-    public static class TagSyncRequest {
-        public List<TagSyncItem> tags;
-
-        public TagSyncRequest(List<TagSyncItem> tags) {
-            this.tags = tags;
-        }
-    }
-
-    public static class TagSyncResponse {
-        public String message;
-    }
-
-    public static class TagListResponse {
-        public List<TagServerItem> tags;
-    }
-
-    public static class TagServerItem {
-        public long id;
-        public long user_id;
-        public String title;
-        public String created_at;
-        public String updated_at;
-        public List<TagComicRef> comics;
     }
 
     // ========== Error ==========

@@ -6,11 +6,7 @@ import android.util.Log;
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
-import com.xyrlsz.xcimocob.manager.TagManager;
-import com.xyrlsz.xcimocob.manager.TagRefManager;
 import com.xyrlsz.xcimocob.model.Comic;
-import com.xyrlsz.xcimocob.model.Tag;
-import com.xyrlsz.xcimocob.model.TagRef;
 import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 
@@ -27,7 +23,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
  * 自动数据同步管理器
- *
+ * <p>
  * 在后台静默同步数据到 data_server，无需用户手动操作。
  * - 监听 RxBus 数据变更事件（收藏、阅读、标签），防抖后自动同步
  * - 监听应用前后台切换，回到前台时自动同步全部数据
@@ -43,17 +39,15 @@ public class DataSyncManager {
 
     private final CompositeDisposable mDisposable = new CompositeDisposable();
     private final ComicManager mComicManager;
-    private final TagManager mTagManager;
-    private final TagRefManager mTagRefManager;
 
-    /** 应用是否在前台 */
+    /**
+     * 应用是否在前台
+     */
     private final AtomicBoolean mIsForeground = new AtomicBoolean(false);
 
     private DataSyncManager() {
         // 使用 App 实例作为 AppGetter（App 实现了 AppGetter 接口）
         mComicManager = ComicManager.getInstance(App.getApp());
-        mTagManager = TagManager.getInstance(App.getApp());
-        mTagRefManager = TagRefManager.getInstance(App.getApp());
     }
 
     public static DataSyncManager getInstance() {
@@ -116,7 +110,9 @@ public class DataSyncManager {
         trySyncNow();
     }
 
-    /** 内部：无条件执行一次全量双向同步，更新计时器 */
+    /**
+     * 内部：无条件执行一次全量双向同步，更新计时器
+     */
     private void trySyncNow() {
         if (!shouldSync()) return;
         mLastFullSync = System.currentTimeMillis();
@@ -158,24 +154,22 @@ public class DataSyncManager {
                 .subscribe(e -> triggerDebounced(SyncType.COMIC),
                         t -> Log.w(TAG, "EVENT_COMIC_UPDATE error", t)));
 
-        // 标签事件 → 仅同步标签
-        mDisposable.add(RxBus.getInstance().toObservable(RxEvent.EVENT_TAG_UPDATE)
-                .debounce(DEBOUNCE_MS, TimeUnit.MILLISECONDS)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(e -> triggerDebounced(SyncType.TAG),
-                        t -> Log.w(TAG, "EVENT_TAG_UPDATE error", t)));
+
     }
 
     // ==================== 防抖触发 ====================
 
-    private enum SyncType { COMIC, TAG, ALL }
+    private enum SyncType {COMIC, ALL}
 
-    /** 各类同步的上次执行时间 */
-    private long mLastComicSync = 0, mLastTagSync = 0, mLastFullSync = 0;
-    /** 各类同步的最小间隔 */
+    /**
+     * 各类同步的上次执行时间
+     */
+    private long mLastComicSync = 0, mLastFullSync = 0;
+    /**
+     * 各类同步的最小间隔
+     */
     private static final long INTERVAL_COMIC = 8_000;  // 漫画 8s
-    private static final long INTERVAL_TAG   = 8_000;  // 标签 8s
-    private static final long INTERVAL_FULL  = 60_000; // 全量 60s（前台触发）
+    private static final long INTERVAL_FULL = 60_000; // 全量 60s（前台触发）
 
     private synchronized void triggerDebounced(SyncType type) {
         if (!shouldSync()) return;
@@ -186,11 +180,6 @@ public class DataSyncManager {
                 if (now - mLastComicSync < INTERVAL_COMIC) return;
                 mLastComicSync = now;
                 doSyncComicsBidirectional();
-                break;
-            case TAG:
-                if (now - mLastTagSync < INTERVAL_TAG) return;
-                mLastTagSync = now;
-                doSyncTagsBidirectional();
                 break;
             case ALL:
                 if (now - mLastFullSync < INTERVAL_FULL) return;
@@ -258,6 +247,7 @@ public class DataSyncManager {
                         local.setCover(s.cover);
                         local.setUpdate(s.update);
                         local.setFinish(s.finish);
+                        local.setHighlight(s.highlight);
                         local.setFavorite(s.favorite);
                         local.setHistory(s.history);
                         local.setLast(s.last);
@@ -268,7 +258,8 @@ public class DataSyncManager {
                     } else {
                         boolean changed = false;
                         if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
-                            local.setFavorite(s.favorite); changed = true;
+                            local.setFavorite(s.favorite);
+                            changed = true;
                         }
                         if (s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
                             local.setHistory(s.history);
@@ -282,6 +273,7 @@ public class DataSyncManager {
                             local.setCover(s.cover);
                             local.setUpdate(s.update);
                             local.setFinish(s.finish);
+                            local.setHighlight(s.highlight);
                             if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
                             changed = true;
                         }
@@ -292,87 +284,11 @@ public class DataSyncManager {
             Log.d(TAG, "Bidirectional comic sync done");
             return true;
         }).subscribeOn(Schedulers.io()).subscribe(
-                r -> {}, t -> Log.w(TAG, "Comic bidirectional sync failed", t));
+                r -> {
+                }, t -> Log.w(TAG, "Bidirectional comic sync failed", t));
     }
 
-    // ==================== 标签双向同步（上传+下载，仅标签） ====================
-
-    private void doSyncTagsBidirectional() {
-        Observable.fromCallable(() -> {
-            String token = DataSyncClient.ensureValidToken();
-            if (token == null) return false;
-            PreferenceManager pm = App.getPreferenceManager();
-            String url = pm.getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
-            if (TextUtils.isEmpty(url)) return false;
-
-            DataSyncClient client = new DataSyncClient(url);
-
-            // 上传本地标签
-            List<Tag> localTags = mTagManager.list();
-            List<DataSyncModels.TagSyncItem> tagItems = new ArrayList<>(localTags.size());
-            for (Tag tag : localTags) {
-                DataSyncModels.TagSyncItem tagItem = new DataSyncModels.TagSyncItem();
-                tagItem.title = tag.getTitle();
-                List<TagRef> refs = mTagRefManager.listByTag(tag.getId());
-                tagItem.comics = new ArrayList<>(refs.size());
-                for (TagRef ref : refs) {
-                    Comic comic = mComicManager.load(ref.getCid());
-                    if (comic != null) {
-                        tagItem.comics.add(new DataSyncModels.TagComicRef(comic.getSource(), comic.getCid()));
-                    }
-                }
-                tagItems.add(tagItem);
-            }
-            client.syncTags(token, tagItems);
-
-            // 下载服务器标签
-            List<DataSyncModels.TagServerItem> serverTags = client.listTags(token);
-            if (serverTags == null || serverTags.isEmpty()) return true;
-
-            // 先确保所有引用的漫画对象存在
-            for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                if (tagItem.comics != null) {
-                    for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                        if (mComicManager.load(ref.source, ref.cid) == null) {
-                            mComicManager.insert(new Comic(ref.source, ref.cid));
-                        }
-                    }
-                }
-            }
-
-            // 删除本地所有标签，重建为服务端数据
-            mTagRefManager.runInTx(() -> {
-                // 清除旧标签关联
-                for (Tag t : mTagManager.list()) {
-                    mTagRefManager.deleteByTag(t.getId());
-                    mTagManager.delete(t);
-                }
-
-                // 重建标签
-                for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                    if (tagItem.title == null || tagItem.title.isEmpty()) continue;
-
-                    Tag tag = new Tag(0, tagItem.title);
-                    mTagManager.insert(tag);
-
-                    if (tagItem.comics != null) {
-                        for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                            Comic comic = mComicManager.load(ref.source, ref.cid);
-                            if (comic != null) {
-                                mTagRefManager.insert(new TagRef(null, tag.getId(), comic.getId()));
-                            }
-                        }
-                    }
-                }
-            });
-
-            Log.d(TAG, "Bidirectional tag sync done, server tags applied");
-            return true;
-        }).subscribeOn(Schedulers.io()).subscribe(
-                r -> {}, t -> Log.w(TAG, "Tag bidirectional sync failed", t));
-    }
-
-    // ==================== 全量双向同步（漫画+设置+标签，前台触发） ====================
+    // ==================== 全量双向同步（漫画+设置，前台触发） ====================
 
     private void doSyncAllBidirectional() {
         Observable.fromCallable(() -> {
@@ -395,6 +311,7 @@ public class DataSyncManager {
                 item.cover = c.getCover();
                 item.update = c.getUpdate();
                 item.finish = c.getFinish() != null && c.getFinish();
+                item.highlight = c.getHighlight();
                 item.favorite = c.getFavorite();
                 item.history = c.getHistory();
                 item.last = c.getLast();
@@ -415,25 +332,7 @@ public class DataSyncManager {
             }
             client.syncSettings(token, settingItems);
 
-            // 3. 上传标签
-            List<Tag> tags = mTagManager.list();
-            List<DataSyncModels.TagSyncItem> tagItems = new ArrayList<>(tags.size());
-            for (Tag tag : tags) {
-                DataSyncModels.TagSyncItem tagItem = new DataSyncModels.TagSyncItem();
-                tagItem.title = tag.getTitle();
-                List<TagRef> refs = mTagRefManager.listByTag(tag.getId());
-                tagItem.comics = new ArrayList<>(refs.size());
-                for (TagRef ref : refs) {
-                    Comic comic = mComicManager.load(ref.getCid());
-                    if (comic != null) {
-                        tagItem.comics.add(new DataSyncModels.TagComicRef(comic.getSource(), comic.getCid()));
-                    }
-                }
-                tagItems.add(tagItem);
-            }
-            client.syncTags(token, tagItems);
-
-            // 4. 下载漫画
+            // 3. 下载漫画并合并
             List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
             if (serverComics != null) {
                 for (DataSyncModels.ComicServerItem s : serverComics) {
@@ -447,6 +346,7 @@ public class DataSyncManager {
                         local.setCover(s.cover);
                         local.setUpdate(s.update);
                         local.setFinish(s.finish);
+                        local.setHighlight(s.highlight);
                         local.setFavorite(s.favorite);
                         local.setHistory(s.history);
                         local.setLast(s.last);
@@ -457,7 +357,8 @@ public class DataSyncManager {
                     } else {
                         boolean changed = false;
                         if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
-                            local.setFavorite(s.favorite); changed = true;
+                            local.setFavorite(s.favorite);
+                            changed = true;
                         }
                         if (s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
                             local.setHistory(s.history);
@@ -471,6 +372,7 @@ public class DataSyncManager {
                             local.setCover(s.cover);
                             local.setUpdate(s.update);
                             local.setFinish(s.finish);
+                            local.setHighlight(s.highlight);
                             if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
                             changed = true;
                         }
@@ -489,24 +391,11 @@ public class DataSyncManager {
                 }
             }
 
-            // 6. 下载标签
-            List<DataSyncModels.TagServerItem> serverTags = client.listTags(token);
-            if (serverTags != null) {
-                for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                    if (tagItem.comics != null) {
-                        for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                            if (mComicManager.load(ref.source, ref.cid) == null) {
-                                mComicManager.insert(new Comic(ref.source, ref.cid));
-                            }
-                        }
-                    }
-                }
-            }
-
             Log.d(TAG, "Full bidirectional sync done");
             return true;
         }).subscribeOn(Schedulers.io()).subscribe(
-                r -> {}, t -> Log.w(TAG, "Full bidirectional sync failed", t));
+                r -> {
+                }, t -> Log.w(TAG, "Full bidirectional sync failed", t));
     }
 
 }

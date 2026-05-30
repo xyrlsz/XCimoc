@@ -46,8 +46,6 @@ public interface BackupView extends BaseView, DialogCaller {
 
     void onDataSyncSettingSuccess(int synced);
 
-    void onDataSyncTagSuccess();
-
     void onDataSyncAllSuccess();
 
     void onDataSyncError(String message);
@@ -59,8 +57,6 @@ public interface BackupView extends BaseView, DialogCaller {
     void onDataSyncDownloadComicSuccess(int count);
 
     void onDataSyncDownloadSettingSuccess(int count);
-
-    void onDataSyncDownloadTagSuccess();
 
     void onDataSyncDownloadAllSuccess();
 

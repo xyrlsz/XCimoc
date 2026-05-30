@@ -537,6 +537,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             item.cover = comic.getCover();
                             item.update = comic.getUpdate();
                             item.finish = comic.getFinish() != null && comic.getFinish();
+                            item.highlight = comic.getHighlight();
                             item.favorite = comic.getFavorite();
                             item.history = comic.getHistory();
                             item.last = comic.getLast();
@@ -620,60 +621,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
     }
 
     /**
-     * 同步标签到服务器
-     */
-    public void dataSyncTag() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
-        final DataSyncClient client = getClientOrError();
-        if (client == null) return;
-
-        mBaseView.onDataSyncStart();
-
-        mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<DataSyncModels.TagSyncResponse>) emitter -> {
-                    List<Tag> tags = mTagManager.list();
-                    List<DataSyncModels.TagSyncItem> tagItems = new ArrayList<>(tags.size());
-                    for (Tag tag : tags) {
-                        DataSyncModels.TagSyncItem tagItem = new DataSyncModels.TagSyncItem();
-                        tagItem.title = tag.getTitle();
-                        List<TagRef> refs = mTagRefManager.listByTag(tag.getId());
-                        tagItem.comics = new ArrayList<>(refs.size());
-                        for (TagRef ref : refs) {
-                            Comic comic = mComicManager.load(ref.getCid());
-                            if (comic != null) {
-                                tagItem.comics.add(new DataSyncModels.TagComicRef(comic.getSource(), comic.getCid()));
-                            }
-                        }
-                        tagItems.add(tagItem);
-                    }
-                    try {
-                        DataSyncModels.TagSyncResponse resp = client.syncTags(token, tagItems);
-                        emitter.onNext(resp);
-                    } catch (Exception e) {
-                        emitter.onError(e);
-                    }
-                    emitter.onComplete();
-                }).subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<DataSyncModels.TagSyncResponse>() {
-                    @Override
-                    public void accept(DataSyncModels.TagSyncResponse resp) {
-                        mBaseView.onDataSyncTagSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncError(getErrorMessage(e));
-                    }
-                }));
-    }
-
-    /**
-     * 全部同步（漫画+设置+标签）
+     * 全部同步（漫画+设置）
      */
     public void dataSyncAll() {
         final String token = getToken();
@@ -700,6 +648,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             item.cover = comic.getCover();
                             item.update = comic.getUpdate();
                             item.finish = comic.getFinish() != null && comic.getFinish();
+                            item.highlight = comic.getHighlight();
                             item.favorite = comic.getFavorite();
                             item.history = comic.getHistory();
                             item.last = comic.getLast();
@@ -719,24 +668,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             }
                         }
                         client.syncSettings(token, settingItems);
-
-                        // 3. 同步标签
-                        List<Tag> tags = mTagManager.list();
-                        List<DataSyncModels.TagSyncItem> tagItems = new ArrayList<>(tags.size());
-                        for (Tag tag : tags) {
-                            DataSyncModels.TagSyncItem tagItem = new DataSyncModels.TagSyncItem();
-                            tagItem.title = tag.getTitle();
-                            List<TagRef> refs = mTagRefManager.listByTag(tag.getId());
-                            tagItem.comics = new ArrayList<>(refs.size());
-                            for (TagRef ref : refs) {
-                                Comic comic = mComicManager.load(ref.getCid());
-                                if (comic != null) {
-                                    tagItem.comics.add(new DataSyncModels.TagComicRef(comic.getSource(), comic.getCid()));
-                                }
-                            }
-                            tagItems.add(tagItem);
-                        }
-                        client.syncTags(token, tagItems);
 
                         emitter.onNext(true);
                         emitter.onComplete();
@@ -801,6 +732,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                     local.setCover(item.cover);
                                     local.setUpdate(item.update);
                                     local.setFinish(item.finish);
+                                    local.setHighlight(item.highlight);
                                     local.setFavorite(item.favorite);
                                     local.setHistory(item.history);
                                     local.setLast(item.last);
@@ -833,6 +765,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                         local.setCover(item.cover);
                                         local.setUpdate(item.update);
                                         local.setFinish(item.finish);
+                                        local.setHighlight(item.highlight);
                                         if (item.chapter_count != null) {
                                             local.setChapterCount(item.chapter_count);
                                         }
@@ -935,86 +868,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
     }
 
     /**
-     * 从服务器恢复标签
-     */
-    public void dataSyncDownloadTag() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncDownloadError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
-        final DataSyncClient client = getClientOrError();
-        if (client == null) return;
-
-        mBaseView.onDataSyncDownloadStart();
-
-        mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Boolean>) emitter -> {
-                    try {
-                        List<DataSyncModels.TagServerItem> serverTags = client.listTags(token);
-                        if (serverTags == null) {
-                            emitter.onNext(false);
-                            emitter.onComplete();
-                            return;
-                        }
-
-                        // 先收集所有需要创建的 Comic（服务器标签引用的漫画可能在本地不存在）
-                        final List<Comic> newComics = new LinkedList<>();
-                        for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                            if (tagItem.comics != null) {
-                                for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                                    Comic local = mComicManager.load(ref.source, ref.cid);
-                                    if (local == null) {
-                                        // 创建一个占位漫画（只有 source+cid）
-                                        Comic comic = new Comic(ref.source, ref.cid);
-                                        mComicManager.insert(comic);
-                                        newComics.add(comic);
-                                    }
-                                }
-                            }
-                        }
-
-                        // 收集服务器标签->漫画列表
-                        final List<Pair<Tag, List<Comic>>> tagComicList = new LinkedList<>();
-                        for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                            if (tagItem.title == null || tagItem.title.isEmpty()) continue;
-                            Tag tag = new Tag(0, tagItem.title);
-                            List<Comic> comics = new LinkedList<>();
-                            if (tagItem.comics != null) {
-                                for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                                    Comic comic = mComicManager.load(ref.source, ref.cid);
-                                    if (comic != null) {
-                                        comics.add(comic);
-                                    }
-                                }
-                            }
-                            tagComicList.add(Pair.create(tag, comics));
-                        }
-
-                        // 使用现有的标签恢复逻辑（与本地备份恢复一致）
-                        updateAndPostTag(tagComicList);
-
-                        emitter.onNext(true);
-                        emitter.onComplete();
-                    } catch (Exception e) {
-                        emitter.onError(e);
-                    }
-                }).subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Boolean>() {
-                    @Override
-                    public void accept(Boolean success) {
-                        mBaseView.onDataSyncDownloadTagSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncDownloadError(getErrorMessage(e));
-                    }
-                }));
-    }
-
-    /**
      * 从服务器恢复全部数据
      */
     public void dataSyncDownloadAll() {
@@ -1048,6 +901,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                         local.setCover(item.cover);
                                         local.setUpdate(item.update);
                                         local.setFinish(item.finish);
+                                        local.setHighlight(item.highlight);
                                         local.setFavorite(item.favorite);
                                         local.setHistory(item.history);
                                         local.setLast(item.last);
@@ -1075,6 +929,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                             local.setCover(item.cover);
                                             local.setUpdate(item.update);
                                             local.setFinish(item.finish);
+                                            local.setHighlight(item.highlight);
                                             if (item.chapter_count != null) {
                                                 local.setChapterCount(item.chapter_count);
                                             }
@@ -1105,35 +960,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                     pm.putObject(item.key, item.value);
                                 }
                             }
-                        }
-
-                        // 3. 恢复标签
-                        List<DataSyncModels.TagServerItem> serverTags = client.listTags(token);
-                        if (serverTags != null) {
-                            // 创建占位漫画
-                            for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                                if (tagItem.comics != null) {
-                                    for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                                        if (mComicManager.load(ref.source, ref.cid) == null) {
-                                            mComicManager.insert(new Comic(ref.source, ref.cid));
-                                        }
-                                    }
-                                }
-                            }
-                            final List<Pair<Tag, List<Comic>>> tagComicList = new LinkedList<>();
-                            for (DataSyncModels.TagServerItem tagItem : serverTags) {
-                                if (tagItem.title == null || tagItem.title.isEmpty()) continue;
-                                Tag tag = new Tag(0, tagItem.title);
-                                List<Comic> comics = new LinkedList<>();
-                                if (tagItem.comics != null) {
-                                    for (DataSyncModels.TagComicRef ref : tagItem.comics) {
-                                        Comic comic = mComicManager.load(ref.source, ref.cid);
-                                        if (comic != null) comics.add(comic);
-                                    }
-                                }
-                                tagComicList.add(Pair.create(tag, comics));
-                            }
-                            updateAndPostTag(tagComicList);
                         }
 
                         emitter.onNext(true);

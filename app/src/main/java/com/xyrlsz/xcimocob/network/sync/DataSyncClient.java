@@ -21,7 +21,7 @@ import okhttp3.Response;
 
 /**
  * 与 Cimoc Data Sync Server (Go) 通信的 API 客户端
- *
+ * <p>
  * 使用 OkHttp + Gson，无需 Retrofit 依赖。
  * 所有方法均同步执行，调用方应在后台线程执行。
  */
@@ -129,6 +129,7 @@ public class DataSyncClient {
 
     /**
      * 确保 token 有效：如果需要刷新则自动刷新并保存
+     *
      * @return 有效的 token，如果刷新失败则返回 null
      */
     public static String ensureValidToken() {
@@ -210,29 +211,6 @@ public class DataSyncClient {
         String json = GSON.toJson(req);
         String body = post("/api/settings/sync", json, token);
         return GSON.fromJson(body, DataSyncModels.SettingSyncResponse.class);
-    }
-
-    // ==================== Tags ====================
-
-    /**
-     * 获取服务端该用户的所有标签（含关联漫画）
-     */
-    public List<DataSyncModels.TagServerItem> listTags(String token)
-            throws IOException, DataSyncException {
-        String body = get("/api/tags", token);
-        DataSyncModels.TagListResponse resp = GSON.fromJson(body, DataSyncModels.TagListResponse.class);
-        return resp != null ? resp.tags : null;
-    }
-
-    /**
-     * 同步标签到服务端（全量替换）
-     */
-    public DataSyncModels.TagSyncResponse syncTags(String token, List<DataSyncModels.TagSyncItem> tags)
-            throws IOException, DataSyncException {
-        DataSyncModels.TagSyncRequest req = new DataSyncModels.TagSyncRequest(tags);
-        String json = GSON.toJson(req);
-        String body = post("/api/tags/sync", json, token);
-        return GSON.fromJson(body, DataSyncModels.TagSyncResponse.class);
     }
 
     // ==================== HTTP helpers ====================

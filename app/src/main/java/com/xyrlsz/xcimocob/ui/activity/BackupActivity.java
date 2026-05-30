@@ -335,13 +335,11 @@ public class BackupActivity extends BackActivity implements BackupView {
     @Override public void onDataSyncStart() {}
     @Override public void onDataSyncComicSuccess(int synced, int skipped) {}
     @Override public void onDataSyncSettingSuccess(int synced) {}
-    @Override public void onDataSyncTagSuccess() {}
     @Override public void onDataSyncAllSuccess() {}
     @Override public void onDataSyncError(String message) {}
     @Override public void onDataSyncDownloadStart() {}
     @Override public void onDataSyncDownloadComicSuccess(int count) {}
     @Override public void onDataSyncDownloadSettingSuccess(int count) {}
-    @Override public void onDataSyncDownloadTagSuccess() {}
     @Override public void onDataSyncDownloadAllSuccess() {}
     @Override public void onDataSyncDownloadError(String message) {}
 

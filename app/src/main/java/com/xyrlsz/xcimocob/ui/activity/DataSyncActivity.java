@@ -46,11 +46,9 @@ public class DataSyncActivity extends BackActivity implements BackupView {
         findViewById(R.id.backup_data_server_sync_all).setOnClickListener(v -> mPresenter.dataSyncAll());
         findViewById(R.id.backup_data_server_sync_comic).setOnClickListener(v -> mPresenter.dataSyncComic());
         findViewById(R.id.backup_data_server_sync_setting).setOnClickListener(v -> mPresenter.dataSyncSetting());
-        findViewById(R.id.backup_data_server_sync_tag).setOnClickListener(v -> mPresenter.dataSyncTag());
         findViewById(R.id.backup_data_server_restore_all).setOnClickListener(v -> mPresenter.dataSyncDownloadAll());
         findViewById(R.id.backup_data_server_restore_comic).setOnClickListener(v -> mPresenter.dataSyncDownloadComic());
         findViewById(R.id.backup_data_server_restore_setting).setOnClickListener(v -> mPresenter.dataSyncDownloadSetting());
-        findViewById(R.id.backup_data_server_restore_tag).setOnClickListener(v -> mPresenter.dataSyncDownloadTag());
         findViewById(R.id.backup_data_server_logout).setOnClickListener(v -> onLogoutClick());
 
         updateLoginStatus();
@@ -159,12 +157,6 @@ public class DataSyncActivity extends BackActivity implements BackupView {
     }
 
     @Override
-    public void onDataSyncTagSuccess() {
-        hideProgressDialog();
-        showSnackbar(R.string.data_sync_tag_success);
-    }
-
-    @Override
     public void onDataSyncAllSuccess() {
         hideProgressDialog();
         showSnackbar(R.string.data_sync_all_success);
@@ -191,12 +183,6 @@ public class DataSyncActivity extends BackActivity implements BackupView {
     public void onDataSyncDownloadSettingSuccess(int count) {
         hideProgressDialog();
         showSnackbar(StringUtils.format(getString(R.string.data_sync_download_setting_success), count));
-    }
-
-    @Override
-    public void onDataSyncDownloadTagSuccess() {
-        hideProgressDialog();
-        showSnackbar(R.string.data_sync_download_tag_success);
     }
 
     @Override
