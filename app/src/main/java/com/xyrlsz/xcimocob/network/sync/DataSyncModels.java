@@ -41,7 +41,6 @@ public class DataSyncModels {
         public String cover;
         public String update;
         public boolean finish;
-        public boolean highlight;
         public Long favorite;  // timestamp millis, null if not favorited
         public Long history;   // timestamp millis, null if no history
         public String last;
@@ -80,7 +79,7 @@ public class DataSyncModels {
         public String cover;
         public String update;
         public boolean finish;
-        public boolean highlight;
+
         public Long favorite;
         public Long history;
         public String last;

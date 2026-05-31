@@ -95,11 +95,6 @@ func (h *ComicHandler) Sync(c *gin.Context) {
 			} else {
 				skipped++
 			}
-			// Update highlight if client sent different value
-			if item.Highlight != existing.Highlight {
-				existing.Highlight = item.Highlight
-				needsUpdate = true
-			}
 
 		} else {
 			// New comic — create
@@ -111,7 +106,6 @@ func (h *ComicHandler) Sync(c *gin.Context) {
 				Cover:        item.Cover,
 				Update:       item.Update,
 				Finish:       item.Finish,
-				Highlight:    item.Highlight,
 				Favorite:     item.Favorite,
 				History:      item.History,
 				Last:         item.Last,

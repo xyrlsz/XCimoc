@@ -537,7 +537,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             item.cover = comic.getCover();
                             item.update = comic.getUpdate();
                             item.finish = comic.getFinish() != null && comic.getFinish();
-                            item.highlight = comic.getHighlight();
                             item.favorite = comic.getFavorite();
                             item.history = comic.getHistory();
                             item.last = comic.getLast();
@@ -648,7 +647,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             item.cover = comic.getCover();
                             item.update = comic.getUpdate();
                             item.finish = comic.getFinish() != null && comic.getFinish();
-                            item.highlight = comic.getHighlight();
                             item.favorite = comic.getFavorite();
                             item.history = comic.getHistory();
                             item.last = comic.getLast();
@@ -732,7 +730,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                     local.setCover(item.cover);
                                     local.setUpdate(item.update);
                                     local.setFinish(item.finish);
-                                    local.setHighlight(item.highlight);
                                     local.setFavorite(item.favorite);
                                     local.setHistory(item.history);
                                     local.setLast(item.last);
@@ -759,13 +756,12 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                         local.setChapter(item.chapter);
                                         changed = true;
                                     }
-                                    // 如果本地没有标题/封面，用服务器的填充
+                                                    // 如果本地没有标题/封面，用服务器的填充
                                     if (local.getTitle() == null || local.getTitle().isEmpty()) {
                                         local.setTitle(item.title);
                                         local.setCover(item.cover);
                                         local.setUpdate(item.update);
                                         local.setFinish(item.finish);
-                                        local.setHighlight(item.highlight);
                                         if (item.chapter_count != null) {
                                             local.setChapterCount(item.chapter_count);
                                         }
@@ -901,7 +897,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                         local.setCover(item.cover);
                                         local.setUpdate(item.update);
                                         local.setFinish(item.finish);
-                                        local.setHighlight(item.highlight);
                                         local.setFavorite(item.favorite);
                                         local.setHistory(item.history);
                                         local.setLast(item.last);
@@ -929,7 +924,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                             local.setCover(item.cover);
                                             local.setUpdate(item.update);
                                             local.setFinish(item.finish);
-                                            local.setHighlight(item.highlight);
                                             if (item.chapter_count != null) {
                                                 local.setChapterCount(item.chapter_count);
                                             }

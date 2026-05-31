@@ -13,7 +13,6 @@ type Comic struct {
 	Cover        string    `gorm:"size:1024" json:"cover"`
 	Update       string    `gorm:"size:64" json:"update"`
 	Finish       bool      `json:"finish"`
-	Highlight    bool      `json:"highlight"`
 	Favorite     *int64    `json:"favorite"` // timestamp millis, null if not favorited
 	History      *int64    `json:"history"`  // timestamp millis, null if no history
 	Last         string    `gorm:"size:256" json:"last"`
@@ -36,7 +35,6 @@ type ComicSyncItem struct {
 	Cover        string `json:"cover"`
 	Update       string `json:"update"`
 	Finish       bool   `json:"finish"`
-	Highlight    bool   `json:"highlight"`
 	Favorite     *int64 `json:"favorite"`
 	History      *int64 `json:"history"`
 	Last         string `json:"last"`

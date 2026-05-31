@@ -247,7 +247,6 @@ public class DataSyncManager {
                         local.setCover(s.cover);
                         local.setUpdate(s.update);
                         local.setFinish(s.finish);
-                        local.setHighlight(s.highlight);
                         local.setFavorite(s.favorite);
                         local.setHistory(s.history);
                         local.setLast(s.last);
@@ -273,7 +272,6 @@ public class DataSyncManager {
                             local.setCover(s.cover);
                             local.setUpdate(s.update);
                             local.setFinish(s.finish);
-                            local.setHighlight(s.highlight);
                             if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
                             changed = true;
                         }
@@ -311,7 +309,6 @@ public class DataSyncManager {
                 item.cover = c.getCover();
                 item.update = c.getUpdate();
                 item.finish = c.getFinish() != null && c.getFinish();
-                item.highlight = c.getHighlight();
                 item.favorite = c.getFavorite();
                 item.history = c.getHistory();
                 item.last = c.getLast();
@@ -346,7 +343,6 @@ public class DataSyncManager {
                         local.setCover(s.cover);
                         local.setUpdate(s.update);
                         local.setFinish(s.finish);
-                        local.setHighlight(s.highlight);
                         local.setFavorite(s.favorite);
                         local.setHistory(s.history);
                         local.setLast(s.last);
@@ -372,7 +368,6 @@ public class DataSyncManager {
                             local.setCover(s.cover);
                             local.setUpdate(s.update);
                             local.setFinish(s.finish);
-                            local.setHighlight(s.highlight);
                             if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
                             changed = true;
                         }
