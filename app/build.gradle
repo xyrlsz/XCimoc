@@ -145,11 +145,12 @@ dependencies {
     implementation 'androidx.legacy:legacy-support-v13:1.0.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
+    //noinspection GradleDependency
     implementation 'com.google.android.material:material:1.13.0'
     // View Binding is used instead of ButterKnife
     //noinspection GradleDependency uses-sdk:minSdkVersion 21 cannot be smaller than version 23 declared in library [androidx.activity:activity:1.12.0]
     implementation 'androidx.activity:activity-ktx:1.11.0'
-    implementation 'io.objectbox:objectbox-android:5.4.1'
+    implementation 'io.objectbox:objectbox-android:5.4.2'
     implementation 'com.squareup.okhttp3:okhttp:5.3.2'
     //noinspection NewerVersionAvailable 1.9.0 minSdk 是 26
     implementation 'org.mozilla:rhino:1.8.1'
@@ -181,7 +182,7 @@ dependencies {
     implementation 'com.king.app:app-dialog:1.0.8-androidx'
 
 //    implementation 'com.github.houbb:opencc4j:1.14.0'
-    implementation 'com.github.xyrlsz:android-opencc:1.4.0'
+    implementation 'com.github.xyrlsz:android-opencc:1.4.1'
 
     implementation('com.github.thegrizzlylabs:sardine-android:0.9') {
         exclude group: 'xpp3', module: 'xpp3'
