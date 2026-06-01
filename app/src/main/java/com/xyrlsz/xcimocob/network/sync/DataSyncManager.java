@@ -3,6 +3,8 @@ package com.xyrlsz.xcimocob.network.sync;
 import android.text.TextUtils;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
+
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
