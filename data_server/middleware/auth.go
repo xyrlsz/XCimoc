@@ -53,7 +53,7 @@ func parseToken(tokenStr string, cfg *config.Config, allowExpired bool) (*Claims
 
 	// 校验用户是否存在以及 token_version 是否匹配
 	var user models.User
-	if result := database.DB.First(&user, claims.UserID); result.Error != nil {
+	if result := database.DB.Where("id = ?", claims.UserID).Limit(1).Find(&user); result.RowsAffected == 0 {
 		return nil, jwt.ErrSignatureInvalid // 用户不存在
 	}
 	if user.TokenVersion != claims.TokenVersion {

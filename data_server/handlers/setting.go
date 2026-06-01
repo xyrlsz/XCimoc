@@ -55,7 +55,10 @@ func (h *SettingHandler) Sync(c *gin.Context) {
 		if result.RowsAffected > 0 {
 			// Update existing setting
 			existing.Value = item.Value
-			database.DB.Save(&existing)
+			if err := database.DB.Save(&existing).Error; err != nil {
+				log.Printf("更新设置失败 (user_id=%d, key=%s): %v", userID, item.Key, err)
+				continue
+			}
 		} else {
 			// Create new setting
 			setting := models.Setting{
@@ -63,7 +66,10 @@ func (h *SettingHandler) Sync(c *gin.Context) {
 				Key:    item.Key,
 				Value:  item.Value,
 			}
-			database.DB.Create(&setting)
+			if err := database.DB.Create(&setting).Error; err != nil {
+				log.Printf("创建设置失败 (user_id=%d, key=%s): %v", userID, item.Key, err)
+				continue
+			}
 		}
 		synced++
 	}
