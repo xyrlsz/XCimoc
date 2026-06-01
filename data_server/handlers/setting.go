@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"xcimoc-data-server/database"
@@ -22,6 +23,7 @@ func (h *SettingHandler) List(c *gin.Context) {
 	var settings []models.Setting
 	result := database.DB.Where("user_id = ?", userID).Find(&settings)
 	if result.Error != nil {
+		log.Printf("获取设置失败 (user_id=%d): %v", userID, result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取设置失败"})
 		return
 	}

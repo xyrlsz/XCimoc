@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"xcimoc-data-server/config"
 	"xcimoc-data-server/models"
@@ -29,6 +30,14 @@ func Init(cfg *config.Config) {
 	case "mysql":
 		if cfg.DBDSN == "" {
 			log.Fatalf("使用 MySQL 时必须设置 --dbdsn 或 DB_DSN，例如: user:pass@tcp(127.0.0.1:3306)/cimoc?charset=utf8mb4&parseTime=True")
+		}
+		// 自动补充 parseTime=True（GORM 读写 time.Time 必需）
+		if !strings.Contains(cfg.DBDSN, "parseTime=") {
+			if strings.Contains(cfg.DBDSN, "?") {
+				cfg.DBDSN += "&parseTime=True"
+			} else {
+				cfg.DBDSN += "?parseTime=True"
+			}
 		}
 		dialector = mysql.Open(cfg.DBDSN)
 

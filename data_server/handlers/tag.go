@@ -54,6 +54,7 @@ func (h *TagHandler) Sync(c *gin.Context) {
 
 	// Start a transaction
 	tx := database.DB.Begin()
+	defer tx.Rollback() // 异常时自动回滚，Commit 后调用无副作用
 
 	// Delete existing tags and tag refs for this user
 	tx.Where("user_id = ?", userID).Delete(&models.TagRef{})

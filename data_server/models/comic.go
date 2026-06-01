@@ -6,9 +6,9 @@ import "time"
 // Mirrors the Android app's Comic entity fields.
 type Comic struct {
 	ID           uint      `gorm:"primaryKey" json:"id"`
-	UserID       uint      `gorm:"index;not null" json:"user_id"`
-	Source       int       `gorm:"not null" json:"source"`
-	Cid          string    `gorm:"size:256;not null" json:"cid"`
+	UserID       uint      `gorm:"index;not null;uniqueIndex:idx_user_source_cid" json:"user_id"`
+	Source       int       `gorm:"not null;uniqueIndex:idx_user_source_cid" json:"source"`
+	Cid          string    `gorm:"size:256;not null;uniqueIndex:idx_user_source_cid" json:"cid"`
 	Title        string    `gorm:"size:512" json:"title"`
 	Cover        string    `gorm:"size:1024" json:"cover"`
 	Update       string    `gorm:"size:64" json:"update"`

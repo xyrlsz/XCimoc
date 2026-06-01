@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -25,6 +26,7 @@ func (h *ComicHandler) List(c *gin.Context) {
 		Order("updated_at DESC").
 		Find(&comics)
 	if result.Error != nil {
+		log.Printf("获取漫画列表失败 (user_id=%d): %v", userID, result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取漫画列表失败"})
 		return
 	}
@@ -62,23 +64,12 @@ func (h *ComicHandler) Sync(c *gin.Context) {
 			// Comic exists — merge
 			needsUpdate := false
 
-			// Prefer newer history
+			// Prefer newer history — also update metadata
 			if item.History != nil && (existing.History == nil || *item.History > *existing.History) {
 				existing.History = item.History
 				existing.Last = item.Last
 				existing.Page = item.Page
 				existing.Chapter = item.Chapter
-				needsUpdate = true
-			}
-
-			// Prefer newer favorite
-			if item.Favorite != nil && (existing.Favorite == nil || *item.Favorite > *existing.Favorite) {
-				existing.Favorite = item.Favorite
-				needsUpdate = true
-			}
-
-			// Update metadata if client has newer data (treat history as update timestamp)
-			if item.History != nil && (existing.History == nil || *item.History > *existing.History) {
 				existing.Title = item.Title
 				existing.Cover = item.Cover
 				existing.Update = item.Update
@@ -89,8 +80,17 @@ func (h *ComicHandler) Sync(c *gin.Context) {
 				needsUpdate = true
 			}
 
+			// Prefer newer favorite
+			if item.Favorite != nil && (existing.Favorite == nil || *item.Favorite > *existing.Favorite) {
+				existing.Favorite = item.Favorite
+				needsUpdate = true
+			}
+
 			if needsUpdate {
-				database.DB.Save(&existing)
+				if err := database.DB.Save(&existing).Error; err != nil {
+					log.Printf("更新漫画失败 (user_id=%d, source=%d, cid=%s): %v", userID, item.Source, item.Cid, err)
+					continue
+				}
 				synced++
 			} else {
 				skipped++
@@ -113,7 +113,10 @@ func (h *ComicHandler) Sync(c *gin.Context) {
 				Chapter:      item.Chapter,
 				ChapterCount: item.ChapterCount,
 			}
-			database.DB.Create(&comic)
+			if err := database.DB.Create(&comic).Error; err != nil {
+				log.Printf("创建漫画失败 (user_id=%d, source=%d, cid=%s): %v", userID, item.Source, item.Cid, err)
+				continue
+			}
 			synced++
 		}
 	}

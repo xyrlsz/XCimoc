@@ -14,10 +14,10 @@ type Tag struct {
 // TagRef links a tag to a comic (by source+cid).
 type TagRef struct {
 	ID     uint   `gorm:"primaryKey" json:"id"`
-	UserID uint   `gorm:"index;not null" json:"user_id"`
-	TagID  uint   `gorm:"index;not null" json:"tag_id"`
-	Source int    `gorm:"not null" json:"source"`
-	Cid    string `gorm:"size:256;not null" json:"cid"`
+	UserID uint   `gorm:"index;not null;uniqueIndex:idx_user_tag_source_cid" json:"user_id"`
+	TagID  uint   `gorm:"index;not null;uniqueIndex:idx_user_tag_source_cid" json:"tag_id"`
+	Source int    `gorm:"not null;uniqueIndex:idx_user_tag_source_cid" json:"source"`
+	Cid    string `gorm:"size:256;not null;uniqueIndex:idx_user_tag_source_cid" json:"cid"`
 }
 
 // TagSyncRequest is the payload for uploading/merging tags with their comic references.

@@ -56,7 +56,7 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
 	var user models.User
-	if result := database.DB.First(&user, userID); result.Error != nil {
+	if result := database.DB.Where("id = ?", userID).Limit(1).Find(&user); result.RowsAffected == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户不存在"})
 		return
 	}
