@@ -206,79 +206,11 @@ public class DataSyncManager {
         Observable.fromCallable(() -> {
             String token = DataSyncClient.ensureValidToken();
             if (token == null) return false;
-            PreferenceManager pm = App.getPreferenceManager();
-            String url = pm.getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
-            if (TextUtils.isEmpty(url)) return false;
+            if (!createClient()) return false;
 
-            DataSyncClient client = new DataSyncClient(url);
+            uploadComics(mClient, token);
+            downloadAndMergeComics(mClient, token);
 
-            // 上传本地漫画
-            List<Comic> comics = mComicManager.listFavoriteOrHistory();
-            List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size());
-            for (Comic c : comics) {
-                DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
-                item.source = c.getSource();
-                item.cid = c.getCid();
-                item.title = c.getTitle();
-                item.cover = c.getCover();
-                item.update = c.getUpdate();
-                item.finish = c.getFinish() != null && c.getFinish();
-                item.favorite = c.getFavorite();
-                item.history = c.getHistory();
-                item.last = c.getLast();
-                item.page = c.getPage();
-                item.chapter = c.getChapter();
-                item.chapter_count = c.getChapterCount();
-                items.add(item);
-            }
-            client.syncComics(token, items);
-
-            // 下载服务器漫画并合并
-            List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
-            if (serverComics != null) {
-                for (DataSyncModels.ComicServerItem s : serverComics) {
-                    Comic local = mComicManager.load(s.source, s.cid);
-                    if (local == null) {
-                        local = new Comic();
-                        local.setId(0);
-                        local.setSource(s.source);
-                        local.setCid(s.cid);
-                        local.setTitle(s.title);
-                        local.setCover(s.cover);
-                        local.setUpdate(s.update);
-                        local.setFinish(s.finish);
-                        local.setFavorite(s.favorite);
-                        local.setHistory(s.history);
-                        local.setLast(s.last);
-                        local.setPage(s.page);
-                        local.setChapter(s.chapter);
-                        if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
-                        mComicManager.insert(local);
-                    } else {
-                        boolean changed = false;
-                        if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
-                            local.setFavorite(s.favorite);
-                            changed = true;
-                        }
-                        if (s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
-                            local.setHistory(s.history);
-                            local.setLast(s.last);
-                            local.setPage(s.page);
-                            local.setChapter(s.chapter);
-                            changed = true;
-                        }
-                        if ((local.getTitle() == null || local.getTitle().isEmpty()) && s.title != null) {
-                            local.setTitle(s.title);
-                            local.setCover(s.cover);
-                            local.setUpdate(s.update);
-                            local.setFinish(s.finish);
-                            if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
-                            changed = true;
-                        }
-                        if (changed) mComicManager.update(local);
-                    }
-                }
-            }
             Log.d(TAG, "Bidirectional comic sync done");
             return true;
         }).subscribeOn(Schedulers.io()).subscribe(
@@ -292,105 +224,146 @@ public class DataSyncManager {
         Observable.fromCallable(() -> {
             String token = DataSyncClient.ensureValidToken();
             if (token == null) return false;
-            PreferenceManager pm = App.getPreferenceManager();
-            String url = pm.getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
-            if (TextUtils.isEmpty(url)) return false;
+            if (!createClient()) return false;
 
-            DataSyncClient client = new DataSyncClient(url);
-
-            // 1. 上传漫画
-            List<Comic> comics = mComicManager.listFavoriteOrHistory();
-            List<DataSyncModels.ComicSyncItem> comicItems = new ArrayList<>(comics.size());
-            for (Comic c : comics) {
-                DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
-                item.source = c.getSource();
-                item.cid = c.getCid();
-                item.title = c.getTitle();
-                item.cover = c.getCover();
-                item.update = c.getUpdate();
-                item.finish = c.getFinish() != null && c.getFinish();
-                item.favorite = c.getFavorite();
-                item.history = c.getHistory();
-                item.last = c.getLast();
-                item.page = c.getPage();
-                item.chapter = c.getChapter();
-                item.chapter_count = c.getChapterCount();
-                comicItems.add(item);
-            }
-            client.syncComics(token, comicItems);
-
-            // 2. 上传设置
-            Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
-            List<DataSyncModels.SettingItem> settingItems = new ArrayList<>();
-            for (Map.Entry<String, ?> e : allPrefs.entrySet()) {
-                if (e.getValue() != null) {
-                    settingItems.add(new DataSyncModels.SettingItem(e.getKey(), e.getValue().toString()));
-                }
-            }
-            client.syncSettings(token, settingItems);
-
-            // 3. 下载漫画并合并
-            List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
-            if (serverComics != null) {
-                for (DataSyncModels.ComicServerItem s : serverComics) {
-                    Comic local = mComicManager.load(s.source, s.cid);
-                    if (local == null) {
-                        local = new Comic();
-                        local.setId(0);
-                        local.setSource(s.source);
-                        local.setCid(s.cid);
-                        local.setTitle(s.title);
-                        local.setCover(s.cover);
-                        local.setUpdate(s.update);
-                        local.setFinish(s.finish);
-                        local.setFavorite(s.favorite);
-                        local.setHistory(s.history);
-                        local.setLast(s.last);
-                        local.setPage(s.page);
-                        local.setChapter(s.chapter);
-                        if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
-                        mComicManager.insert(local);
-                    } else {
-                        boolean changed = false;
-                        if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
-                            local.setFavorite(s.favorite);
-                            changed = true;
-                        }
-                        if (s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
-                            local.setHistory(s.history);
-                            local.setLast(s.last);
-                            local.setPage(s.page);
-                            local.setChapter(s.chapter);
-                            changed = true;
-                        }
-                        if ((local.getTitle() == null || local.getTitle().isEmpty()) && s.title != null) {
-                            local.setTitle(s.title);
-                            local.setCover(s.cover);
-                            local.setUpdate(s.update);
-                            local.setFinish(s.finish);
-                            if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
-                            changed = true;
-                        }
-                        if (changed) mComicManager.update(local);
-                    }
-                }
-            }
-
-            // 5. 下载设置
-            List<DataSyncModels.SettingServerItem> serverSettings = client.listSettings(token);
-            if (serverSettings != null) {
-                for (DataSyncModels.SettingServerItem s : serverSettings) {
-                    if (s.key != null && s.value != null) {
-                        pm.putObject(s.key, s.value);
-                    }
-                }
-            }
+            uploadComics(mClient, token);
+            uploadSettings(mClient, token);
+            downloadAndMergeComics(mClient, token);
+            downloadSettings(mClient, token);
 
             Log.d(TAG, "Full bidirectional sync done");
             return true;
         }).subscribeOn(Schedulers.io()).subscribe(
                 r -> {
                 }, t -> Log.w(TAG, "Full bidirectional sync failed", t));
+    }
+
+    // ==================== 共享的数据同步方法 ====================
+
+    @Nullable
+    private DataSyncClient mClient;
+
+    /** 创建或获取 DataSyncClient 实例（复用 OkHttpClient） */
+    private boolean createClient() {
+        String url = App.getPreferenceManager().getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
+        if (TextUtils.isEmpty(url)) return false;
+        if (mClient == null || !mClient.isSameBaseUrl(url)) {
+            mClient = new DataSyncClient(url);
+        }
+        return true;
+    }
+
+    /** 上传本地漫画到服务端 */
+    private void uploadComics(DataSyncClient client, String token) throws Exception {
+        List<Comic> comics = mComicManager.listFavoriteOrHistory();
+        List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size());
+        for (Comic c : comics) {
+            items.add(buildComicSyncItem(c));
+        }
+        client.syncComics(token, items);
+    }
+
+    /** 从服务端下载漫画并合并到本地 */
+    private void downloadAndMergeComics(DataSyncClient client, String token) throws Exception {
+        List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
+        if (serverComics == null) return;
+
+        for (DataSyncModels.ComicServerItem s : serverComics) {
+            Comic local = mComicManager.load(s.source, s.cid);
+            if (local == null) {
+                local = createComicFromServer(s);
+                mComicManager.insert(local);
+            } else {
+                mergeServerComic(local, s);
+            }
+        }
+    }
+
+    /** 上传本地设置到服务端 */
+    private void uploadSettings(DataSyncClient client, String token) throws Exception {
+        Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
+        List<DataSyncModels.SettingItem> settingItems = new ArrayList<>();
+        for (Map.Entry<String, ?> e : allPrefs.entrySet()) {
+            if (e.getValue() != null) {
+                settingItems.add(new DataSyncModels.SettingItem(e.getKey(), e.getValue().toString()));
+            }
+        }
+        client.syncSettings(token, settingItems);
+    }
+
+    /** 从服务端下载设置并合并到本地 */
+    private void downloadSettings(DataSyncClient client, String token) throws Exception {
+        List<DataSyncModels.SettingServerItem> serverSettings = client.listSettings(token);
+        if (serverSettings == null) return;
+
+        PreferenceManager pm = App.getPreferenceManager();
+        for (DataSyncModels.SettingServerItem s : serverSettings) {
+            if (s.key != null && s.value != null) {
+                pm.putObject(s.key, s.value);
+            }
+        }
+    }
+
+    /** 构建漫画同步项 */
+    private static DataSyncModels.ComicSyncItem buildComicSyncItem(Comic c) {
+        DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
+        item.source = c.getSource();
+        item.cid = c.getCid();
+        item.title = c.getTitle();
+        item.cover = c.getCover();
+        item.update = c.getUpdate();
+        item.finish = c.getFinish() != null && c.getFinish();
+        item.favorite = c.getFavorite();
+        item.history = c.getHistory();
+        item.last = c.getLast();
+        item.page = c.getPage();
+        item.chapter = c.getChapter();
+        item.chapter_count = c.getChapterCount();
+        return item;
+    }
+
+    /** 从服务端数据创建新 Comic */
+    private static Comic createComicFromServer(DataSyncModels.ComicServerItem s) {
+        Comic local = new Comic();
+        local.setId(0);
+        local.setSource(s.source);
+        local.setCid(s.cid);
+        local.setTitle(s.title);
+        local.setCover(s.cover);
+        local.setUpdate(s.update);
+        local.setFinish(s.finish);
+        local.setFavorite(s.favorite);
+        local.setHistory(s.history);
+        local.setLast(s.last);
+        local.setPage(s.page);
+        local.setChapter(s.chapter);
+        if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
+        return local;
+    }
+
+    /** 将服务端漫画数据合并到本地（服务端数据优先） */
+    private void mergeServerComic(Comic local, DataSyncModels.ComicServerItem s) {
+        boolean changed = false;
+        if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
+            local.setFavorite(s.favorite);
+            changed = true;
+        }
+        if (s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
+            local.setHistory(s.history);
+            local.setLast(s.last);
+            local.setPage(s.page);
+            local.setChapter(s.chapter);
+            changed = true;
+        }
+        if ((local.getTitle() == null || local.getTitle().isEmpty()) && s.title != null) {
+            local.setTitle(s.title);
+            local.setCover(s.cover);
+            local.setUpdate(s.update);
+            local.setFinish(s.finish);
+            if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
+            changed = true;
+        }
+        if (changed) mComicManager.update(local);
     }
 
 }

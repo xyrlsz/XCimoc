@@ -108,19 +108,27 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
         if (!manager_wifi.isWifiEnabled() && onlyWifi) {
             return new DisabledOkHttpClient();
         }
-        if (mHttpClient == null || mHttpClient.getClass() == DisabledOkHttpClient.class) {
-            // 3.OkHttp访问https的Client实例
-            mHttpClient = new OkHttpClient()
-                    .newBuilder()
-                    .sslSocketFactory(createSSLSocketFactory(), getTrustAllCerts())
-                    .hostnameVerifier(new TrustAllSslUtils.TrustAllHostnameVerifier())
-                    .followRedirects(true)
-                    .followSslRedirects(true)
-                    .retryOnConnectionFailure(true)
-                    .build();
+        // 双重检查锁定，避免竞态条件
+        OkHttpClient client = mHttpClient;
+        if (client == null || client.getClass() == DisabledOkHttpClient.class) {
+            synchronized (App.class) {
+                client = mHttpClient;
+                if (client == null || client.getClass() == DisabledOkHttpClient.class) {
+                    // 3.OkHttp访问https的Client实例
+                    client = new OkHttpClient()
+                            .newBuilder()
+                            .sslSocketFactory(createSSLSocketFactory(), getTrustAllCerts())
+                            .hostnameVerifier(new TrustAllSslUtils.TrustAllHostnameVerifier())
+                            .followRedirects(true)
+                            .followSslRedirects(true)
+                            .retryOnConnectionFailure(true)
+                            .build();
+                    mHttpClient = client;
+                }
+            }
         }
 
-        return mHttpClient;
+        return client;
     }
 
     public static void goActivity(Class<?> cls) {

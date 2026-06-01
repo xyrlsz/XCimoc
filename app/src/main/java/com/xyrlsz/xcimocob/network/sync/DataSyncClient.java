@@ -30,6 +30,14 @@ public class DataSyncClient {
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final Gson GSON = new GsonBuilder().create();
 
+    /** 静态共享 OkHttpClient，启用连接池复用（keep-alive） */
+    private static final OkHttpClient SHARED_HTTP_CLIENT = new OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .connectionPool(new okhttp3.ConnectionPool(5, 60, TimeUnit.SECONDS))
+            .build();
+
     private final OkHttpClient mHttpClient;
     private final String mBaseUrl;
 
@@ -43,16 +51,22 @@ public class DataSyncClient {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
         this.mBaseUrl = baseUrl;
-
-        mHttpClient = new OkHttpClient.Builder()
-                .connectTimeout(15, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .build();
+        this.mHttpClient = SHARED_HTTP_CLIENT;
     }
 
     public boolean isConfigured() {
         return !TextUtils.isEmpty(mBaseUrl);
+    }
+
+    /**
+     * 判断 baseUrl 是否相同，用于复用 DataSyncClient 实例
+     */
+    public boolean isSameBaseUrl(String url) {
+        if (url == null) return false;
+        if (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return mBaseUrl.equals(url);
     }
 
     // ==================== Auth ====================

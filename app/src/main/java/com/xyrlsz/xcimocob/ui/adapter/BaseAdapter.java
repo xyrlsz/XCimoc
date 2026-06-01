@@ -52,7 +52,7 @@ public abstract class BaseAdapter<T> extends RecyclerView.Adapter<RecyclerView.V
     public void addAll(int location, Collection<T> collection) {
         if (mDataSet.addAll(location, collection)) {
             mOriginalData.addAll(location,collection);
-            notifyItemRangeInserted(location, location + collection.size());
+            notifyItemRangeInserted(location, collection.size());
         }
     }
 

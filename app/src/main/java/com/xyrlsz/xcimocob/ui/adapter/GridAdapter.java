@@ -6,10 +6,12 @@ import android.graphics.Rect;
 import android.net.Uri;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.facebook.drawee.interfaces.DraweeController;
@@ -55,7 +57,24 @@ public class GridAdapter extends BaseAdapter<Object> {
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = mInflater.inflate(R.layout.item_grid, parent, false);
-        return new GridHolder(view);
+        GridHolder holder = new GridHolder(view);
+        // 使用 OnPreDrawListener（仅执行一次）替代 OnDrawListener（每帧触发）
+        holder.rlItemGrid.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                if (!holder.mHasMeasured) {
+                    int width = holder.rlItemGrid.getWidth();
+                    if (width > 0) {
+                        ViewGroup.LayoutParams params = holder.rlItemGrid.getLayoutParams();
+                        params.height = (int) (width * (4 / 3.0));
+                        holder.rlItemGrid.setLayoutParams(params);
+                        holder.mHasMeasured = true;
+                    }
+                }
+                return true;
+            }
+        });
+        return holder;
     }
 
     @Override
@@ -67,53 +86,10 @@ public class GridAdapter extends BaseAdapter<Object> {
             default:
                 MiniComic comic = (MiniComic) mDataSet.get(position);
                 GridHolder gridHolder = (GridHolder) holder;
-                gridHolder.rlItemGrid.getViewTreeObserver().addOnDrawListener(() -> {
-                    int width = gridHolder.rlItemGrid.getWidth();
-                    ViewGroup.LayoutParams params = gridHolder.rlItemGrid.getLayoutParams();
-                    params.height = (int) (width * (4 / 3.0));
-                    gridHolder.rlItemGrid.setLayoutParams(params);
-                });
                 gridHolder.comicTitle.setText(STConvertUtils.convert(comic.getTitle()));
                 gridHolder.comicSource.setText(STConvertUtils.convert(mTitleGetter.getTitle(comic.getSource())));
                 if (mProvider != null) {
-                    //            ImageRequest request = ImageRequestBuilder
-                    //                    .newBuilderWithSource(Uri.parse(comic.getCover()))
-                    //                    .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
-                    //                    .build();
-                    ImageRequest request = null;
-                    try {
-                        if (!App.getManager_wifi().isWifiEnabled() && App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_CONNECT_ONLY_WIFI, false)) {
-                            //                    request = null;
-                            if (FrescoUtils.isCached(comic.getCover())) {
-                                request = ImageRequestBuilder
-                                        .newBuilderWithSource(Uri.fromFile(FrescoUtils.getFileFromDiskCache(comic.getCover())))
-                                        .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
-                                        .build();
-                            }
-                        } else if (!App.getManager_wifi().isWifiEnabled() && App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_LOADCOVER_ONLY_WIFI, false)) {
-                            //                    request = null;
-                            if (FrescoUtils.isCached(comic.getCover())) {
-                                request = ImageRequestBuilder
-                                        .newBuilderWithSource(Uri.fromFile(FrescoUtils.getFileFromDiskCache(comic.getCover())))
-                                        .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
-                                        .build();
-                            }
-                        } else {
-                            if (FrescoUtils.isCached(comic.getCover())) {
-                                request = ImageRequestBuilder
-                                        .newBuilderWithSource(Uri.fromFile(FrescoUtils.getFileFromDiskCache(comic.getCover())))
-                                        .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
-                                        .build();
-                            } else {
-                                request = ImageRequestBuilder
-                                        .newBuilderWithSource(Uri.parse(comic.getCover()))
-                                        .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
-                                        .build();
-                            }
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    ImageRequest request = buildImageRequest(comic);
                     DraweeController controller = mProvider.get(comic.getSource())
                             .setOldController(gridHolder.comicImage.getController())
                             .setImageRequest(request)
@@ -121,6 +97,44 @@ public class GridAdapter extends BaseAdapter<Object> {
                     gridHolder.comicImage.setController(controller);
                 }
                 gridHolder.comicHighlight.setVisibility(symbol && comic.isHighlight() ? View.VISIBLE : View.INVISIBLE);
+        }
+    }
+
+    /**
+     * 构建封面图片请求，复用逻辑消除重复代码
+     */
+    @Nullable
+    private ImageRequest buildImageRequest(MiniComic comic) {
+        boolean onlyWifi = App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_CONNECT_ONLY_WIFI, false);
+        boolean onlyWifiCover = App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_LOADCOVER_ONLY_WIFI, false);
+        boolean wifiEnabled = App.getManager_wifi().isWifiEnabled();
+
+        // 仅 WiFi 模式下非 WiFi 时，仅使用缓存
+        if ((!wifiEnabled && onlyWifi) || (!wifiEnabled && onlyWifiCover)) {
+            if (FrescoUtils.isCached(comic.getCover())) {
+                return ImageRequestBuilder
+                        .newBuilderWithSource(Uri.fromFile(FrescoUtils.getFileFromDiskCache(comic.getCover())))
+                        .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
+                        .build();
+            }
+            return null;
+        }
+
+        // 正常模式：缓存存在则用本地文件，否则用网络 URL
+        try {
+            Uri sourceUri;
+            if (FrescoUtils.isCached(comic.getCover())) {
+                sourceUri = Uri.fromFile(FrescoUtils.getFileFromDiskCache(comic.getCover()));
+            } else {
+                sourceUri = Uri.parse(comic.getCover());
+            }
+            return ImageRequestBuilder
+                    .newBuilderWithSource(sourceUri)
+                    .setResizeOptions(new ResizeOptions(App.mCoverWidthPixels / 3, App.mCoverHeightPixels / 3))
+                    .build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -255,6 +269,7 @@ public class GridAdapter extends BaseAdapter<Object> {
         TextView comicSource;
         View comicHighlight;
         RelativeLayout rlItemGrid;
+        boolean mHasMeasured = false; // 防止 OnPreDrawListener 重复计算布局
 
         GridHolder(View view) {
             super(view);

@@ -16,11 +16,22 @@ func NewTagHandler() *TagHandler {
 }
 
 // List returns all tags with their associated comics for the authenticated user.
+// Optimized: 使用批量查询替代 N+1 循环查询
 func (h *TagHandler) List(c *gin.Context) {
 	userID := c.GetUint("user_id")
 
 	var tags []models.Tag
 	database.DB.Where("user_id = ?", userID).Find(&tags)
+
+	// 批量查询所有 tag_id 的关联漫画
+	var allRefs []models.TagRef
+	database.DB.Where("user_id = ?", userID).Find(&allRefs)
+
+	// 按 tag_id 分组
+	refsByTagID := make(map[uint][]models.TagRef, len(tags))
+	for _, ref := range allRefs {
+		refsByTagID[ref.TagID] = append(refsByTagID[ref.TagID], ref)
+	}
 
 	type TagWithComics struct {
 		models.Tag
@@ -29,8 +40,10 @@ func (h *TagHandler) List(c *gin.Context) {
 
 	result := make([]TagWithComics, 0, len(tags))
 	for _, tag := range tags {
-		var refs []models.TagRef
-		database.DB.Where("user_id = ? AND tag_id = ?", userID, tag.ID).Find(&refs)
+		refs := refsByTagID[tag.ID]
+		if refs == nil {
+			refs = []models.TagRef{}
+		}
 		result = append(result, TagWithComics{
 			Tag:    tag,
 			Comics: refs,
@@ -60,7 +73,7 @@ func (h *TagHandler) Sync(c *gin.Context) {
 	tx.Where("user_id = ?", userID).Delete(&models.TagRef{})
 	tx.Where("user_id = ?", userID).Delete(&models.Tag{})
 
-	// Insert new tags
+	// Insert new tags with batch refs
 	for _, item := range req.Tags {
 		if item.Title == "" {
 			continue
@@ -76,18 +89,21 @@ func (h *TagHandler) Sync(c *gin.Context) {
 			return
 		}
 
-		// Insert tag refs
+		// 批量插入 TagRef（减少数据库 round-trip）
+		refs := make([]models.TagRef, 0, len(item.Comics))
 		for _, comic := range item.Comics {
 			if comic.Cid == "" {
 				continue
 			}
-			ref := models.TagRef{
+			refs = append(refs, models.TagRef{
 				UserID: userID,
 				TagID:  tag.ID,
 				Source: comic.Source,
 				Cid:    comic.Cid,
-			}
-			if result := tx.Create(&ref); result.Error != nil {
+			})
+		}
+		if len(refs) > 0 {
+			if result := tx.Create(&refs); result.Error != nil {
 				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存标签关联失败"})
 				return

@@ -35,7 +35,9 @@ import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import okhttp3.Headers;
 
@@ -64,6 +66,20 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private boolean isDoubleTap;
     private boolean isCloseAutoResizeImage;
     private float mScaleFactor;
+
+    // 缓存 ImagePipelineFactory/Supplier 对（按 headers 缓存），减少重复创建开销
+    private static final int MAX_SUPPLIER_CACHE = 16;
+    private final Map<String, SupplierPair> mSupplierCache = new HashMap<>();
+
+    private static class SupplierPair {
+        final PipelineDraweeControllerBuilderSupplier normal;
+        final PipelineDraweeControllerBuilderSupplier large;
+        SupplierPair(PipelineDraweeControllerBuilderSupplier normal,
+                     PipelineDraweeControllerBuilderSupplier large) {
+            this.normal = normal;
+            this.large = large;
+        }
+    }
 
 
     public ReaderAdapter(Context context, List<ImageUrl> list) {
@@ -150,15 +166,25 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
         if (currHeaders != null) {
             Context context = App.getAppContext();
-            ImagePipelineFactory normalFactory = ImagePipelineFactoryBuilder
-                    .build(context, imageUrl.isDownload() ? null : currHeaders, false);
-            ImagePipelineFactory largeFactory = ImagePipelineFactoryBuilder
-                    .build(context, imageUrl.isDownload() ? null : currHeaders, true);
-
-            setControllerSupplier(
-                    ControllerBuilderSupplierFactory.get(context, normalFactory),
-                    ControllerBuilderSupplierFactory.get(context, largeFactory)
-            );
+            // 缓存 ImagePipelineFactory/Supplier 对，避免每次绑定都重建
+            String cacheKey = imageUrl.isDownload() ? "" : currHeaders.toString();
+            SupplierPair pair = mSupplierCache.get(cacheKey);
+            if (pair == null) {
+                ImagePipelineFactory normalFactory = ImagePipelineFactoryBuilder
+                        .build(context, imageUrl.isDownload() ? null : currHeaders, false);
+                ImagePipelineFactory largeFactory = ImagePipelineFactoryBuilder
+                        .build(context, imageUrl.isDownload() ? null : currHeaders, true);
+                pair = new SupplierPair(
+                        ControllerBuilderSupplierFactory.get(context, normalFactory),
+                        ControllerBuilderSupplierFactory.get(context, largeFactory)
+                );
+                // 限制缓存大小，防止内存泄漏
+                if (mSupplierCache.size() > MAX_SUPPLIER_CACHE) {
+                    mSupplierCache.clear();
+                }
+                mSupplierCache.put(cacheKey, pair);
+            }
+            setControllerSupplier(pair.normal, pair.large);
         }
 
         // 选择 ControllerBuilder

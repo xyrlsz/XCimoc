@@ -80,17 +80,17 @@ public class ImageUrlManager {
         mImageUrlBox.remove(key);
     }
 
-    // 10. 修改：根据 comicChapter 删除
+    // 10. 修改：根据 comicChapter 删除（使用事务 + 批量删除）
     public void deleteByComicChapter(Long comicChapter) {
-        // ObjectBox 不支持直接的 QueryBuilder 删除，需要先查 ID 再删，或者使用 removeAll
-        // 这里采用先查后删的逻辑
-        long[] ids = mImageUrlBox.query()
-                .equal(ImageUrl_.comicChapter, comicChapter)
-                .build()
-                .findIds();
-        if (ids.length > 0) {
-            mImageUrlBox.remove(ids);
-        }
+        runInTx(() -> {
+            long[] ids = mImageUrlBox.query()
+                    .equal(ImageUrl_.comicChapter, comicChapter)
+                    .build()
+                    .findIds();
+            if (ids.length > 0) {
+                mImageUrlBox.remove(ids);
+            }
+        });
     }
 
 }

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"xcimoc-data-server/config"
 	"xcimoc-data-server/models"
@@ -61,6 +62,20 @@ func Init(cfg *config.Config) {
 	})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
+	}
+
+	// 配置数据库连接池
+	sqlDB, err := DB.DB()
+	if err == nil {
+		// SQLite 只支持单写入者，限制连接数避免 "database is locked"
+		if cfg.DBType == "sqlite" {
+			sqlDB.SetMaxOpenConns(1)
+			sqlDB.SetMaxIdleConns(1)
+		} else {
+			sqlDB.SetMaxOpenConns(25)
+			sqlDB.SetMaxIdleConns(10)
+		}
+		sqlDB.SetConnMaxLifetime(5 * time.Minute)
 	}
 
 	// MySQL 需要在迁移前关闭外键检查（TagRef 使用多表关联）

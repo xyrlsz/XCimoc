@@ -204,13 +204,15 @@ public class ComicManager {
     }
 
     public void cancelHighlight() {
-        List<Comic> comics = mComicBox.query().equal(Comic_.highlight, true).build().find();
-        for (Comic comic : comics) {
-            comic.setHighlight(false);
-        }
-        if (!comics.isEmpty()) {
+        // 使用事务确保查询 + 更新的原子性
+        runInTx(() -> {
+            List<Comic> comics = mComicBox.query().equal(Comic_.highlight, true).build().find();
+            if (comics.isEmpty()) return;
+            for (Comic comic : comics) {
+                comic.setHighlight(false);
+            }
             mComicBox.put(comics);
-        }
+        });
     }
 
     public void updateOrInsert(Comic comic) {
