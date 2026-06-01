@@ -215,6 +215,7 @@ public class BackupActivity extends BackActivity implements BackupView {
     }
 
     void onRestoreSettingsCloudClick() {
+        showProgressDialog();
         mCimocDocumentFile = CimocDocumentFile.fromWebDav();
         mPresenter.loadSettingsFile(mCimocDocumentFile);
     }

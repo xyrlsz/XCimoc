@@ -69,7 +69,7 @@ public class TagEditorActivity extends CoordinatorActivity implements TagEditorV
 
     @Override
     public void onTagLoadFail() {
-        hideProgressDialog();
+        hideProgressBar();
         showSnackbar(R.string.common_data_load_fail);
     }
 
