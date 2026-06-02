@@ -39,7 +39,7 @@ forked from https://github.com/Haleydu/Cimoc
 
 - [Android Open Source Project](http://source.android.com/)
 - [ButterKnife](https://github.com/JakeWharton/butterknife)
-- [GreenDAO](https://github.com/greenrobot/greenDAO)
+- [ObjectBox](https://objectbox.io/)
 - [OkHttp](https://github.com/square/okhttp)
 - [Fresco](https://github.com/facebook/fresco)
 - [Jsoup](https://github.com/jhy/jsoup)
