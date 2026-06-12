@@ -58,7 +58,7 @@ android {
         multiDexEnabled true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", "REPOSITORIE_NAME", '"Cimoc"'
+        buildConfigField "String", "REPOSITORIE_NAME", '"XCimoc"'
         buildConfigField "String", "OWNER_NAME", '"xyrlsz"'
     }
 
