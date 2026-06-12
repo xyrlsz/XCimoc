@@ -141,8 +141,7 @@ public class ZaiManhua extends MangaParser {
             HintUtils.showToast(App.getAppContext(), "再漫画未登录可能导致漫画无法阅读");
         }
         long timestamp = System.currentTimeMillis() / 1000;
-        if (timestamp > getEXP() && !getTOKEN().isEmpty()) {
-            HintUtils.showToast(App.getAppContext(), "再漫画登录过期，可能需要重新登录");
+        if (timestamp > getEXP() && !getTOKEN().isEmpty() && !passwdMd5.isEmpty()) {
             ZaiManhuaSignUtils.LoginWithPasswdMd5(App.getAppContext(), new ZaiManhuaSignUtils.LoginCallback() {
                 @Override
                 public void onSuccess() {

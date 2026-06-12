@@ -283,8 +283,8 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
         boolean autoSign = zaiSharedPreferences.getBoolean(Constants.ZAI_SHARED_AUTO_SIGN, false);
         String username = zaiSharedPreferences.getString(Constants.ZAI_SHARED_USERNAME, "");
         String passwordMd5 = zaiSharedPreferences.getString(Constants.ZAI_SHARED_PASSWD_MD5, "");
-        if (timestamp > exp) {
-            ZaiManhuaSignUtils.Login(this, new ZaiManhuaSignUtils.LoginCallback() {
+        if (timestamp > exp && !username.isEmpty() && !passwordMd5.isEmpty()) {
+            ZaiManhuaSignUtils.LoginWithPasswdMd5(this, new ZaiManhuaSignUtils.LoginCallback() {
                 @Override
                 public void onSuccess() {
                     if (autoSign) {
@@ -298,11 +298,12 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
 
                 @Override
                 public void onFail() {
-                    if (!username.isEmpty()) {
-                        HintUtils.showToast(getApplicationContext(), "再漫画登录失败");
-                    }
+                    HintUtils.showToast(getApplicationContext(), "再漫画登录失败");
                 }
             }, username, passwordMd5);
+        } else if (timestamp > exp && !username.isEmpty()) {
+            // 有用户名但没有密码MD5（旧版本数据），提示重新登录
+            HintUtils.showToast(getApplicationContext(), "再漫画登录过期，请重新登录");
         } else if (autoSign) {
             ZaiManhuaSignUtils.CheckSigned(getApplicationContext(), isSigned -> {
                 if (!isSigned) {
