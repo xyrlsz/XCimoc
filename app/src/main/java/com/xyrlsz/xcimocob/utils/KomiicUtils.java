@@ -80,7 +80,8 @@ public class KomiicUtils {
         long now = System.currentTimeMillis() / 1000;
         return now >= expired;
     }
-    public static void login(Context context, String username,String password){
+
+    public static void login(Context context, String username, String password) {
         login(context, username, password, new OnLoginListener() {
             @Override
             public void onSuccess() {
@@ -89,11 +90,12 @@ public class KomiicUtils {
 
             @Override
             public void onFail() {
-                HintUtils.showToast(context,"Komiic 自动登录失败，请重新登录");
+                HintUtils.showToast(context, "Komiic 自动登录失败，请重新登录");
             }
         });
     }
-    public static void login(Context context, String username,String password ,OnLoginListener listener){
+
+    public static void login(Context context, String username, String password, OnLoginListener listener) {
         MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
         String json = "{\"email\":\"" + username + "\", \"password\":\"" + password + "\"}";
         RequestBody body = RequestBody.create(mediaType, json);
@@ -142,12 +144,13 @@ public class KomiicUtils {
                     editor.putLong(KOMIIC_SHARED_EXPIRED, expired);
                     editor.apply();
                     listener.onSuccess();
-                }else {
+                } else {
                     listener.onFail();
                 }
             }
         });
     }
+
     public static void refresh(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
         String cookies = sharedPreferences.getString(KOMIIC_SHARED_COOKIES, "");
@@ -160,17 +163,19 @@ public class KomiicUtils {
                 .addHeader("cookie", cookies)
                 .addHeader("Referer", "https://komiic.com/")
                 .build();
-
+        final int[] retryTimes = {0};
         try {
             Objects.requireNonNull(App.getHttpClient()).newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
                     // 网络失败时尝试用保存的账号密码重新登录
+                    if (retryTimes[0] > 2) return;
                     SharedPreferences sp = context.getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
                     String username = sp.getString(KOMIIC_SHARED_USERNAME, "");
                     String password = sp.getString(KOMIIC_SHARED_PASSWD, "");
                     if (!username.isEmpty() && !password.isEmpty()) {
                         login(context, username, password);
+                        retryTimes[0]++;
                     }
                 }
 
@@ -351,6 +356,7 @@ public class KomiicUtils {
 
     public interface OnLoginListener {
         void onSuccess();
+
         void onFail();
     }
 }

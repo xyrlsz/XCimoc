@@ -317,43 +317,6 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
             KomiicUtils.refresh(this);
         }
 
-        //        this.registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
-        //            @Override
-        //            public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-        ////                Log.d("ActivityLifecycle:",activity+"onActivityCreated");
-        //            }
-        //
-        //            @Override
-        //            public void onActivityStarted(Activity activity) {
-        ////                Log.d("ActivityLifecycle:",activity+"onActivityStarted");
-        ////
-        //            }
-        //
-        //            @Override
-        //            public void onActivityResumed(Activity activity) {
-        //
-        //            }
-        //
-        //            @Override
-        //            public void onActivityPaused(Activity activity) {
-        //
-        //            }
-        //
-        //            @Override
-        //            public void onActivityStopped(Activity activity) {
-        //
-        //            }
-        //
-        //            @Override
-        //            public void onActivitySaveInstanceState(Activity activity, Bundle outState) {
-        //
-        //            }
-        //
-        //            @Override
-        //            public void onActivityDestroyed(Activity activity) {
-        //
-        //            }
-        //        });
         FrescoUtils.init(this, 512);
     }
 
