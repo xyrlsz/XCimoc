@@ -445,7 +445,7 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
             });
         });
         loginDialog.setOnRegisterListener(() -> {
-            String url = "https://komiic.com/register";
+            String url = KomiicUtils.getBaseUrl() + "/register";
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setData(Uri.parse(url));
             startActivity(intent);

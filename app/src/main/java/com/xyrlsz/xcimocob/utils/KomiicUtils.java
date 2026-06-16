@@ -2,6 +2,7 @@ package com.xyrlsz.xcimocob.utils;
 
 import static android.content.Context.MODE_PRIVATE;
 import static com.xyrlsz.xcimocob.Constants.KOMIIC_SHARED;
+import static com.xyrlsz.xcimocob.Constants.KOMIIC_SHARED_BASEURL;
 import static com.xyrlsz.xcimocob.Constants.KOMIIC_SHARED_COOKIES;
 import static com.xyrlsz.xcimocob.Constants.KOMIIC_SHARED_EXPIRED;
 import static com.xyrlsz.xcimocob.Constants.KOMIIC_SHARED_PASSWD;
@@ -41,6 +42,48 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class KomiicUtils {
+    // 可切换的线路列表
+    private static final String[] FALLBACK_URLS = {
+            "https://komiic.com",
+            "https://komiic.cc"
+    };
+    // 当前使用的 baseUrl
+    private static String sBaseUrl = FALLBACK_URLS[0];
+
+    public static void setBaseUrl(String url) {
+        if (url != null && !url.isEmpty()) {
+            sBaseUrl = url;
+        }
+    }
+
+    public static String getBaseUrl() {
+        return sBaseUrl;
+    }
+
+    /**
+     * 切换到下一个可用线路，返回 true 表示切换成功
+     */
+    public static boolean switchToNextDomain() {
+        for (int i = 0; i < FALLBACK_URLS.length; i++) {
+            if (FALLBACK_URLS[i].equals(sBaseUrl)) {
+                int nextIndex = (i + 1) % FALLBACK_URLS.length;
+                sBaseUrl = FALLBACK_URLS[nextIndex];
+                // 持久化到 SharedPreferences
+                try {
+                    App.getAppContext()
+                            .getSharedPreferences(KOMIIC_SHARED, Context.MODE_PRIVATE)
+                            .edit()
+                            .putString(KOMIIC_SHARED_BASEURL, sBaseUrl)
+                            .apply();
+                } catch (Exception ignored) {
+                }
+                return true;
+            }
+        }
+        sBaseUrl = FALLBACK_URLS[0];
+        return true;
+    }
+
     /**
      * 从 Cookie 字符串中提取 JWT，解码 Payload 获取 exp 时间戳
      */
@@ -96,12 +139,16 @@ public class KomiicUtils {
     }
 
     public static void login(Context context, String username, String password, OnLoginListener listener) {
+        loginWithRetry(context, username, password, listener, 0);
+    }
+
+    private static void loginWithRetry(Context context, String username, String password, OnLoginListener listener, int retryCount) {
         MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
         String json = "{\"email\":\"" + username + "\", \"password\":\"" + password + "\"}";
         RequestBody body = RequestBody.create(mediaType, json);
         Request request = new Request.Builder()
-                .url("https://komiic.com/api/login")
-                .addHeader("referer", "https://komiic.com/login")
+                .url(sBaseUrl + "/api/login")
+                .addHeader("referer", sBaseUrl + "/login")
                 .addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
                 .post(body)
                 .build();
@@ -109,7 +156,13 @@ public class KomiicUtils {
         Objects.requireNonNull(App.getHttpClient()).newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                listener.onFail();
+                // 网络失败时尝试切换线路重试（最多重试所有线路一次）
+                if (retryCount < FALLBACK_URLS.length) {
+                    switchToNextDomain();
+                    loginWithRetry(context, username, password, listener, retryCount + 1);
+                } else {
+                    listener.onFail();
+                }
             }
 
             @Override
@@ -142,6 +195,7 @@ public class KomiicUtils {
                     editor.putString(KOMIIC_SHARED_USERNAME, username);
                     editor.putString(KOMIIC_SHARED_PASSWD, password);
                     editor.putLong(KOMIIC_SHARED_EXPIRED, expired);
+                    editor.putString(KOMIIC_SHARED_BASEURL, sBaseUrl);
                     editor.apply();
                     listener.onSuccess();
                 } else {
@@ -152,30 +206,37 @@ public class KomiicUtils {
     }
 
     public static void refresh(Context context) {
+        refreshWithRetry(context, 0);
+    }
+
+    private static void refreshWithRetry(Context context, int retryCount) {
         SharedPreferences sharedPreferences = context.getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
         String cookies = sharedPreferences.getString(KOMIIC_SHARED_COOKIES, "");
         if (cookies.isEmpty()) return; // 没有 cookie 无需刷新
 
         Request request = new Request.Builder()
-                .url("https://komiic.com/auth/refresh")
+                .url(sBaseUrl + "/auth/refresh")
                 .post(RequestBody.create(MediaType.get("application/json"), ""))
                 .addHeader("content-type", "application/json")
                 .addHeader("cookie", cookies)
-                .addHeader("Referer", "https://komiic.com/")
+                .addHeader("Referer", sBaseUrl + "/")
                 .build();
-        final int[] retryTimes = {0};
         try {
             Objects.requireNonNull(App.getHttpClient()).newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    // 网络失败时尝试用保存的账号密码重新登录
-                    if (retryTimes[0] > 2) return;
+                    // 网络失败时尝试切换线路重试
+                    if (retryCount < FALLBACK_URLS.length) {
+                        switchToNextDomain();
+                        refreshWithRetry(context, retryCount + 1);
+                        return;
+                    }
+                    // 所有线路都失败后，尝试用保存的账号密码重新登录
                     SharedPreferences sp = context.getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
                     String username = sp.getString(KOMIIC_SHARED_USERNAME, "");
                     String password = sp.getString(KOMIIC_SHARED_PASSWD, "");
                     if (!username.isEmpty() && !password.isEmpty()) {
                         login(context, username, password);
-                        retryTimes[0]++;
                     }
                 }
 
@@ -209,9 +270,12 @@ public class KomiicUtils {
                             SharedPreferences.Editor editor = sp.edit();
                             editor.putString(KOMIIC_SHARED_COOKIES, cookieStr);
                             editor.putLong(KOMIIC_SHARED_EXPIRED, expired);
+                            editor.putString(KOMIIC_SHARED_BASEURL, sBaseUrl);
                             editor.apply();
+                        } else {
+                            // 刷新成功但没有新 cookie，保留旧 cookie 即可，同时记录当前可用线路
+                            sp.edit().putString(KOMIIC_SHARED_BASEURL, sBaseUrl).apply();
                         }
-                        // else: 刷新成功但没有新 cookie，保留旧 cookie 即可
                     } else {
                         // refresh 失败（如 401），用保存的账号密码重新登录
                         String username = sp.getString(KOMIIC_SHARED_USERNAME, "");
@@ -253,10 +317,10 @@ public class KomiicUtils {
                 MediaType.parse("application/json; charset=utf-8"), json);
 
         Request request = new Request.Builder()
-                .url("https://komiic.com/api/query")
+                .url(sBaseUrl + "/api/query")
                 .addHeader("accept", "application/json, text/javascript, */*; q=0.01")
                 .addHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
-                .addHeader("referer", "https://komiic.com/login")
+                .addHeader("referer", sBaseUrl + "/login")
                 .addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
                 .addHeader("cookie", cookies)
                 .post(body)
@@ -299,8 +363,8 @@ public class KomiicUtils {
                 MediaType.parse("application/json; charset=utf-8"), json);
 
         Request request = new Request.Builder()
-                .url("https://komiic.com/api/query")
-                .addHeader("referer", "https://komiic.com/login")
+                .url(sBaseUrl + "/api/query")
+                .addHeader("referer", sBaseUrl + "/login")
                 .addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
                 .addHeader("cookie", cookies)
                 .post(body)

@@ -22,6 +22,7 @@ import com.xyrlsz.xcimocob.parser.MangaCategory;
 import com.xyrlsz.xcimocob.parser.MangaParser;
 import com.xyrlsz.xcimocob.parser.SearchIterator;
 import com.xyrlsz.xcimocob.parser.UrlFilter;
+import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.IdCreator;
 import com.xyrlsz.xcimocob.utils.KomiicUtils;
@@ -52,19 +53,65 @@ public class Komiic extends MangaParser {
     public static final int TYPE = 106;
     public static final String DEFAULT_TITLE = "komiic";
 
-    private static final String baseUrl = "https://komiic.com";
+    // 可自动切换的线路列表
+    private static final String[] FALLBACK_URLS = {
+            "https://komiic.com",
+            "https://komiic.cc"
+    };
 
+    private String baseUrl;
+    private Source mSource;
     private String _cid = "", _path = "";
 
     public Komiic(Source source) {
         init(source, new Category());
+        mSource = source;
+        // 优先使用 source 中保存的 baseUrl，其次 SharedPreferences，否则使用第一个线路
+        String savedUrl = source != null ? source.getBaseUrl() : null;
+        if (!isValidUrl(savedUrl)) {
+            savedUrl = App.getAppContext()
+                    .getSharedPreferences(Constants.KOMIIC_SHARED, Context.MODE_PRIVATE)
+                    .getString(Constants.KOMIIC_SHARED_BASEURL, null);
+        }
+        baseUrl = isValidUrl(savedUrl) ? savedUrl : FALLBACK_URLS[0];
+        KomiicUtils.setBaseUrl(baseUrl);
         if (KomiicUtils.checkExpired()) {
             KomiicUtils.refresh(App.getAppContext());
         }
     }
 
     public static Source getDefaultSource() {
-        return new Source(null, DEFAULT_TITLE, TYPE, true, baseUrl);
+        return new Source(null, DEFAULT_TITLE, TYPE, true, FALLBACK_URLS[0]);
+    }
+
+    /**
+     * 尝试切换到下一个可用线路，并持久化到 Source
+     */
+    private boolean switchToNextDomain() {
+        for (int i = 0; i < FALLBACK_URLS.length; i++) {
+            if (FALLBACK_URLS[i].equals(baseUrl)) {
+                int nextIndex = (i + 1) % FALLBACK_URLS.length;
+                baseUrl = FALLBACK_URLS[nextIndex];
+                KomiicUtils.setBaseUrl(baseUrl);
+                // 持久化到 Source
+                if (mSource != null) {
+                    mSource.setBaseUrl(baseUrl);
+                    SourceManager.getInstance(App.getApp()).update(mSource);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isValidUrl(String url) {
+        return url != null && !url.isEmpty() &&
+                (url.startsWith("https://komiic.com") || url.startsWith("https://komiic.cc"));
+    }
+
+    /** 获取当前使用的域名（供外部读取当前线路） */
+    public String getBaseUrl() {
+        return baseUrl;
     }
 
     @Override
@@ -127,6 +174,7 @@ public class Komiic extends MangaParser {
     @Override
     protected void initUrlFilterList() {
         filter.add(new UrlFilter("komiic.com"));
+        filter.add(new UrlFilter("komiic.cc"));
     }
 
     @Override
@@ -264,7 +312,7 @@ public class Komiic extends MangaParser {
             Long comicChapter = chapter.getId();
             Long id = IdCreator.createImageId(comicChapter, i);
             String imgUrl = imgBaseUrl + images.getJSONObject(i - 1).getString("kid");
-            Headers headers = Headers.of("referer", StringUtils.format("https://komiic.com/comic/%s/chapter/%s", _cid, chapter.getPath()), "cookie", _cookies);
+            Headers headers = Headers.of("referer", StringUtils.format("%s/comic/%s/chapter/%s", baseUrl, _cid, chapter.getPath()), "cookie", _cookies);
             list.add(new ImageUrl(id, comicChapter, i, imgUrl, false, headers));
         }
         return list;
@@ -277,7 +325,7 @@ public class Komiic extends MangaParser {
 
     @Override
     public Headers getHeader() {
-        return Headers.of("referer", StringUtils.format("https://komiic.com/comic/%s/chapter/%s", _cid, _path));
+        return Headers.of("referer", StringUtils.format("%s/comic/%s/chapter/%s", baseUrl, _cid, _path));
     }
 
 
