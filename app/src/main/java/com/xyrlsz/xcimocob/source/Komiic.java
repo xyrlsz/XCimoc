@@ -38,11 +38,14 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Headers;
 import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * Created by xyrlsz on 2025/01/21.
@@ -75,6 +78,8 @@ public class Komiic extends MangaParser {
         }
         baseUrl = isValidUrl(savedUrl) ? savedUrl : FALLBACK_URLS[0];
         KomiicUtils.setBaseUrl(baseUrl);
+        // 在后台线程探测可用域名，避免阻塞主线程
+        new Thread(this::probeAvailableDomain).start();
         if (KomiicUtils.checkExpired()) {
             KomiicUtils.refresh(App.getAppContext());
         }
@@ -82,6 +87,59 @@ public class Komiic extends MangaParser {
 
     public static Source getDefaultSource() {
         return new Source(null, DEFAULT_TITLE, TYPE, true, FALLBACK_URLS[0]);
+    }
+
+    /**
+     * 快速探测所有线路，切换到第一个能正常响应的域名
+     */
+    private void probeAvailableDomain() {
+        OkHttpClient probeClient = new OkHttpClient.Builder()
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                .followRedirects(true)
+                .retryOnConnectionFailure(false)
+                .build();
+
+        // 从当前 baseUrl 开始检查，如果不行再试其他线路
+        int startIdx = 0;
+        for (int i = 0; i < FALLBACK_URLS.length; i++) {
+            if (FALLBACK_URLS[i].equals(baseUrl)) {
+                startIdx = i;
+                break;
+            }
+        }
+
+        for (int i = 0; i < FALLBACK_URLS.length; i++) {
+            int idx = (startIdx + i) % FALLBACK_URLS.length;
+            String testUrl = FALLBACK_URLS[idx];
+
+            Request req = new Request.Builder()
+                    .url(testUrl + "/api/query")
+                    .post(RequestBody.create(
+                            "{\"operationName\":null,\"variables\":{},\"query\":\"query{__typename}\"}",
+                            MediaType.parse("application/json; charset=utf-8")))
+                    .build();
+
+            try {
+                Response resp = probeClient.newCall(req).execute();
+                boolean ok = resp.isSuccessful();
+                resp.close();
+                if (ok) {
+                    if (!testUrl.equals(baseUrl)) {
+                        baseUrl = testUrl;
+                        KomiicUtils.setBaseUrl(baseUrl);
+                        // 持久化
+                        if (mSource != null) {
+                            mSource.setBaseUrl(baseUrl);
+                            SourceManager.getInstance(App.getApp()).update(mSource);
+                        }
+                    }
+                    return;
+                }
+            } catch (Exception ignored) {
+                // 当前线路不可用，继续尝试下一个
+            }
+        }
     }
 
     /**
