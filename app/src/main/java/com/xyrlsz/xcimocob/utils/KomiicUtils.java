@@ -304,6 +304,54 @@ public class KomiicUtils {
         return t;
     }
 
+    /**
+     * 从本地缓存获取剩余可看页数，-1 表示无缓存
+     */
+    public static int getCachedImageLimit() {
+        return getCachedImageLimit(App.getAppContext().getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE)
+                .getString(KOMIIC_SHARED_COOKIES, ""));
+    }
+
+    /**
+     * 从本地缓存获取指定 cookie 对应的剩余可看页数，-1 表示无缓存
+     */
+    public static int getCachedImageLimit(String cookies) {
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
+        String key = cookies.isEmpty() ? "empty" : "logged";
+        long cacheTime = sp.getLong(Constants.KOMIIC_SHARED_IMG_LIMIT_TIME + "_" + key, -1L);
+        int cachedLimit = sp.getInt(Constants.KOMIIC_SHARED_IMG_LIMIT + "_" + key, -1);
+        // 缓存 5 分钟内有效
+        if (cacheTime > 0 && cachedLimit >= 0 && (System.currentTimeMillis() - cacheTime) < 300_000) {
+            return cachedLimit;
+        }
+        return -1;
+    }
+
+    /**
+     * 将剩余可看页数保存到本地缓存
+     */
+    private static void saveImageLimitToCache(String cookies, int limit) {
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
+        String key = cookies.isEmpty() ? "empty" : "logged";
+        sp.edit()
+                .putInt(Constants.KOMIIC_SHARED_IMG_LIMIT + "_" + key, limit)
+                .putLong(Constants.KOMIIC_SHARED_IMG_LIMIT_TIME + "_" + key, System.currentTimeMillis())
+                .apply();
+    }
+
+    /**
+     * 清除本地缓存的剩余可看页数
+     */
+    public static void clearImageLimitCache() {
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
+        sp.edit()
+                .remove(Constants.KOMIIC_SHARED_IMG_LIMIT + "_empty")
+                .remove(Constants.KOMIIC_SHARED_IMG_LIMIT_TIME + "_empty")
+                .remove(Constants.KOMIIC_SHARED_IMG_LIMIT + "_logged")
+                .remove(Constants.KOMIIC_SHARED_IMG_LIMIT_TIME + "_logged")
+                .apply();
+    }
+
     public static void getImageLimit(UpdateImageLimitCallback callback) {
         SharedPreferences sharedPreferences = App.getAppContext().getSharedPreferences(Constants.KOMIIC_SHARED, MODE_PRIVATE);
         String cookies = sharedPreferences.getString(KOMIIC_SHARED_COOKIES, "");
@@ -343,7 +391,10 @@ public class KomiicUtils {
                             int usage = data.getJSONObject("getImageLimit").getInt("usage");
                             usage = Math.max(usage - 1, 0);
                             int res = limit - usage;
-                            callback.onSuccess(Math.max(res, 0));
+                            int remaining = Math.max(res, 0);
+                            // 缓存结果
+                            saveImageLimitToCache(cookies, remaining);
+                            callback.onSuccess(remaining);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }

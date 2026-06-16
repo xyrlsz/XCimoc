@@ -21,6 +21,8 @@ public final class Constants {
     public static final String KOMIIC_SHARED_PASSWD = "passwd";
     public static final String KOMIIC_SHARED_EXPIRED = "expired";
     public static final String KOMIIC_SHARED_BASEURL = "baseUrl";
+    public static final String KOMIIC_SHARED_IMG_LIMIT = "img_limit";
+    public static final String KOMIIC_SHARED_IMG_LIMIT_TIME = "img_limit_time";
 
     public static final String VOMIC_SHARED = "vomicmh";
     public static final String VOMIC_SHARED_COOKIES = "cookies";

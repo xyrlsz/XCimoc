@@ -97,6 +97,20 @@
                     </RelativeLayout>
                 </com.xyrlsz.xcimocob.ui.widget.Option>
 
+                <com.xyrlsz.xcimocob.ui.widget.Option
+                    android:id="@+id/comic_login_komiic_limit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    app:title="@string/settings_komiic_img_limit_summary" />
+
+                <com.xyrlsz.xcimocob.ui.widget.Option
+                    android:id="@+id/comic_login_komiic_empty_limit"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    app:title="@string/empty_account_limit" />
+
                 <TextView
                     android:id="@+id/comic_login_vomicmh"
                     android:layout_width="match_parent"

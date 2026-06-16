@@ -72,6 +72,8 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
     ImageButton mDmzjLogout;
     Option mkomiicLogin;
     ImageButton mKomiicLogout;
+    Option mKomiicLimit;
+    Option mKomiicEmptyLimit;
     Option mVoMiCMHLogin;
     ImageButton mVoMiCMHLogout;
     Option mZaiLogin;
@@ -118,6 +120,8 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
         mDmzjLogout = findViewById(R.id.comic_login_dmzj_logout);
         mkomiicLogin = findViewById(R.id.comic_login_komiic_login);
         mKomiicLogout = findViewById(R.id.comic_login_komiic_logout);
+        mKomiicLimit = findViewById(R.id.comic_login_komiic_limit);
+        mKomiicEmptyLimit = findViewById(R.id.comic_login_komiic_empty_limit);
         mVoMiCMHLogin = findViewById(R.id.comic_login_vomicmh_login);
         mVoMiCMHLogout = findViewById(R.id.comic_login_vomicmh_logout);
         mZaiLogin = findViewById(R.id.comic_login_zai_login);
@@ -154,22 +158,33 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
         String komiicUsername = getSharedPreferences(KOMIIC_SHARED, MODE_PRIVATE).getString(KOMIIC_SHARED_USERNAME, "");
         if (!komiicUsername.isEmpty()) {
             mkomiicLogin.setSummary(komiicUsername);
-//            KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
-//                mkomiicLogin.setSummary(komiicUsername + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
-//                CharSequence tmp = mkomiicLogin.getSummary();
-//                KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
-//                    mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.empty_account_limit) + res);
-//                }));
-//            }));
             mkomiicLogin.setTitle(getString(R.string.logined));
             mKomiicLogout.setVisibility(View.VISIBLE);
+            mKomiicLimit.setVisibility(View.VISIBLE);
+            mKomiicEmptyLimit.setVisibility(View.VISIBLE);
+            // 先显示本地缓存
+            int cachedLimit = KomiicUtils.getCachedImageLimit();
+            mKomiicLimit.setSummary(cachedLimit >= 0 ? String.valueOf(cachedLimit) : "...");
+            int cachedEmptyLimit = KomiicUtils.getCachedImageLimit("");
+            mKomiicEmptyLimit.setSummary(cachedEmptyLimit >= 0 ? String.valueOf(cachedEmptyLimit) : "...");
+            // 异步从服务器刷新
+            KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
+                mKomiicLimit.setSummary(String.valueOf(result));
+            }));
+            KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
+                mKomiicEmptyLimit.setSummary(String.valueOf(res));
+            }));
+        } else {
+            mKomiicLimit.setVisibility(View.GONE);
+            mKomiicEmptyLimit.setVisibility(View.VISIBLE);
+            // 先显示本地缓存
+            int cachedEmptyLimit = KomiicUtils.getCachedImageLimit("");
+            mKomiicEmptyLimit.setSummary(cachedEmptyLimit >= 0 ? String.valueOf(cachedEmptyLimit) : "...");
+            // 异步刷新
+            KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
+                mKomiicEmptyLimit.setSummary(String.valueOf(res));
+            }));
         }
-//        else {
-//            CharSequence tmp = mkomiicLogin.getSummary();
-//            KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
-//                mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
-//            }));
-//        }
 
         String vomicmhUsername = getSharedPreferences(VOMIC_SHARED, MODE_PRIVATE).getString(VOMIC_SHARED_USERNAME, "");
         if (!vomicmhUsername.isEmpty()) {
@@ -424,14 +439,21 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
                     runOnUiThread(() -> {
                         mkomiicLogin.setSummary(username);
                         mkomiicLogin.setTitle(getString(R.string.logined));
-//                        KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
-//                            mkomiicLogin.setSummary(username + "\n" + getString(R.string.settings_komiic_img_limit_summary) + result);
-//                            CharSequence tmp = mkomiicLogin.getSummary();
-//                            KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
-//                                mkomiicLogin.setSummary(tmp + "\n" + getString(R.string.empty_account_limit) + res);
-//                            }));
-//                        }));
                         mKomiicLogout.setVisibility(View.VISIBLE);
+                        mKomiicLimit.setVisibility(View.VISIBLE);
+                        mKomiicEmptyLimit.setVisibility(View.VISIBLE);
+                        // 先显示本地缓存
+                        int cachedLimit = KomiicUtils.getCachedImageLimit();
+                        mKomiicLimit.setSummary(cachedLimit >= 0 ? String.valueOf(cachedLimit) : "...");
+                        int cachedEmptyLimit = KomiicUtils.getCachedImageLimit("");
+                        mKomiicEmptyLimit.setSummary(cachedEmptyLimit >= 0 ? String.valueOf(cachedEmptyLimit) : "...");
+                        // 异步从服务器刷新
+                        KomiicUtils.getImageLimit(result -> mKomiicLogout.post(() -> {
+                            mKomiicLimit.setSummary(String.valueOf(result));
+                        }));
+                        KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
+                            mKomiicEmptyLimit.setSummary(String.valueOf(res));
+                        }));
                     });
                     onLoginSuccess();
                     loginDialog.dismiss();
@@ -460,9 +482,24 @@ public class ComicSourceLoginActivity extends BackActivity implements ComicSourc
         editor.remove(KOMIIC_SHARED_USERNAME);
         editor.remove(KOMIIC_SHARED_EXPIRED);
         editor.apply();
+        // 清除已登录账号的缓存限额，保留空账号缓存
+        SharedPreferences sp = App.getAppContext().getSharedPreferences(KOMIIC_SHARED, MODE_PRIVATE);
+        sp.edit()
+                .remove(Constants.KOMIIC_SHARED_IMG_LIMIT + "_logged")
+                .remove(Constants.KOMIIC_SHARED_IMG_LIMIT_TIME + "_logged")
+                .apply();
         mkomiicLogin.setSummary(getString(R.string.no_login));
         mkomiicLogin.setTitle(getString(R.string.login));
         mKomiicLogout.setVisibility(View.GONE);
+        mKomiicLimit.setVisibility(View.GONE);
+        mKomiicEmptyLimit.setVisibility(View.VISIBLE);
+        // 先显示本地缓存
+        int cachedEmptyLimit = KomiicUtils.getCachedImageLimit("");
+        mKomiicEmptyLimit.setSummary(cachedEmptyLimit >= 0 ? String.valueOf(cachedEmptyLimit) : "...");
+        // 异步刷新空账号限额
+        KomiicUtils.getImageLimit("", res -> mKomiicLogout.post(() -> {
+            mKomiicEmptyLimit.setSummary(String.valueOf(res));
+        }));
     }
 
     // vomicmh漫
