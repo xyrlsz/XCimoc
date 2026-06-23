@@ -19,6 +19,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -161,31 +164,89 @@ public class YKMH extends MangaParser {
 
 
     @Override
-    public List<ImageUrl> parseImages(String html, Chapter chapter) throws Manga.NetworkErrorException, JSONException {
+    public List<ImageUrl> parseImages(String html, Chapter chapter) throws Manga.NetworkErrorException {
         List<ImageUrl> list = new LinkedList<>();
-        Matcher matcher = Pattern.compile("var chapterImages\\s*=\\s*\\[(.+?)]").matcher(html);
-        if (!matcher.find()) {
-            return null;
+
+        // 1. 提取 pageImage 的完整 URL，并解析出域名
+        String baseDomain = extractDomainFromPageImage(html);
+        if (baseDomain == null) {
+            baseDomain = "";
         }
-        String CDATA = String.format("[%s]", matcher.group(1));
-        JSONArray array;
+
+        // 2. 提取 chapterImages 数组
+        Matcher matcher = Pattern.compile(
+                "var chapterImages\\s*=\\s*(\\[[\\s\\S]*?]);",
+                Pattern.DOTALL
+        ).matcher(html);
+
+        if (!matcher.find()) {
+            return Collections.emptyList(); // 或抛出明确异常
+        }
+
+        String arrayJson = matcher.group(1);
         try {
-            array = new JSONArray(CDATA);
+            JSONArray array = new JSONArray(arrayJson);
             for (int i = 0; i < array.length(); i++) {
                 String url = array.getString(i);
-                Long comicChapter = chapter.getId();
-                Long id = IdCreator.createImageId(comicChapter, i);
-                list.add(new ImageUrl(id, comicChapter, i + 1, url, false));
+                // 3. 补全域名（如果当前 URL 是相对路径）
+                String urlDomain = extractDomainFromPageImage(url);
+                String fullUrl;
+                if (StringUtils.isEmpty(urlDomain)) {
+                    fullUrl = resolveUrl(baseDomain, url);
+                } else {
+                    fullUrl = url;
+                }
+                long comicChapter = chapter.getId();
+                long id = IdCreator.createImageId(comicChapter, i);
+                list.add(new ImageUrl(id, comicChapter, i + 1, fullUrl, false));
             }
-
         } catch (JSONException e) {
-            e.printStackTrace();
-            Log.e("parseImages", "parseImages Error", e);
-            return null;
+            Log.e("parseImages", "Failed to parse JSON array: " + arrayJson, e);
 
         }
-
         return list;
+    }
+
+    /**
+     * 从 HTML 中提取 pageImage 变量的完整 URL，并返回其域名（协议+主机部分）
+     * 例如：https://fm.haotuyk.top/images/... -> https://fm.haotuyk.top
+     */
+    private String extractDomainFromPageImage(String html) {
+        Pattern pattern = Pattern.compile("var pageImage\\s*=\\s*\"([^\"]+)\"");
+        Matcher matcher = pattern.matcher(html);
+        if (matcher.find()) {
+            String pageImageUrl = matcher.group(1);
+            try {
+                URI uri = new URI(pageImageUrl);
+                String scheme = uri.getScheme();
+                String host = uri.getHost();
+                if (scheme != null && host != null) {
+                    return scheme + "://" + host;
+                }
+            } catch (URISyntaxException e) {
+                Log.w("parseImages", "Invalid pageImage URL: " + pageImageUrl, e);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 补全 URL：如果 url 是相对路径（不以 http:// 或 https:// 开头），则拼接 baseDomain
+     */
+    private String resolveUrl(String baseDomain, String url) {
+        if (baseDomain == null || baseDomain.isEmpty()) {
+            return url;
+        }
+        // 如果已经是绝对 URL 或协议相对 URL，直接返回
+        if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("//")) {
+            return url;
+        }
+        // 相对路径：确保拼接时没有重复斜杠
+        if (url.startsWith("/")) {
+            return baseDomain + url;
+        } else {
+            return baseDomain + "/" + url;
+        }
     }
 
     @Override

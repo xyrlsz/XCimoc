@@ -135,9 +135,9 @@ public class ManWa extends MangaParser {
         Node body = new Node(html);
         List<Node> imageNodes = body.list("#chapterPic > img");
         for (int i = 1; i <= imageNodes.size(); i++) {
-            Long comicChapter = chapter.getId();
-            Long id = IdCreator.createImageId(comicChapter, i);
-            String imgUrl = picBaseUrl + imageNodes.get(i - 1).attr("data-src");
+            long comicChapter = chapter.getId();
+            long id = IdCreator.createImageId(comicChapter, i);
+            String imgUrl = imageNodes.get(i - 1).attr("data-src");
             list.add(new ImageUrl(id, comicChapter, i, imgUrl, false, getHeader()));
         }
         return list;

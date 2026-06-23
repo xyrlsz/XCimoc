@@ -22,8 +22,7 @@ import javax.crypto.spec.SecretKeySpec;
  * Created by Hiroshi on 2016/7/8.
  */
 public class DecryptionUtils {
-
-    public static String decryptAES(String value, String  key) throws Exception {
+    public static String decryptAES(String value, String key) throws Exception {
         SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(), "AES");
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.DECRYPT_MODE, secretKey);
