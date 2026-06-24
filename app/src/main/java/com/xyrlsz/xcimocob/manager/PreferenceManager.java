@@ -52,7 +52,7 @@ public class PreferenceManager {
     public static final String PREF_READER_HIDE_NAV = "pref_reader_hide_nav";
     public static final String PREF_READER_BAN_DOUBLE_CLICK = "pref_reader_ban_double_click";
     public static final String PREF_READER_PAGING = "pref_reader_paging";
-    public static final String PREF_READER_CLOSEAUTORESIZEIMAGE = "pref_reader_closeautoresizeimage ";
+    public static final String PREF_READER_CLOSEAUTORESIZEIMAGE = "pref_reader_closeautoresizeimage";
     public static final String PREF_READER_PAGING_REVERSE = "pref_reader_paging_reverse";
     public static final String PREF_READER_PAGING_STREAM_OFF = "pref_reader_paging_stream_off";
     public static final String PREF_READER_WHITE_EDGE = "pref_reader_white_edge";

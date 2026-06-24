@@ -131,10 +131,12 @@ public class DataSyncClient {
 
             long exp = Long.parseLong(numStr.toString()) * 1000; // 转毫秒
             long now = System.currentTimeMillis();
-            long sevenDays = 7L * 24 * 60 * 60 * 1000;
+            // 服务端签发的 token 有效期为 7 天
+            // 剩余有效期少于 1 天时触发刷新，避免无意义的频繁刷新
+            long oneDayMs = 24L * 60 * 60 * 1000;
 
-            // 如果剩余有效期少于 7 天，需要刷新
-            return (exp - now) < sevenDays;
+            // 如果剩余有效期少于 1 天，需要刷新
+            return (exp - now) < oneDayMs;
         } catch (Exception e) {
             Log.w("DataSyncClient", "Failed to parse token expiry", e);
             return false;

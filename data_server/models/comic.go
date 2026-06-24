@@ -41,4 +41,5 @@ type ComicSyncItem struct {
 	Page         *int   `json:"page"`
 	Chapter      string `json:"chapter"`
 	ChapterCount *int   `json:"chapter_count"`
+	ClearHistory bool   `json:"clear_history"` // true 时表示客户端明确要求清除历史记录
 }

@@ -4,6 +4,7 @@ import static com.xyrlsz.xcimocob.utils.WebDavUtils.upload2WebDav;
 
 import android.content.ContentResolver;
 import android.text.TextUtils;
+import android.util.Log;
 import android.util.Pair;
 
 import com.xyrlsz.xcimocob.App;
@@ -17,6 +18,7 @@ import com.xyrlsz.xcimocob.model.MiniComic;
 import com.xyrlsz.xcimocob.model.Tag;
 import com.xyrlsz.xcimocob.model.TagRef;
 import com.xyrlsz.xcimocob.network.sync.DataSyncClient;
+import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.network.sync.DataSyncModels;
 import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
@@ -25,10 +27,13 @@ import com.xyrlsz.xcimocob.saf.WebDavCimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.view.BackupView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -528,7 +533,9 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                 .map(new Function<List<Comic>, List<DataSyncModels.ComicSyncItem>>() {
                     @Override
                     public List<DataSyncModels.ComicSyncItem> apply(List<Comic> comics) {
-                        List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size());
+                        List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size() + 8);
+                        // 记录已出现在常规上传中的漫画 key，避免与清除标记冲突
+                        java.util.Set<String> uploadedKeys = new java.util.HashSet<>();
                         for (Comic comic : comics) {
                             DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
                             item.source = comic.getSource();
@@ -544,6 +551,27 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             item.chapter = comic.getChapter();
                             item.chapter_count = comic.getChapterCount();
                             items.add(item);
+                            uploadedKeys.add(comic.getSource() + ":" + comic.getCid());
+                        }
+                        // 附加标记了"历史已删除"的漫画（跳过已在本地重新有数据的）
+                        java.util.Set<String> deletedKeys = DataSyncManager.getHistoryDeletedKeysForUpload();
+                        for (String key : deletedKeys) {
+                            if (uploadedKeys.contains(key)) {
+                                continue;
+                            }
+                            String[] parts = key.split(":", 2);
+                            if (parts.length == 2) {
+                                DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                                try {
+                                    delItem.source = Integer.parseInt(parts[0]);
+                                } catch (NumberFormatException e) {
+                                    Log.w("BackupPresenter", "Invalid history deleted key (source not int): " + key);
+                                    continue;
+                                }
+                                delItem.cid = parts[1];
+                                delItem.clear_history = true;
+                                items.add(delItem);
+                            }
                         }
                         return items;
                     }
@@ -564,6 +592,8 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                 .subscribe(new Consumer<DataSyncModels.ComicSyncResponse>() {
                     @Override
                     public void accept(DataSyncModels.ComicSyncResponse resp) {
+                        // 上传成功后清除历史删除标记
+                        DataSyncManager.clearHistoryDeletedKeysAfterUpload();
                         mBaseView.onDataSyncComicSuccess(resp.synced, resp.skipped);
                     }
                 }, new Consumer<Throwable>() {
@@ -593,7 +623,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
                     List<DataSyncModels.SettingItem> items = new ArrayList<>();
                     for (Map.Entry<String, ?> entry : allPrefs.entrySet()) {
-                        if (entry.getValue() != null) {
+                        if (entry.getValue() != null && !SENSITIVE_KEYS.contains(entry.getKey())) {
                             items.add(new DataSyncModels.SettingItem(entry.getKey(), entry.getValue().toString()));
                         }
                     }
@@ -657,11 +687,11 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                         }
                         client.syncComics(token, comicItems);
 
-                        // 2. 同步设置
+                        // 2. 同步设置（过滤敏感 key）
                         Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
                         List<DataSyncModels.SettingItem> settingItems = new ArrayList<>();
                         for (Map.Entry<String, ?> entry : allPrefs.entrySet()) {
-                            if (entry.getValue() != null) {
+                            if (entry.getValue() != null && !SENSITIVE_KEYS.contains(entry.getKey())) {
                                 settingItems.add(new DataSyncModels.SettingItem(entry.getKey(), entry.getValue().toString()));
                             }
                         }
@@ -686,6 +716,16 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     }
                 }));
     }
+
+    /** 敏感 key 列表：不上传到服务器，也不从服务器覆盖本地 */
+    private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
+            PreferenceManager.PREFERENCES_USER_TOCKEN,
+            PreferenceManager.PREFERENCES_USER_NAME,
+            PreferenceManager.PREFERENCES_USER_EMAIL,
+            PreferenceManager.PREFERENCES_USER_ID,
+            PreferenceManager.PREF_DATA_SERVER_URL,
+            PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC
+    ));
 
     // ==================== 从服务器下载/恢复 ====================
 
@@ -748,8 +788,9 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                         local.setFavorite(item.favorite);
                                         changed = true;
                                     }
-                                    // 用服务器端较新的历史时间戳
-                                    if (item.history != null && (local.getHistory() == null || item.history > local.getHistory())) {
+                                    // 用服务器端较新的历史时间戳（如果本地未标记为"已删除"）
+                                    boolean historyDeleted = DataSyncManager.isHistoryDeleted(item.source, item.cid);
+                                    if (!historyDeleted && item.history != null && (local.getHistory() == null || item.history > local.getHistory())) {
                                         local.setHistory(item.history);
                                         local.setLast(item.last);
                                         local.setPage(item.page);
@@ -837,7 +878,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                         PreferenceManager pm = App.getPreferenceManager();
                         int count = 0;
                         for (DataSyncModels.SettingServerItem item : serverSettings) {
-                            if (item.key != null && item.value != null) {
+                            if (item.key != null && item.value != null && !SENSITIVE_KEYS.contains(item.key)) {
                                 pm.putObject(item.key, item.value);
                                 count++;
                             }
@@ -912,7 +953,8 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                             local.setFavorite(item.favorite);
                                             changed = true;
                                         }
-                                        if (item.history != null && (local.getHistory() == null || item.history > local.getHistory())) {
+                                        boolean historyDeleted = DataSyncManager.isHistoryDeleted(item.source, item.cid);
+                                        if (!historyDeleted && item.history != null && (local.getHistory() == null || item.history > local.getHistory())) {
                                             local.setHistory(item.history);
                                             local.setLast(item.last);
                                             local.setPage(item.page);
@@ -945,12 +987,12 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             }
                         }
 
-                        // 2. 恢复设置
+                        // 2. 恢复设置（跳过敏感 key）
                         List<DataSyncModels.SettingServerItem> serverSettings = client.listSettings(token);
                         if (serverSettings != null) {
                             PreferenceManager pm = App.getPreferenceManager();
                             for (DataSyncModels.SettingServerItem item : serverSettings) {
-                                if (item.key != null && item.value != null) {
+                                if (item.key != null && item.value != null && !SENSITIVE_KEYS.contains(item.key)) {
                                     pm.putObject(item.key, item.value);
                                 }
                             }

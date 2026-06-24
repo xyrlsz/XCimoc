@@ -74,6 +74,8 @@ func (h *TagHandler) Sync(c *gin.Context) {
 	tx.Where("user_id = ?", userID).Delete(&models.Tag{})
 
 	// Insert new tags with batch refs
+	syncedTags := 0
+	syncedRefs := 0
 	for _, item := range req.Tags {
 		if item.Title == "" {
 			continue
@@ -88,6 +90,7 @@ func (h *TagHandler) Sync(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "保存标签失败: " + result.Error.Error()})
 			return
 		}
+		syncedTags++
 
 		// 批量插入 TagRef（减少数据库 round-trip）
 		refs := make([]models.TagRef, 0, len(item.Comics))
@@ -108,12 +111,15 @@ func (h *TagHandler) Sync(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "保存标签关联失败"})
 				return
 			}
+			syncedRefs += len(refs)
 		}
 	}
 
 	tx.Commit()
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "标签同步完成",
+		"synced":      syncedTags,
+		"synced_refs": syncedRefs,
+		"message":     "标签同步完成",
 	})
 }

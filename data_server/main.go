@@ -27,20 +27,18 @@ func main() {
 	if hasSetAdminCommand() {
 		// 手动提取 --config 参数（如果有）
 		configPath := extractFlag("config")
+
+		// 提取密码：密码必须是 "set" 和 "admin" 之后的第一个非 flag 参数
 		newPassword := ""
-		if configPath != "" {
-			// 带 --config: xcimoc ... --config path set admin PWD
-			// password 是最后一个非 flag 参数
-			for i := len(os.Args) - 1; i >= 0; i-- {
-				if !strings.HasPrefix(os.Args[i], "-") {
-					newPassword = os.Args[i]
-					break
+		for i := 0; i < len(os.Args); i++ {
+			if strings.EqualFold(os.Args[i], "admin") && i+1 < len(os.Args) {
+				// "admin" 之后的参数如果是密码，不能以 - 开头（除非是负数密码，实际不会出现）
+				potentialPwd := os.Args[i+1]
+				if !strings.HasPrefix(potentialPwd, "-") {
+					newPassword = potentialPwd
 				}
+				break
 			}
-		} else {
-			// 无 --config: xcimoc ... set admin PWD
-			// password 是 os.Args[len-1]
-			newPassword = os.Args[len(os.Args)-1]
 		}
 
 		if len(newPassword) < 6 {

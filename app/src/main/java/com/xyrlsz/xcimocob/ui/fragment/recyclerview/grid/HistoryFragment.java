@@ -72,6 +72,7 @@ public class HistoryFragment extends GridFragment implements HistoryView {
                                 R.string.history_delete_confirm, true, DIALOG_REQUEST_DELETE);
                         fragment.setTargetFragment(this, 0);
                         fragment.show(requireActivity().getSupportFragmentManager(), null);
+                        break;
                     default:
                         break;
                 }
@@ -91,16 +92,16 @@ public class HistoryFragment extends GridFragment implements HistoryView {
 
     @Override
     public void onHistoryClearSuccess() {
-        hideProgressDialog();
         mGridAdapter.clear();
         HintUtils.showToast(getActivity(), R.string.common_execute_success);
+        hideProgressDialog();
     }
 
     @Override
     public void onHistoryDelete(long id) {
-        hideProgressDialog();
         mGridAdapter.removeItemById(mSavedId);
         HintUtils.showToast(getActivity(), R.string.common_execute_success);
+        hideProgressDialog();
     }
 
     @Override

@@ -13,8 +13,11 @@ import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -255,14 +258,48 @@ public class DataSyncManager {
         return true;
     }
 
-    /** 上传本地漫画到服务端 */
+    /** 上传本地漫画到服务端（包括历史删除标记） */
     private void uploadComics(DataSyncClient client, String token) throws Exception {
         List<Comic> comics = mComicManager.listFavoriteOrHistory();
-        List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size());
+        List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size() + 8);
+        // 记录已出现在常规上传中的漫画 key，避免与清除标记冲突
+        Set<String> uploadedKeys = new HashSet<>();
         for (Comic c : comics) {
             items.add(buildComicSyncItem(c));
+            uploadedKeys.add(c.getSource() + ":" + c.getCid());
         }
+
+        // 附加标记了"历史已删除"的漫画，通知服务端清除历史
+        // 跳过那些已在本地重新有了 history/favorite 的漫画
+        Set<String> deletedKeys = getHistoryDeletedKeys();
+        if (!deletedKeys.isEmpty()) {
+            for (String key : deletedKeys) {
+                if (uploadedKeys.contains(key)) {
+                    // 漫画已在本地重新有了数据（用户又收藏或阅读了），不再发送清除标记
+                    continue;
+                }
+                String[] parts = key.split(":", 2);
+                if (parts.length == 2) {
+                    DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
+                    try {
+                        item.source = Integer.parseInt(parts[0]);
+                    } catch (NumberFormatException e) {
+                        Log.w(TAG, "Invalid history deleted key (source not int): " + key);
+                        continue;
+                    }
+                    item.cid = parts[1];
+                    item.clear_history = true;
+                    items.add(item);
+                }
+            }
+        }
+
         client.syncComics(token, items);
+
+        // 上传成功后清除所有删除标记
+        if (!deletedKeys.isEmpty()) {
+            clearHistoryDeletedKeys();
+        }
     }
 
     /** 从服务端下载漫画并合并到本地 */
@@ -281,26 +318,36 @@ public class DataSyncManager {
         }
     }
 
-    /** 上传本地设置到服务端 */
+    /** 敏感 key 列表：不上传到服务器，也不从服务器覆盖本地 */
+    private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
+            PreferenceManager.PREFERENCES_USER_TOCKEN,
+            PreferenceManager.PREFERENCES_USER_NAME,
+            PreferenceManager.PREFERENCES_USER_EMAIL,
+            PreferenceManager.PREFERENCES_USER_ID,
+            PreferenceManager.PREF_DATA_SERVER_URL,
+            PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC
+    ));
+
+    /** 上传本地设置到服务端（过滤掉敏感 key） */
     private void uploadSettings(DataSyncClient client, String token) throws Exception {
         Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
         List<DataSyncModels.SettingItem> settingItems = new ArrayList<>();
         for (Map.Entry<String, ?> e : allPrefs.entrySet()) {
-            if (e.getValue() != null) {
+            if (e.getValue() != null && !SENSITIVE_KEYS.contains(e.getKey())) {
                 settingItems.add(new DataSyncModels.SettingItem(e.getKey(), e.getValue().toString()));
             }
         }
         client.syncSettings(token, settingItems);
     }
 
-    /** 从服务端下载设置并合并到本地 */
+    /** 从服务端下载设置并合并到本地（跳过敏感 key，避免覆盖本地 token 等） */
     private void downloadSettings(DataSyncClient client, String token) throws Exception {
         List<DataSyncModels.SettingServerItem> serverSettings = client.listSettings(token);
         if (serverSettings == null) return;
 
         PreferenceManager pm = App.getPreferenceManager();
         for (DataSyncModels.SettingServerItem s : serverSettings) {
-            if (s.key != null && s.value != null) {
+            if (s.key != null && s.value != null && !SENSITIVE_KEYS.contains(s.key)) {
                 pm.putObject(s.key, s.value);
             }
         }
@@ -350,7 +397,9 @@ public class DataSyncManager {
             local.setFavorite(s.favorite);
             changed = true;
         }
-        if (s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
+        // 如果本地明确标记了"历史已删除"，则不从服务端恢复历史
+        boolean historyDeleted = isHistoryDeleted(s.source, s.cid);
+        if (!historyDeleted && s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
             local.setHistory(s.history);
             local.setLast(s.last);
             local.setPage(s.page);
@@ -366,6 +415,87 @@ public class DataSyncManager {
             changed = true;
         }
         if (changed) mComicManager.update(local);
+    }
+
+    // ==================== 历史删除标记追踪 ====================
+
+    private static final String PREF_HISTORY_DELETED_KEYS = "history_deleted_keys";
+
+    /**
+     * 添加一条"历史已删除"的漫画标记（source:cid）
+     */
+    public static void markHistoryDeleted(int source, String cid) {
+        Set<String> keys = getHistoryDeletedKeys();
+        keys.add(source + ":" + cid);
+        saveHistoryDeletedKeys(keys);
+    }
+
+    /**
+     * 批量添加"历史已删除"标记
+     */
+    public static void markHistoryDeleted(List<Comic> comics) {
+        Set<String> keys = getHistoryDeletedKeys();
+        for (Comic c : comics) {
+            keys.add(c.getSource() + ":" + c.getCid());
+        }
+        saveHistoryDeletedKeys(keys);
+    }
+
+    /**
+     * 检查某漫画是否被标记为"历史已删除"
+     */
+    public static boolean isHistoryDeleted(int source, String cid) {
+        return getHistoryDeletedKeys().contains(source + ":" + cid);
+    }
+
+    /**
+     * 获取所有"历史已删除"标记（供 BackupPresenter 上传使用）
+     */
+    public static Set<String> getHistoryDeletedKeysForUpload() {
+        return getHistoryDeletedKeys();
+    }
+
+    /**
+     * 获取所有"历史已删除"标记
+     */
+    private static Set<String> getHistoryDeletedKeys() {
+        String json = App.getPreferenceManager().getString(PREF_HISTORY_DELETED_KEYS, "");
+        if (json.isEmpty()) return new HashSet<>();
+        Set<String> result = new HashSet<>();
+        // 简单格式：逗号分隔，例如 "1:abc,2:def"
+        for (String key : json.split(",")) {
+            String trimmed = key.trim();
+            if (!trimmed.isEmpty()) {
+                result.add(trimmed);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 持久化"历史已删除"标记集合
+     */
+    private static void saveHistoryDeletedKeys(Set<String> keys) {
+        StringBuilder sb = new StringBuilder();
+        for (String key : keys) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(key);
+        }
+        App.getPreferenceManager().putString(PREF_HISTORY_DELETED_KEYS, sb.toString());
+    }
+
+    /**
+     * 清除所有"历史已删除"标记（上传成功后调用）
+     */
+    private static void clearHistoryDeletedKeys() {
+        App.getPreferenceManager().putString(PREF_HISTORY_DELETED_KEYS, "");
+    }
+
+    /**
+     * 供 BackupPresenter 上传成功后调用的公开清除方法
+     */
+    public static void clearHistoryDeletedKeysAfterUpload() {
+        clearHistoryDeletedKeys();
     }
 
 }

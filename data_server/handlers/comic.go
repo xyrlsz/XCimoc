@@ -86,6 +86,12 @@ func (h *ComicHandler) Sync(c *gin.Context) {
 				needsUpdate = true
 			}
 
+			// Client explicit clear history — always honor it
+			if item.ClearHistory {
+				existing.History = nil
+				needsUpdate = true
+			}
+
 			if needsUpdate {
 				if err := database.DB.Save(&existing).Error; err != nil {
 					log.Printf("更新漫画失败 (user_id=%d, source=%d, cid=%s): %v", userID, item.Source, item.Cid, err)

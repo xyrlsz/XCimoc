@@ -2,6 +2,7 @@ package com.xyrlsz.xcimocob.presenter;
 
 import com.xyrlsz.xcimocob.manager.ChapterManager;
 import com.xyrlsz.xcimocob.manager.ComicManager;
+import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.model.Comic;
 import com.xyrlsz.xcimocob.model.MiniComic;
 import com.xyrlsz.xcimocob.rx.RxEvent;
@@ -12,8 +13,10 @@ import com.xyrlsz.xcimocob.utils.IdCreator;
 import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
  * Created by Hiroshi on 2016/7/18.
@@ -73,16 +76,43 @@ public class HistoryPresenter extends BasePresenter<HistoryView> {
                 }));
     }
 
-    public void delete(long id) {
-        Comic comic = mComicManager.load(id);
-        if (comic != null) {
-            comic.setHistory(null);
-            int res = mComicManager.updateOrDelete(comic);
-            if (res == ComicManager.RESULT_DELETE) {
-                mChapterManager.deleteBySourceComic(IdCreator.createSourceComic(comic));
-            }
-        }
-        mBaseView.onHistoryDelete(id);
+    public void delete(final long id) {
+        // 先在主线程获取 source/cid（异步删除后漫画可能已被删除）
+        final Comic preLoad = mComicManager.load(id);
+        final int source = preLoad != null ? preLoad.getSource() : 0;
+        final String cid = preLoad != null ? preLoad.getCid() : null;
+
+        mCompositeSubscription.add(Observable.just(id)
+                .doOnNext(new Consumer<Long>() {
+                    @Override
+                    public void accept(Long id1) {
+                        Comic comic = mComicManager.load(id1);
+                        if (comic != null) {
+                            comic.setHistory(null);
+                            int res = mComicManager.updateOrDelete(comic);
+                            if (res == ComicManager.RESULT_DELETE) {
+                                mChapterManager.deleteBySourceComic(IdCreator.createSourceComic(comic));
+                            }
+                        }
+                    }
+                })
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<Long>() {
+                    @Override
+                    public void accept(Long id2) {
+                        // 标记此漫画历史已删除，防止下载同步时被恢复
+                        if (cid != null) {
+                            DataSyncManager.markHistoryDeleted(source, cid);
+                        }
+                        mBaseView.onHistoryDelete(id2);
+                    }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) {
+                        mBaseView.onExecuteFail();
+                    }
+                }));
     }
 
     public void clear() {
@@ -108,6 +138,8 @@ public class HistoryPresenter extends BasePresenter<HistoryView> {
                 .subscribe(new Consumer<List<Comic>>() {
                     @Override
                     public void accept(List<Comic> list) {
+                        // 标记所有被清除历史的漫画，防止下载同步时被恢复
+                        DataSyncManager.markHistoryDeleted(list);
                         mBaseView.onHistoryClearSuccess();
                     }
                 }, new Consumer<Throwable>() {
