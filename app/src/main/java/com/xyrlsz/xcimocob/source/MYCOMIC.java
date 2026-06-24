@@ -141,7 +141,7 @@ public class MYCOMIC extends MangaParser {
                     list.add(new Chapter(id, sourceComic, title, path, type));
                 }
             } catch (JSONException e) {
-                throw new RuntimeException(e);
+//                throw new RuntimeException(e);
             }
 
         }

@@ -9,6 +9,7 @@ import kotlin.jvm.functions.Function0;
 import kotlin.reflect.KClass;
 import okhttp3.Call;
 import okhttp3.Callback;
+import okhttp3.EventListener;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -19,6 +20,11 @@ public class DisabledOkHttpClient extends OkHttpClient {
     @Override
     public Call newCall(@NonNull Request request) {
         return new Call() {
+            @Override
+            public void addEventListener(@NonNull EventListener eventListener) {
+
+            }
+
             @NonNull
             @Override
             public <T> T tag(@NonNull Class<T> aClass, @NonNull Function0<? extends T> function0) {

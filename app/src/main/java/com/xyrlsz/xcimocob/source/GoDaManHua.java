@@ -229,7 +229,8 @@ public class GoDaManHua extends MangaParser {
          */
         public static String decrypt(String input) {
             if (input == null || !input.startsWith(PREFIX) || !input.endsWith(SUFFIX)) {
-                throw new RuntimeException("x2");
+//                throw new RuntimeException("x2");
+                return "";
             }
 
             // 1. 去除前后缀
@@ -252,7 +253,7 @@ public class GoDaManHua extends MangaParser {
 
             // 4. 校验分隔符、魔数以及 part5 长度
             if (!part2.equals(SEP) || !part4.equals(MAGIC) || part5.length() != a) {
-                throw new RuntimeException("x4");
+                return "";
             }
 
             // 5. 重组
@@ -294,7 +295,7 @@ public class GoDaManHua extends MangaParser {
             for (char c : input.toCharArray()) {
                 int idx = TABLE2.indexOf(c);
                 if (idx == -1) {
-                    throw new RuntimeException("x1");
+                    return "";
                 }
                 sb.append(TABLE1.charAt(idx));
             }

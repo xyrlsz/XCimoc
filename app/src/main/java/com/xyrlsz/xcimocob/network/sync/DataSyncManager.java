@@ -9,12 +9,14 @@ import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.model.Comic;
+import com.xyrlsz.xcimocob.model.MiniComic;
 import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -302,10 +304,14 @@ public class DataSyncManager {
         }
     }
 
-    /** 从服务端下载漫画并合并到本地 */
+    /** 从服务端下载漫画并合并到本地，完成后发送 RxBus 事件通知 UI 刷新 */
     private void downloadAndMergeComics(DataSyncClient client, String token) throws Exception {
         List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
         if (serverComics == null) return;
+
+        // 追踪下载后需要通知 UI 的漫画
+        final List<MiniComic> favoriteList = new LinkedList<>();
+        final List<MiniComic> historyList = new LinkedList<>();
 
         for (DataSyncModels.ComicServerItem s : serverComics) {
             Comic local = mComicManager.load(s.source, s.cid);
@@ -315,6 +321,21 @@ public class DataSyncManager {
             } else {
                 mergeServerComic(local, s);
             }
+            // 记录有 favorite/history 的漫画，用于后续通知 UI
+            if (s.favorite != null) {
+                favoriteList.add(new MiniComic(local));
+            }
+            if (s.history != null) {
+                historyList.add(new MiniComic(local));
+            }
+        }
+
+        // 发送 RxBus 事件通知 UI 刷新
+        if (!favoriteList.isEmpty()) {
+            RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_FAVORITE_RESTORE, favoriteList));
+        }
+        if (!historyList.isEmpty()) {
+            RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_HISTORY_RESTORE, historyList));
         }
     }
 
