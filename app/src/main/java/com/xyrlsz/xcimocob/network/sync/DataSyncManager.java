@@ -272,24 +272,34 @@ public class DataSyncManager {
         }
 
         // 附加标记了"历史已删除"的漫画，通知服务端清除历史
-        // 跳过那些已在本地重新有了 history/favorite 的漫画
         Set<String> deletedKeys = getHistoryDeletedKeys();
         if (!deletedKeys.isEmpty()) {
             for (String key : deletedKeys) {
-                if (uploadedKeys.contains(key)) {
-                    // 漫画已在本地重新有了数据（用户又收藏或阅读了），不再发送清除标记
+                String[] parts = key.split(":", 2);
+                if (parts.length != 2) continue;
+
+                int source;
+                try {
+                    source = Integer.parseInt(parts[0]);
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid history deleted key (source not int): " + key);
                     continue;
                 }
-                String[] parts = key.split(":", 2);
-                if (parts.length == 2) {
-                    DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
-                    try {
-                        item.source = Integer.parseInt(parts[0]);
-                    } catch (NumberFormatException e) {
-                        Log.w(TAG, "Invalid history deleted key (source not int): " + key);
-                        continue;
+                String cid = parts[1];
+
+                if (uploadedKeys.contains(key)) {
+                    // 该漫画在本地仍有数据（如收藏），但用户已清除历史记录
+                    // 需要标记 clear_history，让服务端也清除历史，避免下次下载时恢复
+                    for (DataSyncModels.ComicSyncItem item : items) {
+                        if (item.source == source && item.cid != null && item.cid.equals(cid)) {
+                            item.clear_history = true;
+                            break;
+                        }
                     }
-                    item.cid = parts[1];
+                } else {
+                    DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
+                    item.source = source;
+                    item.cid = cid;
                     item.clear_history = true;
                     items.add(item);
                 }
