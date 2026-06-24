@@ -194,7 +194,7 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
             }
             checkUpdate();
         }
-        mPresenter.getSourceBaseUrl();
+//        mPresenter.getSourceBaseUrl();
 
         showPermission();
 
