@@ -18,7 +18,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,7 +52,7 @@ public class DuManWu extends MangaParser {
         if (page == 1) {
             String url = baseUrl + "/s";
             int index = Math.min(keyword.length(), 12);
-            RequestBody body = RequestBody.create(MediaType.parse("application/x-www-form-urlencoded; charset=UTF-8"), "k=" + URLEncoder.encode(keyword.substring(0, index), "utf-8"));
+            RequestBody body = RequestBody.create("k=" + keyword.substring(0, index), MediaType.parse("application/x-www-form-urlencoded; charset=UTF-8"));
             return new Request.Builder().url(url).post(body).build();
         }
         return null;

@@ -107,7 +107,7 @@ public class Manhuayu extends MangaParser {
     /**
      * 解密 params 密文，返回明文字符串（JSON）
      */
-    public static String decrypt(String base64) throws Exception {
+    public static String decrypt(String base64) {
         try {
             byte[] raw = Base64.getDecoder().decode(base64);
 
@@ -235,12 +235,8 @@ public class Manhuayu extends MangaParser {
         }
 
         // 2. 解密 params 得到 JSON 字符串
-        String decryptedJson = "";
-        try {
-            decryptedJson = decrypt(encryptedParams);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        String decryptedJson;
+        decryptedJson = decrypt(encryptedParams);
         JSONObject params = new JSONObject(decryptedJson);
 
         // 3. 获取图片路径数组和图片服务器配置
