@@ -309,7 +309,7 @@ public class DataSyncManager {
         List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
         if (serverComics == null) return;
 
-        // 追踪下载后需要通知 UI 的漫画
+        // 仅追踪本次真正需要通知 UI 的漫画（新增或数据有变更的）
         final List<MiniComic> favoriteList = new LinkedList<>();
         final List<MiniComic> historyList = new LinkedList<>();
 
@@ -318,15 +318,24 @@ public class DataSyncManager {
             if (local == null) {
                 local = createComicFromServer(s);
                 mComicManager.insert(local);
+                // 新插入的漫画需要通知 UI
+                if (s.favorite != null) {
+                    favoriteList.add(new MiniComic(local));
+                }
+                if (s.history != null) {
+                    historyList.add(new MiniComic(local));
+                }
             } else {
-                mergeServerComic(local, s);
-            }
-            // 记录有 favorite/history 的漫画，用于后续通知 UI
-            if (s.favorite != null) {
-                favoriteList.add(new MiniComic(local));
-            }
-            if (s.history != null) {
-                historyList.add(new MiniComic(local));
+                boolean changed = mergeServerComic(local, s);
+                // 仅当合并后数据有实际变更时才通知 UI，避免重复
+                if (changed) {
+                    if (s.favorite != null) {
+                        favoriteList.add(new MiniComic(local));
+                    }
+                    if (s.history != null) {
+                        historyList.add(new MiniComic(local));
+                    }
+                }
             }
         }
 
@@ -412,7 +421,7 @@ public class DataSyncManager {
     }
 
     /** 将服务端漫画数据合并到本地（服务端数据优先） */
-    private void mergeServerComic(Comic local, DataSyncModels.ComicServerItem s) {
+    private boolean mergeServerComic(Comic local, DataSyncModels.ComicServerItem s) {
         boolean changed = false;
         if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
             local.setFavorite(s.favorite);
@@ -436,6 +445,7 @@ public class DataSyncManager {
             changed = true;
         }
         if (changed) mComicManager.update(local);
+        return changed;
     }
 
     // ==================== 历史删除标记追踪 ====================
