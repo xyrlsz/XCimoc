@@ -367,7 +367,6 @@ public class KomiicUtils {
         Request request = new Request.Builder()
                 .url(sBaseUrl + "/api/query")
                 .addHeader("accept", "application/json, text/javascript, */*; q=0.01")
-                .addHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
                 .addHeader("referer", sBaseUrl + "/login")
                 .addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
                 .addHeader("cookie", cookies)

@@ -38,12 +38,10 @@ func GenerateToken(user *models.User, cfg *config.Config) (string, error) {
 }
 
 // parseToken 解析 token 并校验 token_version 与数据库一致
-func parseToken(tokenStr string, cfg *config.Config, allowExpired bool) (*Claims, error) {
+// leeway 控制 exp 等时间声明的容忍窗口，AuthRequired 传 30s，AuthRefresh 传 7d
+func parseToken(tokenStr string, cfg *config.Config, leeway time.Duration) (*Claims, error) {
 	claims := &Claims{}
-	var opts []jwt.ParserOption
-	if allowExpired {
-		opts = append(opts, jwt.WithLeeway(7*24*time.Hour))
-	}
+	opts := []jwt.ParserOption{jwt.WithLeeway(leeway)}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(cfg.JWTSecret), nil
 	}, opts...)
@@ -63,22 +61,22 @@ func parseToken(tokenStr string, cfg *config.Config, allowExpired bool) (*Claims
 	return claims, nil
 }
 
-// AuthRequired 普通用户认证
+// AuthRequired 普通用户认证（带 30 秒 leeway，防止时钟偏差）
 func AuthRequired(cfg *config.Config) gin.HandlerFunc {
-	return authMiddleware(cfg, false, false)
+	return authMiddleware(cfg, false, 30*time.Second)
 }
 
-// AdminRequired 管理员认证
+// AdminRequired 管理员认证（带 30 秒 leeway）
 func AdminRequired(cfg *config.Config) gin.HandlerFunc {
-	return authMiddleware(cfg, true, false)
+	return authMiddleware(cfg, true, 30*time.Second)
 }
 
 // AuthRefresh 用于 refresh 端点，允许 token 已过期但在 7 天内仍可刷新
 func AuthRefresh(cfg *config.Config) gin.HandlerFunc {
-	return authMiddleware(cfg, false, true)
+	return authMiddleware(cfg, false, 7*24*time.Hour)
 }
 
-func authMiddleware(cfg *config.Config, requireAdmin, allowExpired bool) gin.HandlerFunc {
+func authMiddleware(cfg *config.Config, requireAdmin bool, leeway time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -94,7 +92,7 @@ func authMiddleware(cfg *config.Config, requireAdmin, allowExpired bool) gin.Han
 			return
 		}
 
-		claims, err := parseToken(parts[1], cfg, allowExpired)
+		claims, err := parseToken(parts[1], cfg, leeway)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "认证令牌无效或已过期"})
 			c.Abort()

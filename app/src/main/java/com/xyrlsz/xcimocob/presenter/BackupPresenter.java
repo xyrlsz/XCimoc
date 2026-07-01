@@ -26,6 +26,7 @@ import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.saf.WebDavCimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.view.BackupView;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -518,12 +519,6 @@ public class BackupPresenter extends BasePresenter<BackupView> {
      * 同步漫画（收藏+历史）到服务器
      */
     public void dataSyncComic() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
         final DataSyncClient client = getClientOrError();
         if (client == null) return;
 
@@ -579,6 +574,13 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                 .flatMap(new Function<List<DataSyncModels.ComicSyncItem>, io.reactivex.rxjava3.core.ObservableSource<DataSyncModels.ComicSyncResponse>>() {
                     @Override
                     public io.reactivex.rxjava3.core.ObservableSource<DataSyncModels.ComicSyncResponse> apply(List<DataSyncModels.ComicSyncItem> items) throws Exception {
+                        // 在 IO 线程获取有效 token（自动刷新过期 token）
+                        String token = DataSyncClient.ensureValidToken();
+                        if (token == null) {
+                            return io.reactivex.rxjava3.core.Observable.error(
+                                    new IOException(mBaseView.getAppInstance().getString(
+                                            com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
+                        }
                         try {
                             DataSyncModels.ComicSyncResponse resp = client.syncComics(token, items);
                             return io.reactivex.rxjava3.core.Observable.just(resp);
@@ -608,18 +610,19 @@ public class BackupPresenter extends BasePresenter<BackupView> {
      * 同步设置到服务器
      */
     public void dataSyncSetting() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
         final DataSyncClient client = getClientOrError();
         if (client == null) return;
 
         mBaseView.onDataSyncStart();
 
         mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<DataSyncModels.SettingSyncResponse>) emitter -> {
+                    // 在 IO 线程获取有效 token（自动刷新过期 token）
+                    String token = DataSyncClient.ensureValidToken();
+                    if (token == null) {
+                        emitter.onError(new IOException(mBaseView.getAppInstance().getString(
+                                com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
+                        return;
+                    }
                     Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
                     List<DataSyncModels.SettingItem> items = new ArrayList<>();
                     for (Map.Entry<String, ?> entry : allPrefs.entrySet()) {
@@ -653,18 +656,19 @@ public class BackupPresenter extends BasePresenter<BackupView> {
      * 全部同步（漫画+设置）
      */
     public void dataSyncAll() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
         final DataSyncClient client = getClientOrError();
         if (client == null) return;
 
         mBaseView.onDataSyncStart();
 
         mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Boolean>) emitter -> {
+                    // 在 IO 线程获取有效 token（自动刷新过期 token）
+                    String token = DataSyncClient.ensureValidToken();
+                    if (token == null) {
+                        emitter.onError(new IOException(mBaseView.getAppInstance().getString(
+                                com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
+                        return;
+                    }
                     try {
                         // 1. 同步漫画
                         List<Comic> comics = mComicManager.listFavoriteOrHistory();
@@ -733,18 +737,19 @@ public class BackupPresenter extends BasePresenter<BackupView> {
      * 从服务器恢复漫画（下载 + 合并到本地）
      */
     public void dataSyncDownloadComic() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncDownloadError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
         final DataSyncClient client = getClientOrError();
         if (client == null) return;
 
         mBaseView.onDataSyncDownloadStart();
 
         mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Integer>) emitter -> {
+                    // 在 IO 线程获取有效 token（自动刷新过期 token）
+                    String token = DataSyncClient.ensureValidToken();
+                    if (token == null) {
+                        emitter.onError(new IOException(mBaseView.getAppInstance().getString(
+                                com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
+                        return;
+                    }
                     try {
                         List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
                         if (serverComics == null) {
@@ -855,18 +860,19 @@ public class BackupPresenter extends BasePresenter<BackupView> {
      * 从服务器恢复设置
      */
     public void dataSyncDownloadSetting() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncDownloadError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
         final DataSyncClient client = getClientOrError();
         if (client == null) return;
 
         mBaseView.onDataSyncDownloadStart();
 
         mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Integer>) emitter -> {
+                    // 在 IO 线程获取有效 token（自动刷新过期 token）
+                    String token = DataSyncClient.ensureValidToken();
+                    if (token == null) {
+                        emitter.onError(new IOException(mBaseView.getAppInstance().getString(
+                                com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
+                        return;
+                    }
                     try {
                         List<DataSyncModels.SettingServerItem> serverSettings = client.listSettings(token);
                         if (serverSettings == null) {
@@ -908,18 +914,19 @@ public class BackupPresenter extends BasePresenter<BackupView> {
      * 从服务器恢复全部数据
      */
     public void dataSyncDownloadAll() {
-        final String token = getToken();
-        if (TextUtils.isEmpty(token)) {
-            mBaseView.onDataSyncDownloadError(mBaseView.getAppInstance().getString(
-                    com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in));
-            return;
-        }
         final DataSyncClient client = getClientOrError();
         if (client == null) return;
 
         mBaseView.onDataSyncDownloadStart();
 
         mCompositeSubscription.add(Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Boolean>) emitter -> {
+                    // 在 IO 线程获取有效 token（自动刷新过期 token）
+                    String token = DataSyncClient.ensureValidToken();
+                    if (token == null) {
+                        emitter.onError(new IOException(mBaseView.getAppInstance().getString(
+                                com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
+                        return;
+                    }
                     try {
                         // 1. 恢复漫画
                         List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
