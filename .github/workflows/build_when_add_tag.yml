@@ -93,6 +93,9 @@ jobs:
           name: app-universal-release
           path: app/build/outputs/apk/release/app-universal-release.apk
 
+      - name: Extract latest changelog
+        run: python3 scripts/extract_changelog.py
+
       - name: Create GitHub Release and Upload APKs
         uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/v')
@@ -101,7 +104,7 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           prerelease: false
-          body_path: CHANGELOG.md
+          body_path: release_body.md
           files: |
             app/build/outputs/apk/release/app-arm64-v8a-release.apk 
             app/build/outputs/apk/release/app-armeabi-v7a-release.apk  
