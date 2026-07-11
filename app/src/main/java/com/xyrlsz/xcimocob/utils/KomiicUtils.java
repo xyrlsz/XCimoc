@@ -23,13 +23,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,14 +47,14 @@ public class KomiicUtils {
     // 当前使用的 baseUrl
     private static String sBaseUrl = FALLBACK_URLS[0];
 
+    public static String getBaseUrl() {
+        return sBaseUrl;
+    }
+
     public static void setBaseUrl(String url) {
         if (url != null && !url.isEmpty()) {
             sBaseUrl = url;
         }
-    }
-
-    public static String getBaseUrl() {
-        return sBaseUrl;
     }
 
     /**
@@ -145,7 +142,7 @@ public class KomiicUtils {
     private static void loginWithRetry(Context context, String username, String password, OnLoginListener listener, int retryCount) {
         MediaType mediaType = MediaType.parse("application/json; charset=utf-8");
         String json = "{\"email\":\"" + username + "\", \"password\":\"" + password + "\"}";
-        RequestBody body = RequestBody.create(mediaType, json);
+        RequestBody body = RequestBody.create(json, mediaType);
         Request request = new Request.Builder()
                 .url(sBaseUrl + "/api/login")
                 .addHeader("referer", sBaseUrl + "/login")
@@ -167,14 +164,9 @@ public class KomiicUtils {
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                List<String> cookies = response.headers("Set-Cookie");
-                if (response.isSuccessful() && !cookies.isEmpty()) {
-                    Set<String> set = new HashSet<>();
-                    for (String s : cookies) {
-                        List<String> tmp = Arrays.asList(s.split("; "));
-                        set.addAll(tmp);
-                    }
-                    String cookieStr = String.join("; ", set);
+                List<String> setCookieHeaders = response.headers("Set-Cookie");
+                if (response.isSuccessful() && !setCookieHeaders.isEmpty()) {
+                    String cookieStr = parseSetCookies(setCookieHeaders);
                     // 从 JWT 中解码 exp，不依赖 API 的 expire 字段
                     long expired = getExpFromJwt(cookieStr);
                     // fallback: 从 API 响应中读取 expire 字段（同时消费响应体避免泄漏）
@@ -216,7 +208,7 @@ public class KomiicUtils {
 
         Request request = new Request.Builder()
                 .url(sBaseUrl + "/auth/refresh")
-                .post(RequestBody.create(MediaType.get("application/json"), ""))
+                .post(RequestBody.create("", MediaType.get("application/json")))
                 .addHeader("content-type", "application/json")
                 .addHeader("cookie", cookies)
                 .addHeader("Referer", sBaseUrl + "/")
@@ -249,12 +241,7 @@ public class KomiicUtils {
                         List<String> setCookieHeaders = response.headers("Set-Cookie");
                         if (!setCookieHeaders.isEmpty()) {
                             // 有新的 Set-Cookie，更新存储
-                            Set<String> set = new HashSet<>();
-                            for (String s : setCookieHeaders) {
-                                List<String> tmp = Arrays.asList(s.split("; "));
-                                set.addAll(tmp);
-                            }
-                            String cookieStr = String.join("; ", set);
+                            String cookieStr = parseSetCookies(setCookieHeaders);
                             long expired = getExpFromJwt(cookieStr);
                             if (expired == -1L) {
                                 // fallback: 从 API 响应中读取 expire 字段
@@ -366,8 +353,8 @@ public class KomiicUtils {
 
         Request request = new Request.Builder()
                 .url(sBaseUrl + "/api/query")
-                .addHeader("accept", "application/json, text/javascript, */*; q=0.01")
-                .addHeader("referer", sBaseUrl + "/login")
+                .addHeader("accept", "application/json")
+                .addHeader("referer", sBaseUrl)
                 .addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
                 .addHeader("cookie", cookies)
                 .post(body)
@@ -388,7 +375,7 @@ public class KomiicUtils {
                             data = new JSONObject(json).getJSONObject("data");
                             int limit = data.getJSONObject("getImageLimit").getInt("limit");
                             int usage = data.getJSONObject("getImageLimit").getInt("usage");
-                            usage = Math.max(usage - 1, 0);
+                            usage = Math.max(usage, 0);
                             int res = limit - usage;
                             int remaining = Math.max(res, 0);
                             // 缓存结果
@@ -406,6 +393,36 @@ public class KomiicUtils {
         }
     }
 
+    /**
+     * 解析 Set-Cookie 响应头列表，提取 name=value 部分，
+     * 同名 cookie 只保留最后一个，忽略 Path/Domain/Max-Age 等属性
+     */
+    private static String parseSetCookies(List<String> setCookieHeaders) {
+        if (setCookieHeaders == null || setCookieHeaders.isEmpty()) return "";
+        java.util.LinkedHashMap<String, String> map = new java.util.LinkedHashMap<>();
+        for (String header : setCookieHeaders) {
+            if (header == null || header.isEmpty()) continue;
+            // 取第一个分号前的内容作为 name=value
+            String nameValue;
+            int semicolon = header.indexOf(";");
+            if (semicolon > 0) {
+                nameValue = header.substring(0, semicolon).trim();
+            } else {
+                nameValue = header.trim();
+            }
+            String[] parts = nameValue.split("=", 2);
+            if (parts.length == 2) {
+                map.put(parts[0], parts[1]);
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        for (java.util.Map.Entry<String, String> entry : map.entrySet()) {
+            if (sb.length() > 0) sb.append("; ");
+            sb.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        return sb.toString();
+    }
+
     private static boolean checkImgLimit(String cookies) {
         String json = "{\"operationName\":\"getImageLimit\",\"variables\":{},\"query\":\"query getImageLimit {\\n  getImageLimit {\\n    limit\\n    usage\\n    resetInSeconds\\n    __typename\\n  }\\n}\"}";
 
@@ -414,7 +431,8 @@ public class KomiicUtils {
 
         Request request = new Request.Builder()
                 .url(sBaseUrl + "/api/query")
-                .addHeader("referer", sBaseUrl + "/login")
+                .addHeader("accept", "application/json")
+                .addHeader("referer", sBaseUrl)
                 .addHeader("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0")
                 .addHeader("cookie", cookies)
                 .post(body)
