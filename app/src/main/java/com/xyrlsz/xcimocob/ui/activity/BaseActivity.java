@@ -194,10 +194,15 @@ public abstract class BaseActivity extends AppCompatActivity implements BaseView
 
     public void hideProgressDialog() {
         ThreadRunUtils.runOnMainThread(() -> {
-            // 可能 onSaveInstanceState 后任务结束，需要取消对话框，直接 dismiss 会抛异常
-            // 也可能 Activity 已销毁，Fragment 不再关联 FragmentManager
-            if (mProgressDialog.isAdded()) {
+            try {
+                // dismissAllowingStateLoss 在 Fragment 未 added 时也能安全处理：
+                // - 如果 show() 已调用但事务未执行，getParentFragmentManager() 仍有效，
+                //   会提交一个移除事务，等添加执行后立即移除对话框
+                // - 如果 Fragment 从未添加，getParentFragmentManager() 返回 null，无操作
+                // - 在 onSaveInstanceState 后调用 commitAllowingStateLoss 也是安全的
                 mProgressDialog.dismissAllowingStateLoss();
+            } catch (Exception e) {
+                // 极少数情况下（如 Activity 已销毁）忽略异常
             }
         });
     }
