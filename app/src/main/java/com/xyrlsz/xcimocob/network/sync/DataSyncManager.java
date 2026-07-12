@@ -365,7 +365,8 @@ public class DataSyncManager {
             PreferenceManager.PREFERENCES_USER_EMAIL,
             PreferenceManager.PREFERENCES_USER_ID,
             PreferenceManager.PREF_DATA_SERVER_URL,
-            PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC
+            PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC,
+            PreferenceManager.PREF_OTHER_STORAGE
     ));
 
     /** 上传本地设置到服务端（过滤掉敏感 key） */

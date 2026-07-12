@@ -40,6 +40,7 @@ public class SettingsPresenter extends BasePresenter<SettingsView> {
     }
 
     public void moveFiles(CimocDocumentFile dst) {
+
         mCompositeSubscription.add(Storage.moveRootDir(mBaseView.getAppInstance().getContentResolver(),
                 mBaseView.getAppInstance().getDocumentFile(), dst)
                 .observeOn(AndroidSchedulers.mainThread())

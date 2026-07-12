@@ -107,6 +107,7 @@ public class Backup {
     }
 
     public static void saveComicAuto(ContentResolver resolver, CimocDocumentFile root, List<Comic> list) {
+        if (root == null) return;
         CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(root, BACKUP);
         if (dir != null) {
             try {
@@ -122,6 +123,7 @@ public class Backup {
     }
 
     public static int saveComic(ContentResolver resolver, CimocDocumentFile root, List<Comic> list) {
+        if (root == null) return -1;
         CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(root, BACKUP);
         if (dir != null) {
             try {
@@ -140,6 +142,7 @@ public class Backup {
     }
 
     public static int saveTag(final ContentResolver resolver, final CimocDocumentFile root, final List<Pair<Tag, List<Comic>>> list) {
+        if (root == null) return -1;
         CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(root, BACKUP);
         if (dir != null) {
             try {
@@ -158,6 +161,7 @@ public class Backup {
     }
 
     public static int saveSetting(ContentResolver resolver, CimocDocumentFile root, Map<?, ?> settingMap) {
+        if (root == null) return -1;
         CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(root, BACKUP);
         if (dir != null) {
             try {

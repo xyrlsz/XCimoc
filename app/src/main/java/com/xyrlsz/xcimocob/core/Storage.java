@@ -36,20 +36,37 @@ public class Storage {
 
     public static CimocDocumentFile initRoot(Context context, String uri) {
         if (uri == null || uri.isEmpty()) {
-            //            File file = new File(Environment.getExternalStorageDirectory(), "Cimoc");
-            File file = new File(
+            // 1. 优先尝试公共目录 Documents/Cimoc（需要 MANAGE_EXTERNAL_STORAGE 或 SAF 权限）
+            File publicFile = new File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
                     "Cimoc");
-            //            File file = new
-            //            File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
-            //            "Cimoc");
-            if (file.exists() || file.mkdirs()) {
-                return CimocDocumentFile.fromFile(file);
-            } else {
-                return null;
+            if (publicFile.exists() || publicFile.mkdirs()) {
+                return CimocDocumentFile.fromFile(publicFile);
             }
+            // 2. 公共目录创建失败（权限不足），回退到应用专属目录（无需权限）
+            //    注意：应用被卸载时此目录会被删除，建议用户在设置中配置 SAF 存储路径
+            File appFile = new File(
+                    context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+                    "Cimoc");
+            if (appFile.exists() || appFile.mkdirs()) {
+                return CimocDocumentFile.fromFile(appFile);
+            }
+            return null;
         } else if (uri.startsWith("content")) {
-            return CimocDocumentFile.fromTreeUri(context, Uri.parse(uri));
+            CimocDocumentFile doc = CimocDocumentFile.fromTreeUri(context, Uri.parse(uri));
+            // 验证 SAF URI 是否仍然有效（持久化权限可能已被系统撤销）
+            if (doc != null && doc.isDirectory() && doc.canWrite()) {
+                return doc;
+            }
+            // SAF URI 无效（权限丢失），回退到应用专属目录
+            android.util.Log.w("Storage", "SAF URI invalid/permission lost, fallback to app dir: " + uri);
+            File appFile = new File(
+                    context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS),
+                    "Cimoc");
+            if (appFile.exists() || appFile.mkdirs()) {
+                return CimocDocumentFile.fromFile(appFile);
+            }
+            return null;
         } else if (uri.startsWith("file")) {
             return CimocDocumentFile.fromFile(
                     new File(Objects.requireNonNull(Uri.parse(uri).getPath())));
@@ -111,29 +128,54 @@ public class Storage {
     }
 
     private static boolean isDirSame(CimocDocumentFile root, CimocDocumentFile dst) {
-        return Objects.requireNonNull(root.getUri().getScheme()).equals("file")
-                && Objects.requireNonNull(dst.getUri().getPath()).endsWith("primary:Cimoc")
-                || Objects.requireNonNull(root.getUri().getPath()).equals(dst.getUri().getPath());
+        try {
+            Uri rootUri = root.getUri();
+            Uri dstUri = dst.getUri();
+            if (rootUri == null || dstUri == null) {
+                return false;
+            }
+            String rootScheme = rootUri.getScheme();
+            String dstPath = dstUri.getPath();
+            String rootPath = rootUri.getPath();
+            if (rootScheme == null || rootPath == null || dstPath == null) {
+                return false;
+            }
+            return "file".equals(rootScheme) && dstPath.endsWith("primary:Cimoc")
+                    || rootPath.equals(dstPath);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public static Observable<String> moveRootDir(
             final ContentResolver resolver, final CimocDocumentFile root, final CimocDocumentFile dst) {
         return Observable
                 .create((io.reactivex.rxjava3.core.ObservableOnSubscribe<String>) emitter -> {
-                    if (dst.canRead() && !isDirSame(root, dst)) {
-                        root.refresh();
-                        if (copyDir(resolver, root, dst, BACKUP, emitter)
-                                && copyDir(resolver, root, dst, DOWNLOAD, emitter)
-                                && copyDir(resolver, root, dst, PICTURE, emitter)) {
-                            // 复制完成后，先刷新根目录确保缓存最新，再并行删除源目录
+                    try {
+                        if (dst.canRead() && !isDirSame(root, dst)) {
+                            // 源目录不存在或无法访问（SAF URI 已失效、存储卡被移除等），无需复制，直接完成
+                            if (!root.exists()) {
+                                emitter.onComplete();
+                                return;
+                            }
                             root.refresh();
-                            Arrays.asList(BACKUP, DOWNLOAD, PICTURE).parallelStream()
-                                    .forEach(name -> deleteDir(root, name, emitter));
-                            emitter.onComplete();
-                            return;
+                            if (copyDir(resolver, root, dst, BACKUP, emitter)
+                                    && copyDir(resolver, root, dst, DOWNLOAD, emitter)
+                                    && copyDir(resolver, root, dst, PICTURE, emitter)) {
+                                // 复制完成后，先刷新根目录确保缓存最新，再并行删除源目录
+                                root.refresh();
+                                Arrays.asList(BACKUP, DOWNLOAD, PICTURE).parallelStream()
+                                        .forEach(name -> deleteDir(root, name, emitter));
+                                emitter.onComplete();
+                                return;
+                            }
                         }
+                        emitter.onError(new Exception());
+                    } catch (Exception e) {
+                        // 源目录无法访问（content:// URI 已失效抛 SecurityException 等），
+                        // 此时无数据可迁移，视为操作成功
+                        emitter.onComplete();
                     }
-                    emitter.onError(new Exception());
                 })
                 .subscribeOn(Schedulers.io());
     }

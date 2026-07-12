@@ -8,6 +8,7 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.xyrlsz.xcimocob.App;
+import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.core.Backup;
 import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
@@ -38,6 +39,7 @@ import java.util.Set;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.ObservableSource;
 import io.reactivex.rxjava3.functions.Consumer;
 import io.reactivex.rxjava3.functions.Function;
 import io.reactivex.rxjava3.schedulers.Schedulers;
@@ -64,91 +66,38 @@ public class BackupPresenter extends BasePresenter<BackupView> {
     public void loadComicFile(CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.loadFavorite(root)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String[]>() {
-                    @Override
-                    public void accept(String[] file) {
-                        mBaseView.onComicFileLoadSuccess(file);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onFileLoadFail();
-                    }
-                }));
+                .subscribe(file -> mBaseView.onComicFileLoadSuccess(file), throwable -> mBaseView.onFileLoadFail()));
     }
 
     public void loadTagFile(CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.loadTag(root)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String[]>() {
-                    @Override
-                    public void accept(String[] file) {
-                        mBaseView.onTagFileLoadSuccess(file);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onFileLoadFail();
-                    }
-                }));
+                .subscribe(file -> mBaseView.onTagFileLoadSuccess(file), throwable -> mBaseView.onFileLoadFail()));
     }
 
     public void loadSettingsFile(CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.loadSettings(root)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String[]>() {
-                    @Override
-                    public void accept(String[] file) {
-                        mBaseView.onSettingsFileLoadSuccess(file);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onFileLoadFail();
-                    }
-                }));
+                .subscribe(file -> mBaseView.onSettingsFileLoadSuccess(file), throwable -> mBaseView.onFileLoadFail()));
     }
 
     public void loadClearBackupFile(CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.loadClearBackup(root)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String[]>() {
-                    @Override
-                    public void accept(String[] file) {
-                        mBaseView.onClearFileLoadSuccess(file);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onFileLoadFail();
-                    }
-                }));
+                .subscribe(file -> mBaseView.onClearFileLoadSuccess(file), throwable -> mBaseView.onFileLoadFail()));
     }
 
     public void saveComic(CimocDocumentFile root) {
         mCompositeSubscription.add(mComicManager.listFavoriteOrHistoryInRx()
-                .map(new Function<List<Comic>, Integer>() {
-                    @Override
-                    public Integer apply(List<Comic> list) {
-                        return Backup.saveComic(mContentResolver, root, list);
-                    }
-                }).subscribeOn(Schedulers.io())
+                .map(list -> Backup.saveComic(mContentResolver, root, list)).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer size) {
-                        if (size == -1) {
-                            mBaseView.onBackupSaveFail();
-                        } else {
-                            mBaseView.onBackupSaveSuccess(size);
-                        }
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
+                .subscribe(size -> {
+                    if (size == -1) {
                         mBaseView.onBackupSaveFail();
+                    } else {
+                        mBaseView.onBackupSaveSuccess(size);
                     }
-                }));
+                }, throwable -> mBaseView.onBackupSaveFail()));
     }
 
     public void saveTag(CimocDocumentFile root) {
@@ -158,21 +107,13 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     emitter.onComplete();
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer size) {
-                        if (size == -1) {
-                            mBaseView.onBackupSaveFail();
-                        } else {
-                            mBaseView.onBackupSaveSuccess(size);
-                        }
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
+                .subscribe(size -> {
+                    if (size == -1) {
                         mBaseView.onBackupSaveFail();
+                    } else {
+                        mBaseView.onBackupSaveSuccess(size);
                     }
-                }));
+                }, throwable -> mBaseView.onBackupSaveFail()));
     }
 
     public void saveSettings(CimocDocumentFile root) {
@@ -182,38 +123,20 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                         emitter.onComplete();
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer size) {
-                        if (size == -1) {
-                            mBaseView.onBackupSaveFail();
-                        } else {
-                            mBaseView.onBackupSaveSuccess(size);
-                        }
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
+                .subscribe(size -> {
+                    if (size == -1) {
                         mBaseView.onBackupSaveFail();
+                    } else {
+                        mBaseView.onBackupSaveSuccess(size);
                     }
-                }));
+                }, throwable -> mBaseView.onBackupSaveFail()));
     }
 
     public void restoreComic(String filename, CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.restoreComic(mContentResolver, root, filename)
-                .doOnNext(new Consumer<List<Comic>>() {
-                    @Override
-                    public void accept(List<Comic> list) {
-                        filterAndPostComic(list);
-                    }
-                })
+                .doOnNext(this::filterAndPostComic)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<List<Comic>>() {
-                    @Override
-                    public void accept(List<Comic> list) {
-                        mBaseView.onBackupRestoreSuccess();
-                    }
-                }, new Consumer<Throwable>() {
+                .subscribe(list -> mBaseView.onBackupRestoreSuccess(), new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable throwable) {
                         throwable.printStackTrace();
@@ -224,19 +147,9 @@ public class BackupPresenter extends BasePresenter<BackupView> {
 
     public void restoreTag(String filename, CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.restoreTag(mContentResolver, root, filename)
-                .doOnNext(new Consumer<List<Pair<Tag, List<Comic>>>>() {
-                    @Override
-                    public void accept(List<Pair<Tag, List<Comic>>> list) {
-                        updateAndPostTag(list);
-                    }
-                })
+                .doOnNext(this::updateAndPostTag)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<List<Pair<Tag, List<Comic>>>>() {
-                    @Override
-                    public void accept(List<Pair<Tag, List<Comic>>> pair) {
-                        mBaseView.onBackupRestoreSuccess();
-                    }
-                }, new Consumer<Throwable>() {
+                .subscribe(pair -> mBaseView.onBackupRestoreSuccess(), new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable throwable) {
                         mBaseView.onBackupRestoreFail();
@@ -247,80 +160,37 @@ public class BackupPresenter extends BasePresenter<BackupView> {
     public void restoreSetting(String filename, CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.restoreSetting(mContentResolver, root, filename)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Map<String, ?>>() {
-                    @Override
-                    public void accept(Map<String, ?> pair) {
-                        mBaseView.onBackupRestoreSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onBackupRestoreFail();
-                    }
-                }));
+                .subscribe(pair -> mBaseView.onBackupRestoreSuccess(), throwable -> mBaseView.onBackupRestoreFail()));
     }
 
     public void clearBackup(CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.clearBackup(root)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer pair) {
-                        mBaseView.onClearBackupSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onClearBackupFail();
-                    }
-                }));
+                .subscribe(pair -> mBaseView.onClearBackupSuccess(), throwable -> mBaseView.onClearBackupFail()));
     }
 
     public void deleteBackup(String filename, CimocDocumentFile root) {
         mCompositeSubscription.add(Backup.deleteBackup(root, filename)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer pair) {
-                        mBaseView.onClearBackupSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onClearBackupFail();
-                    }
-                }));
+                .subscribe(pair -> mBaseView.onClearBackupSuccess(), throwable -> mBaseView.onClearBackupFail()));
     }
 
     public void uploadBackup2Cloud(CimocDocumentFile src, WebDavCimocDocumentFile dst) {
         mCompositeSubscription.add(upload2WebDav(src, dst, true)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer pair) {
-                        mBaseView.onUploadSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable throwable) {
-                        mBaseView.onUploadFail();
-                    }
-                }));
+                .subscribe(pair -> mBaseView.onUploadSuccess(), throwable -> mBaseView.onUploadFail()));
     }
 
     private List<Tag> setTagsId(final List<Pair<Tag, List<Comic>>> list) {
         final List<Tag> tags = new LinkedList<>();
-        mTagRefManager.runInTx(new Runnable() {
-            @Override
-            public void run() {
-                for (Pair<Tag, List<Comic>> pair : list) {
-                    Tag tag = mTagManager.load(pair.first.getTitle());
-                    if (tag == null) {
-                        mTagManager.insert(pair.first);
-                        tags.add(pair.first);
-                    } else {
-                        pair.first.setId(tag.getId());
-                    }
+        mTagRefManager.runInTx(() -> {
+            for (Pair<Tag, List<Comic>> pair : list) {
+                Tag tag = mTagManager.load(pair.first.getTitle());
+                if (tag == null) {
+                    mTagManager.insert(pair.first);
+                    tags.add(pair.first);
+                } else {
+                    pair.first.setId(tag.getId());
                 }
             }
         });
@@ -332,16 +202,13 @@ public class BackupPresenter extends BasePresenter<BackupView> {
         for (Pair<Tag, List<Comic>> pair : list) {
             filterAndPostComic(pair.second);
         }
-        mTagRefManager.runInTx(new Runnable() {
-            @Override
-            public void run() {
-                for (Pair<Tag, List<Comic>> pair : list) {
-                    long tid = pair.first.getId();
-                    for (Comic comic : pair.second) {
-                        TagRef ref = mTagRefManager.load(tid, comic.getId());
-                        if (ref == null) {
-                            mTagRefManager.insert(new TagRef(null, tid, comic.getId()));
-                        }
+        mTagRefManager.runInTx(() -> {
+            for (Pair<Tag, List<Comic>> pair : list) {
+                long tid = pair.first.getId();
+                for (Comic comic : pair.second) {
+                    TagRef ref = mTagRefManager.load(tid, comic.getId());
+                    if (ref == null) {
+                        mTagRefManager.insert(new TagRef(null, tid, comic.getId()));
                     }
                 }
             }
@@ -351,17 +218,14 @@ public class BackupPresenter extends BasePresenter<BackupView> {
 
     private int groupAndSaveComicByTag(CimocDocumentFile file) {
         final List<Pair<Tag, List<Comic>>> list = new LinkedList<>();
-        mComicManager.runInTx(new Runnable() {
-            @Override
-            public void run() {
-                for (Tag tag : mTagManager.list()) {
-                    List<Comic> comics = new LinkedList<>();
-                    Pair<Tag, List<Comic>> pair = Pair.create(tag, comics);
-                    for (TagRef ref : mTagRefManager.listByTag(tag.getId())) {
-                        comics.add(mComicManager.load(ref.getCid()));
-                    }
-                    list.add(pair);
+        mComicManager.runInTx(() -> {
+            for (Tag tag : mTagManager.list()) {
+                List<Comic> comics = new LinkedList<>();
+                Pair<Tag, List<Comic>> pair = Pair.create(tag, comics);
+                for (TagRef ref : mTagRefManager.listByTag(tag.getId())) {
+                    comics.add(mComicManager.load(ref.getCid()));
                 }
+                list.add(pair);
             }
         });
         return Backup.saveTag(mContentResolver, file, list);
@@ -370,47 +234,44 @@ public class BackupPresenter extends BasePresenter<BackupView> {
     private void filterAndPostComic(final List<Comic> list) {
         final List<Comic> favorite = new LinkedList<>();
         final List<Comic> history = new LinkedList<>();
-        mComicManager.runInTx(new Runnable() {
-            @Override
-            public void run() {
-                for (Comic comic : list) {
-                    Comic temp = mComicManager.load(comic.getSource(), comic.getCid());
-                    if (temp == null) {
-                        mComicManager.insert(comic);
-                        if (comic.getHistory() != null) {
-                            history.add(comic);
-                        }
-                        if (comic.getFavorite() != null) {
+        mComicManager.runInTx(() -> {
+            for (Comic comic : list) {
+                Comic temp = mComicManager.load(comic.getSource(), comic.getCid());
+                if (temp == null) {
+                    mComicManager.insert(comic);
+                    if (comic.getHistory() != null) {
+                        history.add(comic);
+                    }
+                    if (comic.getFavorite() != null) {
+                        favorite.add(comic);
+                    }
+                } else {
+                    if (temp.getFavorite() == null || temp.getHistory() == null) {
+                        if (temp.getFavorite() == null && comic.getFavorite() != null) {
+                            temp.setFavorite(comic.getFavorite());
                             favorite.add(comic);
                         }
-                    } else {
-                        if (temp.getFavorite() == null || temp.getHistory() == null) {
-                            if (temp.getFavorite() == null && comic.getFavorite() != null) {
-                                temp.setFavorite(comic.getFavorite());
-                                favorite.add(comic);
-                            }
-                            if (temp.getHistory() == null && comic.getHistory() != null) {
-                                temp.setHistory(comic.getHistory());
-                                if (temp.getLast() == null) {
-                                    temp.setLast(comic.getLast());
-                                    temp.setPage(comic.getPage());
-                                    temp.setChapter(comic.getChapter());
-                                }
-                                history.add(comic);
-                            }
-                            mComicManager.update(temp);
-                        } else if (!Objects.equals(temp.getHistory(), comic.getHistory())) {
+                        if (temp.getHistory() == null && comic.getHistory() != null) {
                             temp.setHistory(comic.getHistory());
-                            temp.setLast(comic.getLast());
-                            temp.setPage(comic.getPage());
-                            temp.setChapter(comic.getChapter());
-
-                            mComicManager.update(temp);
+                            if (temp.getLast() == null) {
+                                temp.setLast(comic.getLast());
+                                temp.setPage(comic.getPage());
+                                temp.setChapter(comic.getChapter());
+                            }
+                            history.add(comic);
                         }
-                        // TODO 可能要设置其他域
-                        comic.setId(temp.getId());
-                        // mComicManager.update(temp);
+                        mComicManager.update(temp);
+                    } else if (!Objects.equals(temp.getHistory(), comic.getHistory())) {
+                        temp.setHistory(comic.getHistory());
+                        temp.setLast(comic.getLast());
+                        temp.setPage(comic.getPage());
+                        temp.setChapter(comic.getChapter());
+
+                        mComicManager.update(temp);
                     }
+                    // TODO 可能要设置其他域
+                    comic.setId(temp.getId());
+                    // mComicManager.update(temp);
                 }
             }
         });
@@ -483,24 +344,18 @@ public class BackupPresenter extends BasePresenter<BackupView> {
             }
         }).subscribeOn(Schedulers.io())
         .observeOn(AndroidSchedulers.mainThread())
-        .subscribe(new Consumer<DataSyncModels.LoginResponse>() {
-            @Override
-            public void accept(DataSyncModels.LoginResponse resp) {
-                // 保存 token 和用户信息
-                PreferenceManager pm = App.getPreferenceManager();
-                pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, resp.token);
-                pm.putString(PreferenceManager.PREFERENCES_USER_NAME, resp.user.username);
-                pm.putString(PreferenceManager.PREFERENCES_USER_ID, String.valueOf(resp.user.id));
-                mBaseView.onDataSyncLoginSuccess(resp.user.username);
-                // 登录成功后立即触发一次双向同步
-                com.xyrlsz.xcimocob.network.sync.DataSyncManager.getInstance().triggerNow();
-            }
-        }, new Consumer<Throwable>() {
-            @Override
-            public void accept(Throwable e) {
-                String msg = getErrorMessage(e);
-                mBaseView.onDataSyncError(msg);
-            }
+        .subscribe(resp -> {
+            // 保存 token 和用户信息
+            PreferenceManager pm = App.getPreferenceManager();
+            pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, resp.token);
+            pm.putString(PreferenceManager.PREFERENCES_USER_NAME, resp.user.username);
+            pm.putString(PreferenceManager.PREFERENCES_USER_ID, String.valueOf(resp.user.id));
+            mBaseView.onDataSyncLoginSuccess(resp.user.username);
+            // 登录成功后立即触发一次双向同步
+            DataSyncManager.getInstance().triggerNow();
+        }, e -> {
+            String msg = getErrorMessage(e);
+            mBaseView.onDataSyncError(msg);
         }));
     }
 
@@ -525,85 +380,71 @@ public class BackupPresenter extends BasePresenter<BackupView> {
         mBaseView.onDataSyncStart();
 
         mCompositeSubscription.add(mComicManager.listFavoriteOrHistoryInRx()
-                .map(new Function<List<Comic>, List<DataSyncModels.ComicSyncItem>>() {
-                    @Override
-                    public List<DataSyncModels.ComicSyncItem> apply(List<Comic> comics) {
-                        List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size() + 8);
-                        // 记录已出现在常规上传中的漫画 key，避免与清除标记冲突
-                        java.util.Set<String> uploadedKeys = new java.util.HashSet<>();
-                        for (Comic comic : comics) {
-                            DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
-                            item.source = comic.getSource();
-                            item.cid = comic.getCid();
-                            item.title = comic.getTitle();
-                            item.cover = comic.getCover();
-                            item.update = comic.getUpdate();
-                            item.finish = comic.getFinish() != null && comic.getFinish();
-                            item.favorite = comic.getFavorite();
-                            item.history = comic.getHistory();
-                            item.last = comic.getLast();
-                            item.page = comic.getPage();
-                            item.chapter = comic.getChapter();
-                            item.chapter_count = comic.getChapterCount();
-                            items.add(item);
-                            uploadedKeys.add(comic.getSource() + ":" + comic.getCid());
+                .map(comics -> {
+                    List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size() + 8);
+                    // 记录已出现在常规上传中的漫画 key，避免与清除标记冲突
+                    Set<String> uploadedKeys = new HashSet<>();
+                    for (Comic comic : comics) {
+                        DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
+                        item.source = comic.getSource();
+                        item.cid = comic.getCid();
+                        item.title = comic.getTitle();
+                        item.cover = comic.getCover();
+                        item.update = comic.getUpdate();
+                        item.finish = comic.getFinish() != null && comic.getFinish();
+                        item.favorite = comic.getFavorite();
+                        item.history = comic.getHistory();
+                        item.last = comic.getLast();
+                        item.page = comic.getPage();
+                        item.chapter = comic.getChapter();
+                        item.chapter_count = comic.getChapterCount();
+                        items.add(item);
+                        uploadedKeys.add(comic.getSource() + ":" + comic.getCid());
+                    }
+                    // 附加标记了"历史已删除"的漫画（跳过已在本地重新有数据的）
+                    Set<String> deletedKeys = DataSyncManager.getHistoryDeletedKeysForUpload();
+                    for (String key : deletedKeys) {
+                        if (uploadedKeys.contains(key)) {
+                            continue;
                         }
-                        // 附加标记了"历史已删除"的漫画（跳过已在本地重新有数据的）
-                        java.util.Set<String> deletedKeys = DataSyncManager.getHistoryDeletedKeysForUpload();
-                        for (String key : deletedKeys) {
-                            if (uploadedKeys.contains(key)) {
+                        String[] parts = key.split(":", 2);
+                        if (parts.length == 2) {
+                            DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                            try {
+                                delItem.source = Integer.parseInt(parts[0]);
+                            } catch (NumberFormatException e) {
+                                Log.w("BackupPresenter", "Invalid history deleted key (source not int): " + key);
                                 continue;
                             }
-                            String[] parts = key.split(":", 2);
-                            if (parts.length == 2) {
-                                DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
-                                try {
-                                    delItem.source = Integer.parseInt(parts[0]);
-                                } catch (NumberFormatException e) {
-                                    Log.w("BackupPresenter", "Invalid history deleted key (source not int): " + key);
-                                    continue;
-                                }
-                                delItem.cid = parts[1];
-                                delItem.clear_history = true;
-                                items.add(delItem);
-                            }
+                            delItem.cid = parts[1];
+                            delItem.clear_history = true;
+                            items.add(delItem);
                         }
-                        return items;
                     }
+                    return items;
                 })
-                .flatMap(new Function<List<DataSyncModels.ComicSyncItem>, io.reactivex.rxjava3.core.ObservableSource<DataSyncModels.ComicSyncResponse>>() {
-                    @Override
-                    public io.reactivex.rxjava3.core.ObservableSource<DataSyncModels.ComicSyncResponse> apply(List<DataSyncModels.ComicSyncItem> items) throws Exception {
-                        // 在 IO 线程获取有效 token（自动刷新过期 token）
-                        String token = DataSyncClient.ensureValidToken();
-                        if (token == null) {
-                            return io.reactivex.rxjava3.core.Observable.error(
-                                    new IOException(mBaseView.getAppInstance().getString(
-                                            com.xyrlsz.xcimocob.R.string.data_sync_not_logged_in)));
-                        }
-                        try {
-                            DataSyncModels.ComicSyncResponse resp = client.syncComics(token, items);
-                            return io.reactivex.rxjava3.core.Observable.just(resp);
-                        } catch (Exception e) {
-                            return io.reactivex.rxjava3.core.Observable.error(e);
-                        }
+                .flatMap((Function<List<DataSyncModels.ComicSyncItem>, ObservableSource<DataSyncModels.ComicSyncResponse>>) items -> {
+                    // 在 IO 线程获取有效 token（自动刷新过期 token）
+                    String token = DataSyncClient.ensureValidToken();
+                    if (token == null) {
+                        return Observable.error(
+                                new IOException(mBaseView.getAppInstance().getString(
+                                        R.string.data_sync_not_logged_in)));
+                    }
+                    try {
+                        DataSyncModels.ComicSyncResponse resp = client.syncComics(token, items);
+                        return Observable.just(resp);
+                    } catch (Exception e) {
+                        return Observable.error(e);
                     }
                 })
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<DataSyncModels.ComicSyncResponse>() {
-                    @Override
-                    public void accept(DataSyncModels.ComicSyncResponse resp) {
-                        // 上传成功后清除历史删除标记
-                        DataSyncManager.clearHistoryDeletedKeysAfterUpload();
-                        mBaseView.onDataSyncComicSuccess(resp.synced, resp.skipped);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncError(getErrorMessage(e));
-                    }
-                }));
+                .subscribe(resp -> {
+                    // 上传成功后清除历史删除标记
+                    DataSyncManager.clearHistoryDeletedKeysAfterUpload();
+                    mBaseView.onDataSyncComicSuccess(resp.synced, resp.skipped);
+                }, e -> mBaseView.onDataSyncError(getErrorMessage(e))));
     }
 
     /**
@@ -639,17 +480,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     emitter.onComplete();
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<DataSyncModels.SettingSyncResponse>() {
-                    @Override
-                    public void accept(DataSyncModels.SettingSyncResponse resp) {
-                        mBaseView.onDataSyncSettingSuccess(resp.synced);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncError(getErrorMessage(e));
-                    }
-                }));
+                .subscribe(resp -> mBaseView.onDataSyncSettingSuccess(resp.synced), e -> mBaseView.onDataSyncError(getErrorMessage(e))));
     }
 
     /**
@@ -708,17 +539,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     }
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Boolean>() {
-                    @Override
-                    public void accept(Boolean success) {
-                        mBaseView.onDataSyncAllSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncError(getErrorMessage(e));
-                    }
-                }));
+                .subscribe(success -> mBaseView.onDataSyncAllSuccess(), e -> mBaseView.onDataSyncError(getErrorMessage(e))));
     }
 
     /** 敏感 key 列表：不上传到服务器，也不从服务器覆盖本地 */
@@ -728,7 +549,8 @@ public class BackupPresenter extends BasePresenter<BackupView> {
             PreferenceManager.PREFERENCES_USER_EMAIL,
             PreferenceManager.PREFERENCES_USER_ID,
             PreferenceManager.PREF_DATA_SERVER_URL,
-            PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC
+            PreferenceManager.PREF_DATA_SERVER_AUTO_SYNC,
+            PreferenceManager.PREF_OTHER_STORAGE
     ));
 
     // ==================== 从服务器下载/恢复 ====================
@@ -843,17 +665,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     }
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer count) {
-                        mBaseView.onDataSyncDownloadComicSuccess(count);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncDownloadError(getErrorMessage(e));
-                    }
-                }));
+                .subscribe(count -> mBaseView.onDataSyncDownloadComicSuccess(count), e -> mBaseView.onDataSyncDownloadError(getErrorMessage(e))));
     }
 
     /**
@@ -897,17 +709,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     }
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Integer>() {
-                    @Override
-                    public void accept(Integer count) {
-                        mBaseView.onDataSyncDownloadSettingSuccess(count);
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncDownloadError(getErrorMessage(e));
-                    }
-                }));
+                .subscribe(count -> mBaseView.onDataSyncDownloadSettingSuccess(count), e -> mBaseView.onDataSyncDownloadError(getErrorMessage(e))));
     }
 
     /**
@@ -1012,17 +814,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     }
                 }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<Boolean>() {
-                    @Override
-                    public void accept(Boolean success) {
-                        mBaseView.onDataSyncDownloadAllSuccess();
-                    }
-                }, new Consumer<Throwable>() {
-                    @Override
-                    public void accept(Throwable e) {
-                        mBaseView.onDataSyncDownloadError(getErrorMessage(e));
-                    }
-                }));
+                .subscribe(success -> mBaseView.onDataSyncDownloadAllSuccess(), e -> mBaseView.onDataSyncDownloadError(getErrorMessage(e))));
     }
 
     /**
