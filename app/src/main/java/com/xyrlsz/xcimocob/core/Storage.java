@@ -154,7 +154,7 @@ public class Storage {
                     try {
                         if (dst.canRead() && !isDirSame(root, dst)) {
                             // 源目录不存在或无法访问（SAF URI 已失效、存储卡被移除等），无需复制，直接完成
-                            if (!root.exists()) {
+                            if (!root.exists() || !root.canRead()) {
                                 emitter.onComplete();
                                 return;
                             }
