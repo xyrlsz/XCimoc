@@ -1,6 +1,7 @@
 package com.xyrlsz.xcimocob.helper;
 
 import android.content.Context;
+
 import com.xyrlsz.opencc.android.lib.ChineseConverter;
 import com.xyrlsz.xcimocob.BuildConfig;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
@@ -10,17 +11,18 @@ import com.xyrlsz.xcimocob.source.BuKa;
 import com.xyrlsz.xcimocob.source.CopyMH;
 import com.xyrlsz.xcimocob.source.CopyMHWeb;
 import com.xyrlsz.xcimocob.source.DM5;
+import com.xyrlsz.xcimocob.source.DongManHi;
 import com.xyrlsz.xcimocob.source.DongManManHua;
 import com.xyrlsz.xcimocob.source.DuManWu;
 import com.xyrlsz.xcimocob.source.DuManWuApp;
 import com.xyrlsz.xcimocob.source.GFMH;
 import com.xyrlsz.xcimocob.source.GoDaManHua;
 import com.xyrlsz.xcimocob.source.HotManga;
-import com.xyrlsz.xcimocob.source.ManHuaGui;
 import com.xyrlsz.xcimocob.source.Komiic;
 import com.xyrlsz.xcimocob.source.MH5;
 import com.xyrlsz.xcimocob.source.MYCOMIC;
 import com.xyrlsz.xcimocob.source.ManBen;
+import com.xyrlsz.xcimocob.source.ManHuaGui;
 import com.xyrlsz.xcimocob.source.ManWa;
 import com.xyrlsz.xcimocob.source.MangaBZ;
 import com.xyrlsz.xcimocob.source.Manhuatai;
@@ -30,13 +32,14 @@ import com.xyrlsz.xcimocob.source.Vomicmh;
 import com.xyrlsz.xcimocob.source.YKMH;
 import com.xyrlsz.xcimocob.source.YYManHua;
 import com.xyrlsz.xcimocob.source.ZaiManhua;
-import io.objectbox.Box;
-import io.objectbox.BoxStore;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import io.objectbox.Box;
+import io.objectbox.BoxStore;
 
 /**
  * Created by Hiroshi on 2017/1/18.
@@ -91,6 +94,7 @@ public class UpdateHelper {
             ComicSourceTable.put(MH5.TYPE, MH5.getDefaultSource());
             ComicSourceTable.put(DuManWuApp.TYPE, DuManWuApp.getDefaultSource());
             ComicSourceTable.put(CopyMHWeb.TYPE, CopyMHWeb.getDefaultSource());
+            ComicSourceTable.put(DongManHi.TYPE, DongManHi.getDefaultSource());
         }
     }
 
@@ -108,10 +112,10 @@ public class UpdateHelper {
     }
 
     private static void updateComicSource(BoxStore boxStore) {
-        Box<Source> sourceBox        = boxStore.boxFor(Source.class);
-        List<Source> sourceList      = sourceBox.getAll();
+        Box<Source> sourceBox = boxStore.boxFor(Source.class);
+        List<Source> sourceList = sourceBox.getAll();
         List<Source> sourcesToDelete = new ArrayList<>();
-        List<Source> sourcesToAdd    = new ArrayList<>();
+        List<Source> sourcesToAdd = new ArrayList<>();
         for (Source source : sourceList) {
             if (!ComicSourceTable.containsKey(source.getType())) {
                 sourcesToDelete.add(source);
@@ -140,15 +144,15 @@ public class UpdateHelper {
             if (ComicSourceTable.containsKey(source.getType())) {
                 Source sourceToUpdate = ComicSourceTable.get(source.getType());
                 if (sourceToUpdate != null) {
-                    String title1   = source.getTitle();
-                    String title2   = sourceToUpdate.getTitle();
+                    String title1 = source.getTitle();
+                    String title2 = sourceToUpdate.getTitle();
                     String baseUrl1 = source.getBaseUrl();
                     String baseUrl2 = sourceToUpdate.getBaseUrl();
 
                     boolean titleDiff = (title1 == null && title2 != null)
-                        || (title1 != null && !title1.equals(title2));
+                            || (title1 != null && !title1.equals(title2));
                     boolean baseUrlDiff = (baseUrl1 == null && baseUrl2 != null)
-                        || (baseUrl1 != null && !baseUrl1.equals(baseUrl2));
+                            || (baseUrl1 != null && !baseUrl1.equals(baseUrl2));
 
                     if (titleDiff || baseUrlDiff) {
                         source.setTitle(title2);

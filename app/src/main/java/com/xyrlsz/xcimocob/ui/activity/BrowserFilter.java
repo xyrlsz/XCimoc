@@ -10,6 +10,7 @@ import com.xyrlsz.xcimocob.source.Baozi;
 import com.xyrlsz.xcimocob.source.BuKa;
 import com.xyrlsz.xcimocob.source.CopyMH;
 import com.xyrlsz.xcimocob.source.DM5;
+import com.xyrlsz.xcimocob.source.DongManHi;
 import com.xyrlsz.xcimocob.source.DongManManHua;
 import com.xyrlsz.xcimocob.source.DuManWu;
 import com.xyrlsz.xcimocob.source.DuManWuApp;
@@ -96,6 +97,7 @@ public class BrowserFilter extends BaseActivity {
         list.add(ManWa.TYPE);
         list.add(MH5.TYPE);
         list.add(DuManWuApp.TYPE);
+        list.add(DongManHi.TYPE);
         return list;
     }
 

@@ -12,18 +12,19 @@ import com.xyrlsz.xcimocob.source.BuKa;
 import com.xyrlsz.xcimocob.source.CopyMH;
 import com.xyrlsz.xcimocob.source.CopyMHWeb;
 import com.xyrlsz.xcimocob.source.DM5;
+import com.xyrlsz.xcimocob.source.DongManHi;
 import com.xyrlsz.xcimocob.source.DongManManHua;
 import com.xyrlsz.xcimocob.source.DuManWu;
 import com.xyrlsz.xcimocob.source.DuManWuApp;
 import com.xyrlsz.xcimocob.source.GFMH;
 import com.xyrlsz.xcimocob.source.GoDaManHua;
 import com.xyrlsz.xcimocob.source.HotManga;
-import com.xyrlsz.xcimocob.source.ManHuaGui;
 import com.xyrlsz.xcimocob.source.Komiic;
 import com.xyrlsz.xcimocob.source.Locality;
 import com.xyrlsz.xcimocob.source.MH5;
 import com.xyrlsz.xcimocob.source.MYCOMIC;
 import com.xyrlsz.xcimocob.source.ManBen;
+import com.xyrlsz.xcimocob.source.ManHuaGui;
 import com.xyrlsz.xcimocob.source.ManWa;
 import com.xyrlsz.xcimocob.source.MangaBZ;
 import com.xyrlsz.xcimocob.source.Manhuatai;
@@ -39,9 +40,9 @@ import java.util.List;
 
 import io.objectbox.Box;
 import io.objectbox.BoxStore;
-import okhttp3.Headers;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import okhttp3.Headers;
 
 /**
  * Created by Hiroshi on 2016/8/11.
@@ -148,6 +149,7 @@ public class SourceManager {
                 case MH5.TYPE -> new MH5(source);
                 case DuManWuApp.TYPE -> new DuManWuApp(source);
                 case CopyMHWeb.TYPE -> new CopyMHWeb(source);
+                case DongManHi.TYPE -> new DongManHi(source);
                 default -> new Null();
             };
             mParserArray.put(type, parser);

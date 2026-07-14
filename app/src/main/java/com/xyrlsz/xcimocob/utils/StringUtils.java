@@ -127,4 +127,11 @@ public class StringUtils {
         return String.join(delimiter, array);
     }
 
+    public static String getNumber(String str) {
+        if (str == null) {
+            return null;
+        }
+        return str.replaceAll("\\D", "");
+    }
+
 }
