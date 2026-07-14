@@ -349,6 +349,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
             PreferenceManager pm = App.getPreferenceManager();
             pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, resp.token);
             pm.putString(PreferenceManager.PREFERENCES_USER_NAME, resp.user.username);
+            pm.putString(PreferenceManager.PREFERENCES_USER_PASSWORD, password);
             pm.putString(PreferenceManager.PREFERENCES_USER_ID, String.valueOf(resp.user.id));
             mBaseView.onDataSyncLoginSuccess(resp.user.username);
             // 登录成功后立即触发一次双向同步
@@ -366,6 +367,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
         PreferenceManager pm = App.getPreferenceManager();
         pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, "");
         pm.putString(PreferenceManager.PREFERENCES_USER_NAME, "");
+        pm.putString(PreferenceManager.PREFERENCES_USER_PASSWORD, "");
         pm.putString(PreferenceManager.PREFERENCES_USER_ID, "");
         mBaseView.onDataSyncLogoutSuccess();
     }
@@ -546,6 +548,7 @@ public class BackupPresenter extends BasePresenter<BackupView> {
     private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
             PreferenceManager.PREFERENCES_USER_TOCKEN,
             PreferenceManager.PREFERENCES_USER_NAME,
+            PreferenceManager.PREFERENCES_USER_PASSWORD,
             PreferenceManager.PREFERENCES_USER_EMAIL,
             PreferenceManager.PREFERENCES_USER_ID,
             PreferenceManager.PREF_DATA_SERVER_URL,

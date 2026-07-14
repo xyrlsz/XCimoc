@@ -362,6 +362,7 @@ public class DataSyncManager {
     private static final Set<String> SENSITIVE_KEYS = new HashSet<>(Arrays.asList(
             PreferenceManager.PREFERENCES_USER_TOCKEN,
             PreferenceManager.PREFERENCES_USER_NAME,
+            PreferenceManager.PREFERENCES_USER_PASSWORD,
             PreferenceManager.PREFERENCES_USER_EMAIL,
             PreferenceManager.PREFERENCES_USER_ID,
             PreferenceManager.PREF_DATA_SERVER_URL,

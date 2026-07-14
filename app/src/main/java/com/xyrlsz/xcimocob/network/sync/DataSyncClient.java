@@ -144,9 +144,10 @@ public class DataSyncClient {
     }
 
     /**
-     * 确保 token 有效：如果需要刷新则自动刷新并保存
+     * 确保 token 有效：如果需要刷新则自动刷新并保存。
+     * 若刷新失败（401 或返回 null）且本地保存了账号密码，则自动重新登录。
      *
-     * @return 有效的 token，如果刷新失败则返回 null
+     * @return 有效的 token，如果全部失败则返回 null
      */
     public static String ensureValidToken() {
         PreferenceManager pm = App.getPreferenceManager();
@@ -157,23 +158,68 @@ public class DataSyncClient {
             return token; // token 仍然有效
         }
 
-        // 需要刷新
-        try {
-            String serverUrl = pm.getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
-            if (TextUtils.isEmpty(serverUrl)) return token;
+        String serverUrl = pm.getString(PreferenceManager.PREF_DATA_SERVER_URL, "");
+        if (TextUtils.isEmpty(serverUrl)) return token;
 
-            DataSyncClient client = new DataSyncClient(serverUrl);
+        DataSyncClient client = new DataSyncClient(serverUrl);
+
+        // 尝试刷新
+        try {
             String newToken = client.refreshToken(token);
             if (newToken != null) {
                 pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, newToken);
                 Log.d("DataSyncClient", "Token refreshed successfully");
                 return newToken;
             }
+            // refresh 返回 null → 继续尝试自动登录
+            Log.w("DataSyncClient", "Token refresh returned null, trying auto re-login");
+        } catch (DataSyncException e) {
+            if (e.httpCode == 401) {
+                Log.w("DataSyncClient", "Token refresh unauthorized (401), trying auto re-login", e);
+            } else {
+                Log.w("DataSyncClient", "Token refresh failed, using old token", e);
+                return token;
+            }
         } catch (Exception e) {
             Log.w("DataSyncClient", "Token refresh failed, using old token", e);
+            return token;
         }
-        return token; // 刷新失败，继续使用旧 token
+
+        // ======== 自动重新登录 ========
+        String username = pm.getString(PreferenceManager.PREFERENCES_USER_NAME, "");
+        String password = pm.getString(PreferenceManager.PREFERENCES_USER_PASSWORD, "");
+        if (!TextUtils.isEmpty(username) && !TextUtils.isEmpty(password)) {
+            try {
+                DataSyncModels.LoginResponse resp = client.login(username, password);
+                if (resp != null && resp.token != null) {
+                    pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, resp.token);
+                    Log.d("DataSyncClient", "Auto re-login successful");
+                    return resp.token;
+                }
+            } catch (DataSyncException e) {
+                if (e.httpCode == 401) {
+                    // 密码错误或用户不存在，清除凭据
+                    Log.w("DataSyncClient", "Auto re-login failed (401), clearing credentials", e);
+                    pm.putString(PreferenceManager.PREFERENCES_USER_PASSWORD, "");
+                } else {
+                    // 其他 HTTP 错误（500 等），不清除凭据
+                    Log.w("DataSyncClient", "Auto re-login failed (HTTP " + e.httpCode + "), keeping credentials", e);
+                }
+                pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, "");
+                return null;
+            } catch (Exception e) {
+                // IOException（网络问题等），不清除凭据，保留 token + 密码等待下次尝试
+                Log.w("DataSyncClient", "Auto re-login failed (network), keeping credentials for next retry", e);
+                return null;
+            }
+        } else {
+            // 没有保存密码，清除 token
+            pm.putString(PreferenceManager.PREFERENCES_USER_TOCKEN, "");
+            Log.w("DataSyncClient", "No saved credentials for auto re-login, clearing token");
+        }
+        return null;
     }
+    
 
     // ==================== Comics ====================
 
