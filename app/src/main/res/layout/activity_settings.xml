@@ -40,6 +40,25 @@
                     android:layout_height="wrap_content"
                     app:summary="@string/settings_comic_login_summary"
                     app:title="@string/settings_comic_login_title">
+                    
+                    <!-- ========== 服务器数据同步（跳转到独立页面） ========== -->
+<!--                    <TextView-->
+<!--                        android:layout_width="match_parent"-->
+<!--                        android:layout_height="wrap_content"-->
+<!--                        android:layout_marginLeft="16dp"-->
+<!--                        android:layout_marginTop="10dp"-->
+<!--                        android:layout_marginRight="16dp"-->
+<!--                        android:layout_marginBottom="10dp"-->
+<!--                        android:text="@string/backup_data_server"-->
+<!--                        android:textColor="?attr/colorPrimary"-->
+<!--                        android:textSize="14sp" />-->
+
+                    <com.xyrlsz.xcimocob.ui.widget.Option
+                        android:id="@+id/backup_data_server_entry"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:title="@string/backup_data_server"
+                        app:summary="@string/data_server_config_title" />
 
                     <RelativeLayout
                         android:layout_width="match_parent"

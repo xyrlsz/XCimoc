@@ -38,7 +38,6 @@ import java.util.List;
 import java.util.Objects;
 
 
-
 /**
  * Created by Hiroshi on 2016/9/21.
  */
@@ -97,6 +96,8 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     CheckBoxPreference mReaderPagingStreamOff;
 
     private SettingsPresenter mPresenter;
+    private String mStoragePath;
+    private String mTempStorage;
 
     @Override
     protected void initViewById() {
@@ -136,8 +137,6 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         mStEngine = findViewById(R.id.settings_st_engine);
         mReaderPagingStreamOff = findViewById(R.id.settings_reader_paging_stream_off);
     }
-    private String mStoragePath;
-    private String mTempStorage;
 
     @Override
     protected BasePresenter initPresenter() {
@@ -205,6 +204,11 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         findViewById(R.id.settings_other_permission).setOnClickListener(v -> onPermissionClick());
         findViewById(R.id.settings_other_clear_cache).setOnClickListener(v -> onOtherCacheClick());
         findViewById(R.id.settings_comic_source_login).setOnClickListener(v -> onComicSourceLoginClick());
+
+        // 服务器数据同步入口 → 跳转到独立页面
+        findViewById(R.id.backup_data_server_entry).setOnClickListener(v ->
+                startActivity(new android.content.Intent(this, DataSyncActivity.class)));
+
     }
 
     void onReaderConfigBtnClick() {

@@ -92,10 +92,6 @@ public class BackupActivity extends BackActivity implements BackupView {
         findViewById(R.id.backup_save_settings_cloud).setOnClickListener(v -> onSaveSettingsCloudClick());
         findViewById(R.id.backup_restore_settings_cloud).setOnClickListener(v -> onRestoreSettingsCloudClick());
 
-        // 服务器数据同步入口 → 跳转到独立页面
-        findViewById(R.id.backup_data_server_entry).setOnClickListener(v ->
-                startActivity(new android.content.Intent(this, DataSyncActivity.class)));
-
     }
 
     void onSaveFavoriteClick() {

@@ -27,7 +27,7 @@ forked from https://github.com/Haleydu/Cimoc
 - 本地漫画（Local Reader）
 - 本地备份恢复（Local Backup）
 - WebDav云备份功能(WebDav Backup)
-- **数据同步服务器**（Data Sync Server）- 跨设备同步收藏、阅读记录、应用设置
+- 数据同步服务器（Data Sync Server）- 跨设备同步收藏、阅读记录、应用设置
 - 下载漫画后导出漫画（Export Manga）
 
 # 软件使用说明
