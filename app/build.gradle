@@ -182,7 +182,7 @@ dependencies {
     implementation 'com.king.app:app-dialog:1.0.8-androidx'
 
 //    implementation 'com.github.houbb:opencc4j:1.14.0'
-    implementation 'com.github.xyrlsz:android-opencc:1.4.1'
+    implementation 'com.github.xyrlsz:android-opencc:1.4.2'
 
     implementation('com.github.thegrizzlylabs:sardine-android:0.9') {
         exclude group: 'xpp3', module: 'xpp3'
