@@ -3,12 +3,16 @@ package com.xyrlsz.xcimocob.ui.activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.FrameLayout;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
@@ -41,6 +45,7 @@ public class PartFavoriteActivity extends BackActivity implements PartFavoriteVi
     private static final int DIALOG_REQUEST_ADD = 1;
 
     RecyclerView mRecyclerView;
+    FrameLayout mLayoutView;
 
     private PartFavoritePresenter mPresenter;
     private GridAdapter mGridAdapter;
@@ -66,6 +71,7 @@ public class PartFavoriteActivity extends BackActivity implements PartFavoriteVi
     protected void initViewById() {
         super.initViewById();
         mRecyclerView = findViewById(R.id.part_favorite_recycler_view);
+        mLayoutView = findViewById(R.id.part_favorite_root);
     }
 
     @Override
@@ -82,6 +88,16 @@ public class PartFavoriteActivity extends BackActivity implements PartFavoriteVi
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.addItemDecoration(mGridAdapter.getItemDecoration());
         mRecyclerView.setAdapter(mGridAdapter);
+        ViewCompat.setOnApplyWindowInsetsListener(mLayoutView, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    v.getPaddingTop(),
+                    v.getPaddingRight(),
+                    systemBars.bottom
+            );
+            return insets;
+        });
     }
 
     @Override
@@ -206,6 +222,11 @@ public class PartFavoriteActivity extends BackActivity implements PartFavoriteVi
         if (!mGridAdapter.contains(comic)) {
             mGridAdapter.add(0, comic);
         }
+    }
+
+    @Override
+    protected View getLayoutView() {
+        return mLayoutView;
     }
 
     @Override

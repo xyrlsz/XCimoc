@@ -13,6 +13,11 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.FrameLayout;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.component.DialogCaller;
@@ -34,11 +39,13 @@ public class EventSettingsActivity extends BaseActivity implements DialogCaller 
 
     private final float thredhold = 0.3f;
     List<Button> mButtonList;
+    FrameLayout mLayoutView;
     private int[] mChoiceArray;
 
     @Override
     protected void initViewById() {
         super.initViewById();
+        mLayoutView = findViewById(R.id.event_root);
         mButtonList = new ArrayList<>();
         mButtonList.add(findViewById(R.id.event_left));
         mButtonList.add(findViewById(R.id.event_top));
@@ -95,6 +102,16 @@ public class EventSettingsActivity extends BaseActivity implements DialogCaller 
                 }
             });
         }
+        ViewCompat.setOnApplyWindowInsetsListener(mLayoutView, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    v.getPaddingTop(),
+                    v.getPaddingRight(),
+                    systemBars.bottom
+            );
+            return insets;
+        });
     }
 
     @Override
@@ -200,6 +217,11 @@ public class EventSettingsActivity extends BaseActivity implements DialogCaller 
         if (requestCode < 5) {
             mButtonList.get(requestCode).setText(ClickEvents.getEventTitle(this, index));
         }
+    }
+
+    @Override
+    protected View getLayoutView() {
+        return mLayoutView;
     }
 
     @Override

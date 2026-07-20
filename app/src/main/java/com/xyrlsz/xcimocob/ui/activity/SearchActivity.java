@@ -15,6 +15,9 @@ import android.widget.TextView;
 import androidx.appcompat.widget.AppCompatAutoCompleteTextView;
 import androidx.appcompat.widget.AppCompatCheckBox;
 import androidx.appcompat.widget.AppCompatSpinner;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.textfield.TextInputLayout;
@@ -51,6 +54,7 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
     AppCompatCheckBox mStrictCheckBox;
     AppCompatCheckBox mSTSameCheckBox;
     Spinner mTypeSpinner;
+    private View mLayoutView;
     private ArrayAdapter<String> mArrayAdapter;
 
     @Override
@@ -62,6 +66,7 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
         mStrictCheckBox = findViewById(R.id.search_strict_checkbox);
         mSTSameCheckBox = findViewById(R.id.search_STSame_checkbox);
         mTypeSpinner = findViewById(R.id.search_type_spinner);
+        mLayoutView = findViewById(R.id.search_root);
     }
 
     private SearchPresenter mPresenter;
@@ -115,6 +120,16 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
         mTypeSpinner.setAdapter(new ArrayAdapter<>(this, R.layout.custom_spinner_item, searchTypes));
         mTypeSpinner.setSelection(SEARCH_TITLE);
         findViewById(R.id.search_action_button).setOnClickListener(v -> onSearchButtonClick());
+        ViewCompat.setOnApplyWindowInsetsListener(mLayoutView, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    v.getPaddingTop(),
+                    v.getPaddingRight(),
+                    systemBars.bottom
+            );
+            return insets;
+        });
     }
 
     @Override
@@ -214,6 +229,11 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
     public void onSourceLoadFail() {
         hideProgressBar();
         HintUtils.showToast(this, R.string.search_source_load_fail);
+    }
+
+    @Override
+    protected View getLayoutView() {
+        return mLayoutView;
     }
 
     @Override
