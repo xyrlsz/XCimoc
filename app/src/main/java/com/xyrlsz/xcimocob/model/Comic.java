@@ -51,7 +51,7 @@ public class Comic {
     public Comic(int source, String cid) {
         this.source = source;
         this.cid = cid;
-        this.sourceCid = new Pair<>(source, cid);
+        this.sourceCid = cid != null ? new Pair<>(source, cid) : null;
     }
 
     public Comic(int source, String cid, String title, String cover, long download) {
@@ -90,7 +90,7 @@ public class Comic {
         this.chapterCount = chapterCount;
         this.intro = intro;
         this.author = author;
-        this.sourceCid = new Pair<>(source, cid);
+        this.sourceCid = cid != null ? new Pair<>(source, cid) : null;
     }
 
     public Comic() {
@@ -206,6 +206,7 @@ public class Comic {
 
     public void setCid(String cid) {
         this.cid = cid;
+        this.sourceCid = cid != null ? new Pair<>(this.source, cid) : null;
     }
 
     public int getSource() {
@@ -214,6 +215,11 @@ public class Comic {
 
     public void setSource(int source) {
         this.source = source;
+        if (this.cid != null) {
+            this.sourceCid = new Pair<>(source, this.cid);
+        } else {
+            this.sourceCid = null;
+        }
     }
 
     public long getId() {

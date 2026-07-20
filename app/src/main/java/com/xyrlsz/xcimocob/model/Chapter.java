@@ -102,7 +102,7 @@ public class Chapter implements Parcelable {
         this.download = download;
         this.tid = tid;
         this.sourceGroup = sourceGroup;
-        this.sourceComicPath = new Pair<>(sourceComic, path);
+        this.sourceComicPath = path != null ? new Pair<>(sourceComic, path) : null;
     }
 
     public Chapter() {
@@ -146,6 +146,7 @@ public class Chapter implements Parcelable {
 
     public void setPath(String path) {
         this.path = path;
+        this.sourceComicPath = path != null ? new Pair<>(this.sourceComic, path) : null;
     }
 
     public int getCount() {
@@ -194,6 +195,11 @@ public class Chapter implements Parcelable {
 
     public void setSourceComic(long sourceComic) {
         this.sourceComic = sourceComic;
+        if (this.path != null) {
+            this.sourceComicPath = new Pair<>(sourceComic, this.path);
+        } else {
+            this.sourceComicPath = null;
+        }
     }
 
     @Override
