@@ -27,7 +27,7 @@ public class ImageUrl {
     @Index
     private long comicChapter;
     private int num; // 章节的第几页
-    @Convert(dbType = String.class, converter = StringConverter.class)
+    @Convert(dbType = String.class, converter = ImageUrlStringConverter.class)
     private List<String> urls;
     private String chapter; // 所属章节
     private int state; // 切图时表示状态 这里可以改为编号 比如长图可以切为多张方便加载
@@ -235,7 +235,7 @@ public class ImageUrl {
         this.headers = headers;
     }
 
-    public static class StringConverter implements PropertyConverter<List<String>, String> {
+    public static class ImageUrlStringConverter implements PropertyConverter<List<String>, String> {
         private static final String SPLIT = "##XCimoc:ImageUrl##";
 
         @Override

@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:5933999625198068921",
-      "lastPropertyId": "9:8763769683625509613",
+      "lastPropertyId": "10:4441675515225853208",
       "name": "Chapter",
       "properties": [
         {
@@ -55,6 +55,13 @@
           "id": "9:8763769683625509613",
           "name": "sourceGroup",
           "type": 9
+        },
+        {
+          "id": "10:4441675515225853208",
+          "name": "sourceComicPath",
+          "indexId": "10:4889102256828915873",
+          "type": 9,
+          "flags": 2080
         }
       ],
       "relations": []
@@ -174,7 +181,7 @@
     },
     {
       "id": "3:3963405534642307037",
-      "lastPropertyId": "12:428392511010525276",
+      "lastPropertyId": "13:252061123243556334",
       "name": "ImageUrl",
       "properties": [
         {
@@ -371,14 +378,18 @@
     }
   ],
   "lastEntityId": "7:3666110504295095317",
-  "lastIndexId": "9:5291965835441992828",
+  "lastIndexId": "11:5927974058535691121",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
   "modelVersionParserMinimum": 5,
   "retiredEntityUids": [],
-  "retiredIndexUids": [],
-  "retiredPropertyUids": [],
+  "retiredIndexUids": [
+    5927974058535691121
+  ],
+  "retiredPropertyUids": [
+    252061123243556334
+  ],
   "retiredRelationUids": [],
   "version": 1
 }

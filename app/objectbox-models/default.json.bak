@@ -1,0 +1,395 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:5933999625198068921",
+      "lastPropertyId": "10:4441675515225853208",
+      "name": "Chapter",
+      "properties": [
+        {
+          "id": "1:6167352614973999593",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:1672981949678294910",
+          "name": "sourceComic",
+          "indexId": "1:3648228138831727464",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:1821018849680951946",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:3357818818140582624",
+          "name": "path",
+          "type": 9
+        },
+        {
+          "id": "5:5903151698752978604",
+          "name": "count",
+          "type": 5
+        },
+        {
+          "id": "6:175729823046508528",
+          "name": "complete",
+          "type": 1
+        },
+        {
+          "id": "7:6698116472122865294",
+          "name": "download",
+          "type": 1
+        },
+        {
+          "id": "8:6616008955915938499",
+          "name": "tid",
+          "type": 6
+        },
+        {
+          "id": "9:8763769683625509613",
+          "name": "sourceGroup",
+          "type": 9
+        },
+        {
+          "id": "10:4441675515225853208",
+          "name": "sourceComicPath",
+          "indexId": "10:4889102256828915873",
+          "type": 9,
+          "flags": 2080
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:3926424174288566900",
+      "lastPropertyId": "20:8810971420496130477",
+      "name": "Comic",
+      "properties": [
+        {
+          "id": "1:8363528771627130427",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:1544489135032899915",
+          "name": "source",
+          "indexId": "2:5318421380500640314",
+          "type": 5,
+          "flags": 8
+        },
+        {
+          "id": "3:2803920014395670172",
+          "name": "cid",
+          "type": 9
+        },
+        {
+          "id": "4:5152251585244449887",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "5:5688611093469271618",
+          "name": "cover",
+          "type": 9
+        },
+        {
+          "id": "6:762085691124485539",
+          "name": "highlight",
+          "type": 1
+        },
+        {
+          "id": "7:852102974178169557",
+          "name": "local",
+          "type": 1
+        },
+        {
+          "id": "8:7670373554392534456",
+          "name": "update",
+          "type": 9
+        },
+        {
+          "id": "9:5687838558877556381",
+          "name": "finish",
+          "type": 1
+        },
+        {
+          "id": "10:3877295977642952409",
+          "name": "favorite",
+          "type": 6
+        },
+        {
+          "id": "11:4817331821498765640",
+          "name": "history",
+          "type": 6
+        },
+        {
+          "id": "12:106428318761359908",
+          "name": "download",
+          "type": 6
+        },
+        {
+          "id": "13:3875468338059125765",
+          "name": "last",
+          "type": 9
+        },
+        {
+          "id": "14:5979934112130153603",
+          "name": "page",
+          "type": 5
+        },
+        {
+          "id": "15:4182574312817927410",
+          "name": "chapter",
+          "type": 9
+        },
+        {
+          "id": "16:5491987690590702568",
+          "name": "url",
+          "type": 9
+        },
+        {
+          "id": "17:8331415902650354095",
+          "name": "chapterCount",
+          "type": 5
+        },
+        {
+          "id": "18:242745517232640390",
+          "name": "intro",
+          "type": 9
+        },
+        {
+          "id": "19:4600943058514726708",
+          "name": "author",
+          "type": 9
+        },
+        {
+          "id": "20:8810971420496130477",
+          "name": "sourceCid",
+          "indexId": "8:2761016918330477000",
+          "type": 9,
+          "flags": 2080
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:3963405534642307037",
+      "lastPropertyId": "13:252061123243556334",
+      "name": "ImageUrl",
+      "properties": [
+        {
+          "id": "1:3965961723603310127",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:5537096245972448854",
+          "name": "comicChapter",
+          "indexId": "3:8597437102999699612",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:1098938116385788974",
+          "name": "num",
+          "type": 5
+        },
+        {
+          "id": "4:7767721293999800034",
+          "name": "urls",
+          "type": 9
+        },
+        {
+          "id": "5:2588390491586310046",
+          "name": "chapter",
+          "type": 9
+        },
+        {
+          "id": "6:5247127737159459254",
+          "name": "state",
+          "type": 5
+        },
+        {
+          "id": "7:122732246936674342",
+          "name": "height",
+          "type": 5
+        },
+        {
+          "id": "8:9019409174409600509",
+          "name": "width",
+          "type": 5
+        },
+        {
+          "id": "9:2071272190742408588",
+          "name": "lazy",
+          "type": 1
+        },
+        {
+          "id": "10:1226328303646341172",
+          "name": "loading",
+          "type": 1
+        },
+        {
+          "id": "11:2125525535722814718",
+          "name": "success",
+          "type": 1
+        },
+        {
+          "id": "12:428392511010525276",
+          "name": "download",
+          "type": 1
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:3318869604120158611",
+      "lastPropertyId": "5:6560473775568513821",
+      "name": "Source",
+      "properties": [
+        {
+          "id": "1:292855470190112195",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:5945140994580433853",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "3:755591518080487787",
+          "name": "type",
+          "indexId": "4:7426896439283873833",
+          "type": 5,
+          "flags": 40
+        },
+        {
+          "id": "4:1018160498202251824",
+          "name": "enable",
+          "type": 1
+        },
+        {
+          "id": "5:6560473775568513821",
+          "name": "baseUrl",
+          "type": 9
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "5:1144528722898975495",
+      "lastPropertyId": "2:6448015647091084042",
+      "name": "Tag",
+      "properties": [
+        {
+          "id": "1:6942720503950315280",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:6448015647091084042",
+          "name": "title",
+          "indexId": "9:5291965835441992828",
+          "type": 9,
+          "flags": 2080
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "6:551911398983645647",
+      "lastPropertyId": "3:7589164891196489053",
+      "name": "TagRef",
+      "properties": [
+        {
+          "id": "1:6764588663476826096",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:8249812780066559692",
+          "name": "tid",
+          "indexId": "5:6872433814703947572",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:7589164891196489053",
+          "name": "cid",
+          "indexId": "6:4656868235054332997",
+          "type": 6,
+          "flags": 8
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "7:3666110504295095317",
+      "lastPropertyId": "6:5808875414930056231",
+      "name": "Task",
+      "properties": [
+        {
+          "id": "1:9034503632837059612",
+          "name": "id",
+          "type": 6,
+          "flags": 129
+        },
+        {
+          "id": "2:6081721501737586052",
+          "name": "key",
+          "indexId": "7:5785229905257496651",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:4659165822539542356",
+          "name": "path",
+          "type": 9
+        },
+        {
+          "id": "4:8893983808595670421",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "5:7414633866969947047",
+          "name": "progress",
+          "type": 5
+        },
+        {
+          "id": "6:5808875414930056231",
+          "name": "max",
+          "type": 5
+        }
+      ],
+      "relations": []
+    }
+  ],
+  "lastEntityId": "7:3666110504295095317",
+  "lastIndexId": "11:5927974058535691121",
+  "lastRelationId": "0:0",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [
+    5927974058535691121
+  ],
+  "retiredPropertyUids": [
+    252061123243556334
+  ],
+  "retiredRelationUids": [],
+  "version": 1
+}

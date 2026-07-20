@@ -51,6 +51,7 @@ public class Comic {
     public Comic(int source, String cid) {
         this.source = source;
         this.cid = cid;
+        this.sourceCid = new Pair<>(source, cid);
     }
 
     public Comic(int source, String cid, String title, String cover, long download) {

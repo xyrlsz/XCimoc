@@ -118,19 +118,6 @@ public class YKMH extends MangaParser {
     }
 
     @Override
-    public List<Chapter> parseChapter(String html) {
-        List<Chapter> list = new LinkedList<>();
-        Node body = new Node(html);
-        for (Node node : body.list("div.chapter-warp ul.Drama > li > a")) {
-            String title = node.text();
-//            String path = StringUtils.split(node.href(), "/", 3);
-            String path = node.hrefWithSubString(1);
-            list.add(new Chapter(title, path));
-        }
-        return list;
-    }
-
-    @Override
     public List<Chapter> parseChapter(String html, Comic comic, Long sourceComic) throws JSONException {
         List<Chapter> list = new LinkedList<>();
         Node body = new Node(html);

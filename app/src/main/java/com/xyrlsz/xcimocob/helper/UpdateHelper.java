@@ -1,10 +1,13 @@
 package com.xyrlsz.xcimocob.helper;
 
 import android.content.Context;
+import android.util.Pair;
 
 import com.xyrlsz.opencc.android.lib.ChineseConverter;
 import com.xyrlsz.xcimocob.BuildConfig;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
+import com.xyrlsz.xcimocob.model.Chapter;
+import com.xyrlsz.xcimocob.model.Comic;
 import com.xyrlsz.xcimocob.model.Source;
 import com.xyrlsz.xcimocob.source.Baozi;
 import com.xyrlsz.xcimocob.source.BuKa;
@@ -104,10 +107,100 @@ public class UpdateHelper {
         if (version != VERSION) {
             // ObjectBox会自动处理 schema 变更，不需要手动添加列
             initComicSourceTable();
+
+            // 数据清洗：删除重复的 Chapter 和 Comic（保留唯一组合）
+            if (version <= 1508) {
+                cleanupDuplicateChapters(boxStore);
+                cleanupDuplicateComics(boxStore);
+            }
+
             manager.putNumber(PreferenceManager.PREF_APP_VERSION, VERSION);
             updateComicSource(boxStore);
             ChineseConverter.clearDictDataFolder(context);
             ChineseConverter.init(context);
+        }
+    }
+
+    /**
+     * 清洗重复的 Chapter 数据：
+     * 1. 按 sourceComic + path 分组，每组只保留 id 最小的那条
+     * 2. 为所有记录补填 sourceComicPath 字段（新增的 @Unique 字段）
+     */
+    private static void cleanupDuplicateChapters(BoxStore boxStore) {
+        Box<Chapter> chapterBox = boxStore.boxFor(Chapter.class);
+        List<Chapter> allChapters = chapterBox.getAll();
+
+        if (allChapters.isEmpty()) {
+            return;
+        }
+
+        // 按 sourceComic + path 分组
+        Map<String, List<Chapter>> groups = new HashMap<>();
+        for (Chapter chapter : allChapters) {
+            String key = chapter.getSourceComic() + "_" + chapter.getPath();
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(chapter);
+        }
+
+        List<Chapter> toRemove = new ArrayList<>();
+        List<Chapter> toUpdate = new ArrayList<>();
+
+        for (List<Chapter> group : groups.values()) {
+            // 按 id 升序排序，保留第一条
+            group.sort((a, b) -> Long.compare(a.getId(), b.getId()));
+            Chapter keep = group.get(0);
+
+            // 补填 sourceComicPath
+            if (keep.getSourceComicPath() == null) {
+                keep.setSourceComicPath(new Pair<>(keep.getSourceComic(), keep.getPath()));
+                toUpdate.add(keep);
+            }
+
+            // 删除多余的重复记录
+            for (int i = 1; i < group.size(); i++) {
+                toRemove.add(group.get(i));
+            }
+        }
+
+        if (!toRemove.isEmpty()) {
+            chapterBox.remove(toRemove);
+        }
+        if (!toUpdate.isEmpty()) {
+            chapterBox.put(toUpdate);
+        }
+    }
+
+    /**
+     * 清洗重复的 Comic 数据：
+     * 按 source + cid 分组，每组只保留 id 最小的那条
+     */
+    private static void cleanupDuplicateComics(BoxStore boxStore) {
+        Box<Comic> comicBox = boxStore.boxFor(Comic.class);
+        List<Comic> allComics = comicBox.getAll();
+
+        if (allComics.isEmpty()) {
+            return;
+        }
+
+        // 按 source + cid 分组
+        Map<String, List<Comic>> groups = new HashMap<>();
+        for (Comic comic : allComics) {
+            String key = comic.getSource() + "_" + comic.getCid();
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(comic);
+        }
+
+        List<Comic> toRemove = new ArrayList<>();
+
+        for (List<Comic> group : groups.values()) {
+            // 按 id 升序排序，保留第一条
+            group.sort((a, b) -> Long.compare(a.getId(), b.getId()));
+            // 删除多余的重复记录
+            for (int i = 1; i < group.size(); i++) {
+                toRemove.add(group.get(i));
+            }
+        }
+
+        if (!toRemove.isEmpty()) {
+            comicBox.remove(toRemove);
         }
     }
 

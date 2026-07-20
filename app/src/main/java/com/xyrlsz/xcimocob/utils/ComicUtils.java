@@ -70,6 +70,7 @@ public class ComicUtils {
         Headers headers = parser.getHeader();
 
         List<Chapter> chapterList = ChapterManager.getInstance(appGetter).getChapterList(sourceComic);
+        // ID 是倒过来的，所以顺序会反
         chapterList = Lists.reverse(chapterList);
 
         String coverUrl = comic.getCover();
