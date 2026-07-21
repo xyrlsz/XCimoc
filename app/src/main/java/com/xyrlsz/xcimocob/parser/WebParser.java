@@ -136,8 +136,9 @@ public class WebParser {
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
-        // WebView 缓存：遵循 HTTP 标准缓存头，有缓存头才缓存，无缓存头走网络
-        webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+        // WebView 缓存：关闭 WebView 自身缓存，完全由我们的 sHtmlCache 控制内存缓存
+        // 避免断网加载到错误页面后，WebView 内部缓存了错误页面，重连后仍返回错误结果
+        webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
 
         if (!StringUtils.isEmpty(UA)) {
             webView.getSettings().setUserAgentString(UA);
