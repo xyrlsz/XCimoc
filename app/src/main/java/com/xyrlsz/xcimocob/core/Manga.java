@@ -26,9 +26,12 @@ import org.json.JSONObject;
 
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -45,10 +48,20 @@ import okhttp3.Response;
  */
 public class Manga {
 
-    /**
-     * 强制刷新标志，用于下拉刷新时跳过 OkHttp 缓存
-     */
+    /** 全局强制刷新标志，用于下拉刷新时跳过所有 OkHttp 缓存（一次性） */
     private static volatile boolean sForceRefresh = false;
+
+    /** URL 级别强制刷新集合：只有匹配 URL 的请求才跳过缓存（精准失效，无竞态） */
+    private static final Set<String> sForceRefreshUrls = ConcurrentHashMap.newKeySet();
+
+    /**
+     * 标记指定 URL 需要强制从网络获取，精准失效（不被其他无关请求消费）
+     */
+    public static void setForceRefreshUrl(String url) {
+        if (url != null) {
+            sForceRefreshUrls.add(url);
+        }
+    }
 
     private static boolean indexOfIgnoreCase(String str, String search) {
         return str.toLowerCase().contains(search.toLowerCase());
@@ -100,7 +113,7 @@ public class Manga {
                     })
                     .onErrorResumeNext(e -> {
                         WebParser.clearCache(url);
-                        setForceRefresh(true);
+                        setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
         }).subscribeOn(Schedulers.io());
@@ -156,7 +169,7 @@ public class Manga {
                     })
                     .onErrorResumeNext(e -> {
                         WebParser.clearCache(url);
-                        setForceRefresh(true);
+                        setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
         }).subscribeOn(Schedulers.io());
@@ -190,7 +203,8 @@ public class Manga {
                                     // 解析失败 → 清除缓存，下次重试走网络
                                     WebParser.clearCache(infoUrl);
                                     WebParser.clearCache(chapterUrl);
-                                    setForceRefresh(true);
+                                    setForceRefreshUrl(infoUrl);
+                                    setForceRefreshUrl(chapterUrl);
                                     return Observable.error(new ParseErrorException());
                                 }
                                 return Observable.just(list);
@@ -204,7 +218,7 @@ public class Manga {
                             if (list.isEmpty()) {
                                 // 解析失败 → 清除缓存，下次重试走网络
                                 WebParser.clearCache(infoUrl);
-                                setForceRefresh(true);
+                                setForceRefreshUrl(infoUrl);
                                 return Observable.error(new ParseErrorException());
                             }
                             return Observable.just(list);
@@ -213,7 +227,7 @@ public class Manga {
                     // infoHtmlObs 或 chapterHtmlObs 出错时（包括 WebParser 超时/错误），清除缓存确保重试走网络
                     .onErrorResumeNext(e -> {
                         WebParser.clearCache(infoUrl);
-                        setForceRefresh(true);
+                        setForceRefreshUrl(infoUrl);
                         return Observable.error(e);
                     });
         }).subscribeOn(Schedulers.io());
@@ -236,7 +250,7 @@ public class Manga {
                     if (url != null) {
                         WebParser.clearCache(url);
                     }
-                    setForceRefresh(true);
+                    setForceRefreshUrl(url);
                     throw new Exception();
                 }
             } catch (Exception e) {
@@ -264,7 +278,7 @@ public class Manga {
                         if (list.isEmpty()) {
                             // 解析失败 → 清除该 URL 的 WebParser 内存缓存 + 跳过 OkHttp 磁盘缓存
                             WebParser.clearCache(url);
-                            setForceRefresh(true);
+                            setForceRefreshUrl(url);
                             return Observable.error(new Exception());
                         }
                         for (ImageUrl imageUrl : list) {
@@ -275,7 +289,7 @@ public class Manga {
                     // WebParser 超时/错误 或 OkHttp 请求失败时，也清除缓存确保下次重试走网络
                     .onErrorResumeNext(e -> {
                         WebParser.clearCache(url);
-                        setForceRefresh(true);
+                        setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
         }).subscribeOn(Schedulers.io());
@@ -377,7 +391,7 @@ public class Manga {
                     })
                     .onErrorResumeNext(e -> {
                         WebParser.clearCache(reqUrl);
-                        setForceRefresh(true);
+                        setForceRefreshUrl(reqUrl);
                         return Observable.error(e);
                     });
         }).subscribeOn(Schedulers.io());
@@ -458,8 +472,15 @@ public class Manga {
     }
 
     private static String getResponseBody(OkHttpClient client, Request request, boolean retry) throws NetworkErrorException {
-        // 强制刷新时跳过缓存
-        if (sForceRefresh) {
+        String reqUrl = request.url().toString();
+        // 优先检查 URL 级别的精准失效（不会被其他无关请求消费）
+        if (sForceRefreshUrls.remove(reqUrl)) {
+            request = request.newBuilder()
+                    .cacheControl(CacheControl.FORCE_NETWORK)
+                    .build();
+        }
+        // 再检查全局标志（一次性，下拉刷新用）
+        else if (sForceRefresh) {
             request = request.newBuilder()
                     .cacheControl(CacheControl.FORCE_NETWORK)
                     .build();
