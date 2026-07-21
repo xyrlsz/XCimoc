@@ -43,54 +43,70 @@ public class FavoritePresenter extends BasePresenter<FavoriteView> {
         addSubscription(RxEvent.EVENT_COMIC_FAVORITE, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                MiniComic comic = (MiniComic) rxEvent.getData();
-                mBaseView.OnComicFavorite(comic);
+                if (mBaseView != null) {
+                    MiniComic comic = (MiniComic) rxEvent.getData();
+                    mBaseView.OnComicFavorite(comic);
+                }
             }
         });
         addSubscription(RxEvent.EVENT_COMIC_UNFAVORITE, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                mBaseView.OnComicUnFavorite((long) rxEvent.getData());
+                if (mBaseView != null) {
+                    mBaseView.OnComicUnFavorite((long) rxEvent.getData());
+                }
             }
         });
         addSubscription(RxEvent.EVENT_COMIC_FAVORITE_RESTORE, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                mBaseView.OnComicRestore((List<Object>) rxEvent.getData());
+                if (mBaseView != null) {
+                    mBaseView.OnComicRestore((List<Object>) rxEvent.getData());
+                }
             }
         });
         addSubscription(RxEvent.EVENT_COMIC_READ, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                mBaseView.onComicRead((MiniComic) rxEvent.getData());
+                if (mBaseView != null) {
+                    mBaseView.onComicRead((MiniComic) rxEvent.getData());
+                }
             }
         });
         addSubscription(RxEvent.EVENT_COMIC_CANCEL_HIGHLIGHT, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                mBaseView.onHighlightCancel((MiniComic) rxEvent.getData());
+                if (mBaseView != null) {
+                    mBaseView.onHighlightCancel((MiniComic) rxEvent.getData());
+                }
             }
         });
         addSubscription(RxEvent.EVENT_CHECK_UPDATE_PROGRESS, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                int progress = (int) rxEvent.getData(0);
-                int max = (int) rxEvent.getData(1);
-                Comic comic = (Comic) rxEvent.getData(2);
-                MiniComic miniComic = comic != null ? new MiniComic(comic) : null;
-                mBaseView.onComicCheckSuccess(miniComic, progress, max);
+                if (mBaseView != null) {
+                    int progress = (int) rxEvent.getData(0);
+                    int max = (int) rxEvent.getData(1);
+                    Comic comic = (Comic) rxEvent.getData(2);
+                    MiniComic miniComic = comic != null ? new MiniComic(comic) : null;
+                    mBaseView.onComicCheckSuccess(miniComic, progress, max);
+                }
             }
         });
         addSubscription(RxEvent.EVENT_CHECK_UPDATE_COMPLETE, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                mBaseView.onComicCheckComplete();
+                if (mBaseView != null) {
+                    mBaseView.onComicCheckComplete();
+                }
             }
         });
         addSubscription(RxEvent.EVENT_CHECK_UPDATE_FAIL, new Consumer<RxEvent>() {
             @Override
             public void accept(RxEvent rxEvent) {
-                mBaseView.onComicCheckFail();
+                if (mBaseView != null) {
+                    mBaseView.onComicCheckFail();
+                }
             }
         });
     }
@@ -108,12 +124,16 @@ public class FavoritePresenter extends BasePresenter<FavoriteView> {
         })).observeOn(AndroidSchedulers.mainThread()).subscribe(new Consumer<List<Object>>() {
             @Override
             public void accept(List<Object> list) {
-                mBaseView.onComicLoadSuccess(list);
+                if (mBaseView != null) {
+                    mBaseView.onComicLoadSuccess(list);
+                }
             }
         }, new Consumer<Throwable>() {
             @Override
             public void accept(Throwable throwable) {
-                mBaseView.onComicLoadFail();
+                if (mBaseView != null) {
+                    mBaseView.onComicLoadFail();
+                }
             }
         }));
     }
@@ -123,6 +143,7 @@ public class FavoritePresenter extends BasePresenter<FavoriteView> {
     }
 
     public void unfavoriteComic(long id) {
+        if (mBaseView == null) return;
         Comic comic = mComicManager.load(id);
         comic.setFavorite(null);
         mTagRefManager.deleteByComic(id);

@@ -46,10 +46,13 @@ import com.xyrlsz.xcimocob.utils.ThemeUtils;
 import com.xyrlsz.xcimocob.utils.TrustAllSslUtils;
 import com.xyrlsz.xcimocob.utils.ZaiManhuaSignUtils;
 
+import java.io.File;
 import java.util.Objects;
 
 import io.objectbox.BoxStore;
+import okhttp3.Cache;
 import okhttp3.OkHttpClient;
+import okhttp3.Response;
 
 /**
  * Created by Hiroshi on 2016/7/5.
@@ -114,9 +117,26 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
             synchronized (App.class) {
                 client = mHttpClient;
                 if (client == null || client.getClass() == DisabledOkHttpClient.class) {
-                    // 3.OkHttp访问https的Client实例
+                    // 3.OkHttp访问https的Client实例（带HTTP缓存）
+                    File cacheDir = new File(mApp.getCacheDir(), "http");
+                    Cache httpCache = new Cache(cacheDir, 20 * 1024 * 1024); // 20MB缓存
                     client = new OkHttpClient()
                             .newBuilder()
+                            .cache(httpCache)
+                            .addNetworkInterceptor(chain -> {
+                                Response response = chain.proceed(chain.request());
+                                // 有缓存头（Cache-Control/ETag/Last-Modified/Expires）→ 走标准缓存
+                                // 无任何缓存头 → 强制不缓存，保证数据新鲜
+                                if (response.header("Cache-Control") == null
+                                        && response.header("ETag") == null
+                                        && response.header("Last-Modified") == null
+                                        && response.header("Expires") == null) {
+                                    return response.newBuilder()
+                                            .header("Cache-Control", "no-store")
+                                            .build();
+                                }
+                                return response;
+                            })
                             .sslSocketFactory(createSSLSocketFactory(), getTrustAllCerts())
                             .hostnameVerifier(new TrustAllSslUtils.TrustAllHostnameVerifier())
                             .followRedirects(true)

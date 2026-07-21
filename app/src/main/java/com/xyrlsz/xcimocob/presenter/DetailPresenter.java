@@ -20,6 +20,7 @@ import com.xyrlsz.xcimocob.rx.RxEvent;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.view.DetailView;
 import com.xyrlsz.xcimocob.utils.IdCreator;
+import com.xyrlsz.xcimocob.utils.ThreadRunUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -55,7 +56,7 @@ public class DetailPresenter extends BasePresenter<DetailView> {
     @Override
     protected void initSubscription() {
         addSubscription(RxEvent.EVENT_COMIC_UPDATE, rxEvent -> {
-            if (mComic.getId() > 0 && mComic.getId() == (long) rxEvent.getData()) {
+            if (mBaseView != null && mComic.getId() > 0 && mComic.getId() == (long) rxEvent.getData()) {
                 Comic comic = mComicManager.load(mComic.getId());
                 mComic.setPage(comic.getPage());
                 mComic.setLast(comic.getLast());
@@ -71,12 +72,18 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                 mComicManager.updateOrInsert(eventComic);
                 // 尽量不要直接重新赋值 mComic，而是更新其属性
                 mComic.copyFrom(eventComic);
+                // 信息解析完成后立即更新 UI 头信息（封面、标题等），不必等章节也加载完
+                ThreadRunUtils.runOnMainThread(() -> {
+                    if (mBaseView != null) {
+                        mBaseView.onComicLoadSuccess(mComic);
+                    }
+                });
             }
         });
         // 监听收藏事件
         addSubscription(RxEvent.EVENT_COMIC_FAVORITE, rxEvent -> {
             MiniComic miniComic = (MiniComic) rxEvent.getData();
-            if (mComic != null && mComic.getSource() == miniComic.getSource()
+            if (mBaseView != null && mComic != null && mComic.getSource() == miniComic.getSource()
                     && mComic.getCid().equals(miniComic.getCid())) {
                 // 重新从数据库加载最新状态，确保 ID 和收藏状态同步
                 mComic = mComicManager.load(miniComic.getSource(), miniComic.getCid());
@@ -87,7 +94,7 @@ public class DetailPresenter extends BasePresenter<DetailView> {
         // 监听取消收藏事件
         addSubscription(RxEvent.EVENT_COMIC_UNFAVORITE, rxEvent -> {
             long id = (long) rxEvent.getData();
-            if (mComic != null && mComic.getId() > 0 && mComic.getId() == id) {
+            if (mBaseView != null && mComic != null && mComic.getId() > 0 && mComic.getId() == id) {
                 // 更新本地内存状态
                 mComic.setFavorite(null);
                 mBaseView.onComicLoadSuccess(mComic); // 触发 Activity 更新图标
@@ -96,6 +103,7 @@ public class DetailPresenter extends BasePresenter<DetailView> {
 
         // 监听下载任务添加事件，刷新对应章节的下载状态
         addSubscription(RxEvent.EVENT_TASK_INSERT, rxEvent -> {
+            if (mBaseView == null) return;
             MiniComic miniComic = (MiniComic) rxEvent.getData();
             List<Task> list = TaskManager.getInstance(mBaseView).list(miniComic.getId());
             if (mComic != null && mComic.getId() > 0 && mComic.getId() == miniComic.getId()) {
@@ -123,7 +131,9 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                                             }
                                         }
                                     }
-                                    mBaseView.onChapterDownloadStatusChanged(list);
+                                    if (mBaseView != null) {
+                                        mBaseView.onChapterDownloadStatusChanged(list);
+                                    }
                                 },
                                 throwable -> {
                                     // ignore
@@ -132,7 +142,7 @@ public class DetailPresenter extends BasePresenter<DetailView> {
     }
 
     public void checkDatabaseStatus() {
-        if (mComic != null) {
+        if (mComic != null && mBaseView != null) {
             Comic latest = mComicManager.load(mComic.getSource(), mComic.getCid());
             if (latest != null) {
                 mComic = latest;
@@ -191,7 +201,7 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                                 new Consumer<List<Chapter>>() {
                                     @Override
                                     public void accept(List<Chapter> list) {
-                                        if (list != null && !list.isEmpty()) {
+                                        if (list != null && !list.isEmpty() && mBaseView != null) {
                                             mBaseView.onPreLoadSuccess(list, mComic);
                                         }
                                     }
@@ -199,8 +209,10 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                                 new Consumer<Throwable>() {
                                     @Override
                                     public void accept(Throwable throwable) {
-                                        mBaseView.onComicLoadSuccess(mComic);
-                                        mBaseView.onParseError();
+                                        if (mBaseView != null) {
+                                            mBaseView.onComicLoadSuccess(mComic);
+                                            mBaseView.onParseError();
+                                        }
                                     }
                                 }));
     }
@@ -211,6 +223,14 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                         .doOnNext(new Consumer<List<Chapter>>() {
                             @Override
                             public void accept(List<Chapter> list) {
+                                // 数据库写入在 IO 线程完成，不阻塞主线程
+                                if (mComic.getId() > 0) {
+                                    Long sourceComic = IdCreator.createSourceComic(mComic);
+                                    for (Chapter chapter : list) {
+                                        chapter.setSourceComic(sourceComic);
+                                    }
+                                }
+                                mChapterManager.updateOrInsert(list);
                                 if (mComic.getId() > 0) {
                                     updateChapterList(list);
                                 }
@@ -221,21 +241,19 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                                 new Consumer<List<Chapter>>() {
                                     @Override
                                     public void accept(List<Chapter> list) {
-                                        // 确保章节的sourceComic ID正确
-                                        if (mComic.getId() > 0) {
-                                            Long sourceComic = IdCreator.createSourceComic(mComic);
-                                            for (Chapter chapter : list) {
-                                                chapter.setSourceComic(sourceComic);
-                                            }
+                                        // 主线程只做 UI 刷新
+                                        if (mBaseView != null) {
+                                            mBaseView.onComicLoadSuccess(mComic);
+                                            mBaseView.onChapterLoadSuccess(list);
                                         }
-                                        mChapterManager.updateOrInsert(list);
-                                        mBaseView.onComicLoadSuccess(mComic);
-                                        mBaseView.onChapterLoadSuccess(list);
                                     }
                                 },
                                 new Consumer<Throwable>() {
                                     @Override
                                     public void accept(Throwable throwable) {
+                                        if (mBaseView == null) {
+                                            return;
+                                        }
                                         List<Chapter> cachedChapters =
                                                 mChapterManager.getChapterList(IdCreator.createSourceComic(mComic));
                                         mBaseView.onComicLoadSuccess(mComic);

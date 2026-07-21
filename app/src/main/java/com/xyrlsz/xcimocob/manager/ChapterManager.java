@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 
 import io.objectbox.Box;
 import io.objectbox.BoxStore;
-import io.objectbox.exception.UniqueViolationException;
 import io.reactivex.rxjava3.core.Observable;
 
 /**
@@ -87,27 +86,12 @@ public class ChapterManager {
     }
 
     public void updateOrInsert(List<Chapter> chapterList) {
-        for (Chapter chapter : chapterList) {
-            // 先按 sourceComic + path 查找是否已有记录
-            List<Chapter> existing = getChapter(chapter.getSourceComic(), chapter.getPath());
-            if (!existing.isEmpty()) {
-                // 已有记录，复用其 ID 进行更新
-                chapter.setId(existing.get(0).getId());
-            }
-            try {
-                mChapterBox.put(chapter);
-            } catch (UniqueViolationException ignored) {
-                // 仍然冲突则跳过（极少发生）
-            }
-        }
+        mChapterBox.put(chapterList);
     }
 
     public void update(Chapter chapter) {
         if (chapter.getId() != 0) {
-            try {
-                mChapterBox.put(chapter);
-            } catch (UniqueViolationException ignored) {
-            }
+            mChapterBox.put(chapter);
         }
     }
 

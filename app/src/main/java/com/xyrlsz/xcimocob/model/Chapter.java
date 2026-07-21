@@ -2,16 +2,12 @@ package com.xyrlsz.xcimocob.model;
 
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
 
-import io.objectbox.annotation.Convert;
 import io.objectbox.annotation.Entity;
 import io.objectbox.annotation.Id;
 import io.objectbox.annotation.Index;
-import io.objectbox.annotation.Unique;
-import io.objectbox.converter.PropertyConverter;
 
 /**
  * Created by Hiroshi on 2016/7/2.
@@ -31,9 +27,6 @@ public class Chapter implements Parcelable {
             return new Chapter[size];
         }
     };
-    @Convert(dbType = String.class, converter = SourceComicPathConverter.class)
-    @Unique
-    private Pair<Long, String> sourceComicPath;
     @Id(assignable = true)
     private long id;
     @Index
@@ -77,7 +70,6 @@ public class Chapter implements Parcelable {
 //        this.complete = false;
 //        this.download = false;
 //        this.tid = -1;
-//        this.sourceComicPath = new Pair<>(sourceComic, path);
 //    }
 
     public Chapter(Parcel source) {
@@ -102,7 +94,6 @@ public class Chapter implements Parcelable {
         this.download = download;
         this.tid = tid;
         this.sourceGroup = sourceGroup;
-        this.sourceComicPath = path != null ? new Pair<>(sourceComic, path) : null;
     }
 
     public Chapter() {
@@ -146,7 +137,6 @@ public class Chapter implements Parcelable {
 
     public void setPath(String path) {
         this.path = path;
-        this.sourceComicPath = path != null ? new Pair<>(this.sourceComic, path) : null;
     }
 
     public int getCount() {
@@ -181,25 +171,12 @@ public class Chapter implements Parcelable {
         this.id = id;
     }
 
-    public Pair<Long, String> getSourceComicPath() {
-        return sourceComicPath;
-    }
-
-    public void setSourceComicPath(Pair<Long, String> sourceComicPath) {
-        this.sourceComicPath = sourceComicPath;
-    }
-
     public long getSourceComic() {
         return sourceComic;
     }
 
     public void setSourceComic(long sourceComic) {
         this.sourceComic = sourceComic;
-        if (this.path != null) {
-            this.sourceComicPath = new Pair<>(sourceComic, this.path);
-        } else {
-            this.sourceComicPath = null;
-        }
     }
 
     @Override
@@ -243,26 +220,5 @@ public class Chapter implements Parcelable {
 
     public void setDownload(boolean download) {
         this.download = download;
-    }
-
-    public static class SourceComicPathConverter implements PropertyConverter<Pair<Long, String>, String> {
-        private static final String SPLIT = "##XCimoc:SourceComicPathConverter##";
-
-        @Override
-        public Pair<Long, String> convertToEntityProperty(String databaseValue) {
-            if (databaseValue == null) {
-                return null;
-            }
-            String[] split = databaseValue.split(SPLIT);
-            return new Pair<>(Long.parseLong(split[0]), split[1]);
-        }
-
-        @Override
-        public String convertToDatabaseValue(Pair<Long, String> entityProperty) {
-            if (entityProperty == null) {
-                return null;
-            }
-            return entityProperty.first + SPLIT + entityProperty.second;
-        }
     }
 }

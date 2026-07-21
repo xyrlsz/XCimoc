@@ -102,30 +102,32 @@ public class ReaderPresenter extends BasePresenter<ReaderView> {
     }
 
     public void loadNext() {
-        if (status == LOAD_NULL && isShowNext) {
-            Chapter chapter = mReaderChapterManger.getNextChapter();
-            if (chapter != null) {
-                status = LOAD_NEXT;
-                images(getObservable(chapter));
-                mBaseView.onNextLoading();
-            } else {
-                isShowNext = false;
-                mBaseView.onNextLoadNone();
-            }
+        if (mBaseView == null || status != LOAD_NULL || !isShowNext) {
+            return;
+        }
+        Chapter chapter = mReaderChapterManger.getNextChapter();
+        if (chapter != null) {
+            status = LOAD_NEXT;
+            images(getObservable(chapter));
+            mBaseView.onNextLoading();
+        } else {
+            isShowNext = false;
+            mBaseView.onNextLoadNone();
         }
     }
 
     public void loadPrev() {
-        if (status == LOAD_NULL && isShowPrev) {
-            Chapter chapter = mReaderChapterManger.getPrevChapter();
-            if (chapter != null) {
-                status = LOAD_PREV;
-                images(getObservable(chapter));
-                mBaseView.onPrevLoading();
-            } else {
-                isShowPrev = false;
-                mBaseView.onPrevLoadNone();
-            }
+        if (mBaseView == null || status != LOAD_NULL || !isShowPrev) {
+            return;
+        }
+        Chapter chapter = mReaderChapterManger.getPrevChapter();
+        if (chapter != null) {
+            status = LOAD_PREV;
+            images(getObservable(chapter));
+            mBaseView.onPrevLoading();
+        } else {
+            isShowPrev = false;
+            mBaseView.onPrevLoadNone();
         }
     }
 
@@ -144,20 +146,22 @@ public class ReaderPresenter extends BasePresenter<ReaderView> {
 
     public void toNextChapter() {
         Chapter chapter = mReaderChapterManger.nextChapter();
-        if (chapter != null) {
+        if (chapter != null && mBaseView != null) {
             updateChapter(chapter, true);
         }
     }
 
     public void toPrevChapter() {
         Chapter chapter = mReaderChapterManger.prevChapter();
-        if (chapter != null) {
+        if (chapter != null && mBaseView != null) {
             updateChapter(chapter, false);
         }
     }
 
     private void updateChapter(Chapter chapter, boolean isNext) {
-        mBaseView.onChapterChange(chapter);
+        if (mBaseView != null) {
+            mBaseView.onChapterChange(chapter);
+        }
         mComic.setLast(chapter.getPath());
         mComic.setChapter(chapter.getTitle());
         mComic.setPage(isNext ? 1 : chapter.getCount());
@@ -166,19 +170,24 @@ public class ReaderPresenter extends BasePresenter<ReaderView> {
     }
 
     public void savePicture(InputStream inputStream, String url, String title, int page) {
+        if (mBaseView == null) return;
         mCompositeSubscription.add(Storage.savePicture(mBaseView.getAppInstance().getContentResolver(),
                 mBaseView.getAppInstance().getDocumentFile(), inputStream, buildPictureName(title, page, url))
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Consumer<Uri>() {
                     @Override
                     public void accept(Uri uri) {
-                        mBaseView.onPictureSaveSuccess(uri);
+                        if (mBaseView != null) {
+                            mBaseView.onPictureSaveSuccess(uri);
+                        }
                     }
                 }, new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable throwable) {
                         throwable.printStackTrace();
-                        mBaseView.onPictureSaveFail();
+                        if (mBaseView != null) {
+                            mBaseView.onPictureSaveFail();
+                        }
                     }
                 }));
     }
@@ -211,6 +220,10 @@ public class ReaderPresenter extends BasePresenter<ReaderView> {
                 .subscribe(new Consumer<List<ImageUrl>>() {
                     @Override
                     public void accept(List<ImageUrl> list) {
+                        if (mBaseView == null) {
+                            status = LOAD_NULL;
+                            return;
+                        }
                         mImageUrlManager.updateOrInsert(list);
                         Chapter chapter;
                         switch (status) {
@@ -240,6 +253,10 @@ public class ReaderPresenter extends BasePresenter<ReaderView> {
                 }, new Consumer<Throwable>() {
                     @Override
                     public void accept(Throwable throwable) {
+                        if (mBaseView == null) {
+                            status = LOAD_NULL;
+                            return;
+                        }
                         try{
                             Chapter chapter;
                             List<ImageUrl> list;
@@ -276,7 +293,9 @@ public class ReaderPresenter extends BasePresenter<ReaderView> {
                             }
                             status = LOAD_NULL;
                         } finally {
-                            mBaseView.onParseError();
+                            if (mBaseView != null) {
+                                mBaseView.onParseError();
+                            }
                             if (status != LOAD_INIT && ++count < 2) {
                                 status = LOAD_NULL;
                             }

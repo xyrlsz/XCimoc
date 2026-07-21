@@ -16,6 +16,7 @@ import com.xyrlsz.xcimocob.utils.StringUtils;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.core.Observable;
@@ -30,11 +31,30 @@ public class WebParser {
     private static final int SCROLL_DELAY = 50;
     /** 总超时时间：120 秒后强制完成，防止永久阻塞 */
     private static final long TOTAL_TIMEOUT_MS = 120_000;
+    // ========== 内存缓存 ==========
+    private static final long CACHE_TTL_MS = 60 * 1000; // 1分钟有效，快速回退时秒开，超过1分钟自动刷新
+    private static final Map<String, CacheEntry> sHtmlCache = new ConcurrentHashMap<>();
+
+    private static class CacheEntry {
+        final String html;
+        final long timestamp;
+        CacheEntry(String html) {
+            this.html = html;
+            this.timestamp = System.currentTimeMillis();
+        }
+        boolean isValid() {
+            return System.currentTimeMillis() - timestamp < CACHE_TTL_MS;
+        }
+    }
+    // =============================
+
     private final String url;
     private final Headers headers;
     private final PublishSubject<String> htmlSubject = PublishSubject.create();
     private WebView webView;
     private String UA = "";
+    /** 构造函数中查到缓存时，直接存下来，跳过 WebView 创建 */
+    private String cachedResult = null;
     // 滚动控制
     private int lastHeight = 0;
     private int sameCount = 0;
@@ -52,6 +72,13 @@ public class WebParser {
         this.headers = headers;
         this.UA = UA;
 
+        // 检查内存缓存，命中则直接返回，避免创建 WebView
+        CacheEntry entry = sHtmlCache.get(url);
+        if (entry != null && entry.isValid()) {
+            cachedResult = entry.html;
+            return;
+        }
+
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
                 webView = new WebView(context);
@@ -64,11 +91,16 @@ public class WebParser {
     }
 
     /**
-     * 安全发射结果，防止重复发射
+     * 安全发射结果，防止重复发射，并写入内存缓存
      */
     private void emitResult(String html) {
         if (!emitted) {
             emitted = true;
+            // 写入缓存（主动清理过期条目）
+            sHtmlCache.put(url, new CacheEntry(html));
+            if (sHtmlCache.size() > 64) {
+                sHtmlCache.entrySet().removeIf(e -> !e.getValue().isValid());
+            }
             htmlSubject.onNext(html);
             htmlSubject.onComplete();
         }
@@ -104,6 +136,8 @@ public class WebParser {
 
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setDomStorageEnabled(true);
+        // WebView 缓存：遵循 HTTP 标准缓存头，有缓存头才缓存，无缓存头走网络
+        webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
 
         if (!StringUtils.isEmpty(UA)) {
             webView.getSettings().setUserAgentString(UA);
@@ -239,9 +273,13 @@ public class WebParser {
     }
 
     /**
-     * 获取 HTML 的 Observable
+     * 获取 HTML 的 Observable（优先从内存缓存返回）
      */
     public Observable<String> getHtmlObservable() {
+        // 构造函数中已命中缓存，直接返回
+        if (cachedResult != null) {
+            return Observable.just(cachedResult);
+        }
         return htmlSubject
                 .timeout(TOTAL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .firstElement()

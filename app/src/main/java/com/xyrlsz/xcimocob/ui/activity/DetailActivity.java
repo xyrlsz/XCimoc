@@ -408,9 +408,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     public void onChapterLoadSuccess(List<Chapter> list) {
         hideProgressBar();
         if (mPresenter.getComic().getTitle() != null && mPresenter.getComic().getCover() != null) {
-            mDetailAdapter.clear();
-            mDetailAdapter.addAll(list);
-            mDetailAdapter.notifyDataSetChanged();
+            mDetailAdapter.setData(list);
         }
 //        if(App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_FIREBASE_EVENT, true)) {
 //            Bundle bundle = new Bundle();
@@ -425,12 +423,13 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 
     @Override
     public void onPreLoadSuccess(List<Chapter> list, Comic comic) {
-        hideProgressBar();
-        mDetailAdapter.addAll(list);
+        // 先用缓存章节展示，提升加载速度（不隐藏进度条，网络完成后会替换）
         mDetailAdapter.setInfo(comic.getCover(), comic.getTitle(), comic.getAuthor(),
                 comic.getIntro(), comic.getFinish(), comic.getUpdate(), comic.getLast(), SourceManager.getInstance(getAppInstance()).getParser(comic.getSource()).getTitle());
 
         if (comic.getTitle() != null && comic.getCover() != null) {
+            mDetailAdapter.setData(list);
+
             Headers headers = SourceManager.getInstance(this).getParser(comic.getSource()).getHeader();
             ComicFrescoHeaders.setHeaders(headers);
             mImagePipelineFactory = ImagePipelineFactoryBuilder.build(this, headers, false);
@@ -441,7 +440,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
             mActionButton.setVisibility(View.VISIBLE);
             mActionButton2.setVisibility(View.VISIBLE);
         }
-
+        // 进度条保持转动，网络完成后 onChapterLoadSuccess 会用最新章节替换并关闭进度条
     }
 
     @Override
