@@ -10,8 +10,6 @@ import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.net.wifi.WifiManager;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.WindowManager;
@@ -32,8 +30,8 @@ import com.xyrlsz.xcimocob.helper.UpdateHelper;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.misc.ActivityLifecycle;
-import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.model.MyObjectBox;
+import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.activity.MainActivity;
 import com.xyrlsz.xcimocob.ui.adapter.GridAdapter;
@@ -63,7 +61,7 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
     public static int mCoverWidthPixels;
     public static int mCoverHeightPixels;
     public static int mLargePixels;
-    private static OkHttpClient mHttpClient;
+    private static volatile OkHttpClient mHttpClient;
     private static PreferenceManager mPreferenceManager;
     private static WifiManager manager_wifi;
     private static App mApp;
@@ -109,7 +107,10 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
         boolean onlyWifi =
                 mPreferenceManager.getBoolean(PreferenceManager.PREF_OTHER_CONNECT_ONLY_WIFI, false);
         if (!manager_wifi.isWifiEnabled() && onlyWifi) {
-            return new DisabledOkHttpClient();
+            if (mHttpClient == null || mHttpClient.getClass() != DisabledOkHttpClient.class) {
+                mHttpClient = new DisabledOkHttpClient();
+            }
+            return mHttpClient;
         }
         // 双重检查锁定，避免竞态条件
         OkHttpClient client = mHttpClient;
@@ -126,8 +127,10 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
                             .addNetworkInterceptor(chain -> {
                                 Response response = chain.proceed(chain.request());
                                 // 有缓存头（Cache-Control/ETag/Last-Modified/Expires）→ 走标准缓存（含条件更新）
-                                // 无任何缓存头 → 缓存5分钟，5~10分钟间可复用旧缓存同时后台异步更新
-                                if (response.header("Cache-Control") == null
+                                // 无任何缓存头且响应成功（2xx）→ 缓存5分钟，5~10分钟间可复用旧缓存同时后台异步更新
+                                // 非成功响应（4xx/5xx 等）→ 不缓存，避免解析失败后一直取到缓存的错误页面
+                                if (response.isSuccessful()
+                                        && response.header("Cache-Control") == null
                                         && response.header("ETag") == null
                                         && response.header("Last-Modified") == null
                                         && response.header("Expires") == null) {
@@ -254,11 +257,25 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
                 }
             }
 
-            @Override public void onActivityCreated(@NonNull android.app.Activity activity, android.os.Bundle savedInstanceState) {}
-            @Override public void onActivityResumed(@NonNull android.app.Activity activity) {}
-            @Override public void onActivityPaused(@NonNull android.app.Activity activity) {}
-            @Override public void onActivitySaveInstanceState(@NonNull android.app.Activity activity, @NonNull android.os.Bundle outState) {}
-            @Override public void onActivityDestroyed(@NonNull android.app.Activity activity) {}
+            @Override
+            public void onActivityCreated(@NonNull android.app.Activity activity, android.os.Bundle savedInstanceState) {
+            }
+
+            @Override
+            public void onActivityResumed(@NonNull android.app.Activity activity) {
+            }
+
+            @Override
+            public void onActivityPaused(@NonNull android.app.Activity activity) {
+            }
+
+            @Override
+            public void onActivitySaveInstanceState(@NonNull android.app.Activity activity, @NonNull android.os.Bundle outState) {
+            }
+
+            @Override
+            public void onActivityDestroyed(@NonNull android.app.Activity activity) {
+            }
         });
 
         // 检测并且关闭TestMode

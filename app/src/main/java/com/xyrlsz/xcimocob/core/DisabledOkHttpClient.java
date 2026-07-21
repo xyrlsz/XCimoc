@@ -28,13 +28,13 @@ public class DisabledOkHttpClient extends OkHttpClient {
             @NonNull
             @Override
             public <T> T tag(@NonNull Class<T> aClass, @NonNull Function0<? extends T> function0) {
-                return null;
+                return function0.invoke();
             }
 
             @NonNull
             @Override
             public <T> T tag(@NonNull KClass<T> kClass, @NonNull Function0<? extends T> function0) {
-                return null;
+                return function0.invoke();
             }
 
             @Nullable
@@ -52,18 +52,20 @@ public class DisabledOkHttpClient extends OkHttpClient {
             @NonNull
             @Override
             public Call clone() {
-                return null;
+                return this;
             }
 
             @NonNull
             @Override
             public Timeout timeout() {
-                return null;
+                return Timeout.NONE;
             }
 
             @NonNull
             @Override
-            public Request request() { return request; }
+            public Request request() {
+                return request;
+            }
 
             @NonNull
             @Override
@@ -77,13 +79,18 @@ public class DisabledOkHttpClient extends OkHttpClient {
             }
 
             @Override
-            public void cancel() { }
+            public void cancel() {
+            }
 
             @Override
-            public boolean isExecuted() { return false; }
+            public boolean isExecuted() {
+                return false;
+            }
 
             @Override
-            public boolean isCanceled() { return false; }
+            public boolean isCanceled() {
+                return false;
+            }
         };
     }
 }
