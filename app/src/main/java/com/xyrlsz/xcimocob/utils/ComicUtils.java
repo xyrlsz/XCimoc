@@ -27,8 +27,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -79,7 +81,7 @@ public class ComicUtils {
             return;
         }
 
-        List<Chapter> finalChapterList = new ArrayList<>();
+        Set<Chapter> chapterSet = new LinkedHashSet<>();
         for (Chapter c : chapterList) {
             if (c.isComplete()) {
                 String group = c.getSourceGroup();
@@ -88,9 +90,10 @@ public class ComicUtils {
                     name = group + "-" + name;
                 }
                 c.setTitle(name);
-                finalChapterList.add(c);
+                chapterSet.add(c);
             }
         }
+        List<Chapter> finalChapterList = new ArrayList<>(chapterSet);
         if (finalChapterList.isEmpty()) {
             callback.onFailure("没有可导出的章节");
             return;
