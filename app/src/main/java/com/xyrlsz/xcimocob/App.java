@@ -125,14 +125,14 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
                             .cache(httpCache)
                             .addNetworkInterceptor(chain -> {
                                 Response response = chain.proceed(chain.request());
-                                // 有缓存头（Cache-Control/ETag/Last-Modified/Expires）→ 走标准缓存
-                                // 无任何缓存头 → 强制不缓存，保证数据新鲜
+                                // 有缓存头（Cache-Control/ETag/Last-Modified/Expires）→ 走标准缓存（含条件更新）
+                                // 无任何缓存头 → 兜底缓存1分钟，避免重复请求，与 WebParser 内存缓存策略一致
                                 if (response.header("Cache-Control") == null
                                         && response.header("ETag") == null
                                         && response.header("Last-Modified") == null
                                         && response.header("Expires") == null) {
                                     return response.newBuilder()
-                                            .header("Cache-Control", "no-store")
+                                            .header("Cache-Control", "max-age=60")
                                             .build();
                                 }
                                 return response;
