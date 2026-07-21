@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
+import okhttp3.CacheControl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -462,7 +463,21 @@ public class Manga {
 //        }).subscribeOn(Schedulers.io());
 //    }
 
+    /** 强制刷新标志，用于下拉刷新时跳过 OkHttp 缓存 */
+    private static volatile boolean sForceRefresh = false;
+
+    public static void setForceRefresh(boolean force) {
+        sForceRefresh = force;
+    }
+
     private static String getResponseBody(OkHttpClient client, Request request, boolean retry) throws NetworkErrorException {
+        // 强制刷新时跳过缓存
+        if (sForceRefresh) {
+            request = request.newBuilder()
+                    .cacheControl(CacheControl.FORCE_NETWORK)
+                    .build();
+            sForceRefresh = false;
+        }
         Response response = null;
         try {
             response = client.newCall(request).execute();

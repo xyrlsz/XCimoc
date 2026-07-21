@@ -14,6 +14,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.fresco.ControllerBuilderProvider;
@@ -53,6 +54,7 @@ public class ResultActivity extends BackActivity implements ResultView, BaseAdap
     public SparseArray<String> searchUrls = new SparseArray<>();
     RecyclerView mRecyclerView;
     FrameLayout mLayoutView;
+    SwipeRefreshLayout mSwipeRefresh;
     private ResultAdapter mResultAdapter;
 
     @Override
@@ -60,6 +62,7 @@ public class ResultActivity extends BackActivity implements ResultView, BaseAdap
         super.initViewById();
         mRecyclerView = findViewById(R.id.result_recycler_view);
         mLayoutView = findViewById(R.id.result_layout);
+        mSwipeRefresh = findViewById(R.id.result_swipe_refresh);
     }
     private LinearLayoutManager mLayoutManager;
     private ResultPresenter mPresenter;
@@ -157,6 +160,13 @@ public class ResultActivity extends BackActivity implements ResultView, BaseAdap
     protected void initData() {
         resultMode = getIntent().getIntExtra(Extra.EXTRA_MODE, -1);
         load();
+
+        // 启用下拉刷新
+        enablePullRefresh(() -> {
+            mResultAdapter.clear();
+            mPresenter.refresh();
+            load();
+        });
     }
 
     @Override
@@ -190,25 +200,51 @@ public class ResultActivity extends BackActivity implements ResultView, BaseAdap
     @Override
     public void onSearchSuccess(Comic comic) {
         hideProgressBar();
+        stopPullRefresh();
         mResultAdapter.add(comic);
     }
 
     @Override
     public void onLoadSuccess(List<Comic> list) {
         hideProgressBar();
+        stopPullRefresh();
         mResultAdapter.setData(list);
     }
 
     @Override
     public void onLoadFail() {
         hideProgressBar();
+        stopPullRefresh();
         showSnackbar(R.string.common_parse_error);
     }
 
     @Override
     public void onSearchError() {
         hideProgressBar();
+        stopPullRefresh();
         showSnackbar(R.string.result_empty);
+    }
+
+    /**
+     * 启用下拉刷新
+     */
+    private void enablePullRefresh(SwipeRefreshLayout.OnRefreshListener listener) {
+        if (mSwipeRefresh != null) {
+            mSwipeRefresh.setOnRefreshListener(listener);
+            mSwipeRefresh.setColorSchemeResources(
+                    android.R.color.holo_blue_light,
+                    android.R.color.holo_orange_light,
+                    android.R.color.holo_green_light);
+        }
+    }
+
+    /**
+     * 停止下拉刷新动画
+     */
+    private void stopPullRefresh() {
+        if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
+            mSwipeRefresh.setRefreshing(false);
+        }
     }
 
     @Override

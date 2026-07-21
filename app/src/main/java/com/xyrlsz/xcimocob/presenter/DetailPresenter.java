@@ -162,6 +162,25 @@ public class DetailPresenter extends BasePresenter<DetailView> {
         load();
     }
 
+    /**
+     * 下拉刷新：清除缓存后重新从网络加载
+     */
+    public void refresh() {
+        if (mComic == null || mBaseView == null) {
+            return;
+        }
+        // 清除 WebParser 内存缓存
+        try {
+            String url = mSourceManager.getParser(mComic.getSource()).getUrl(mComic.getCid());
+            com.xyrlsz.xcimocob.parser.WebParser.clearCache(url);
+        } catch (Exception ignored) {
+        }
+        // 跳过 OkHttp HTTP 缓存
+        Manga.setForceRefresh(true);
+        // 重新发起网络请求
+        load();
+    }
+
     private void updateChapterList(List<Chapter> list) {
         Map<String, Task> map = new HashMap<>();
         for (Task task : mTaskManager.list(mComic.getId())) {

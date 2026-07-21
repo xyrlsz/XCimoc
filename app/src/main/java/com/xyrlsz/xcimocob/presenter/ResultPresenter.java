@@ -168,6 +168,24 @@ public class ResultPresenter extends BasePresenter<ResultView> {
         }
     }
 
+    /**
+     * 下拉刷新：重置状态后重新从网络获取
+     */
+    public void refresh() {
+        if (mStateArray == null) {
+            return;
+        }
+        // 跳过 OkHttp HTTP 缓存
+        Manga.setForceRefresh(true);
+        // 重置所有状态
+        for (State state : mStateArray) {
+            state.page = 0;
+            state.state = STATE_NULL;
+        }
+        error = 0;
+        comicTitleTemp = "";
+    }
+
     private static class State {
         int source;
         int page;

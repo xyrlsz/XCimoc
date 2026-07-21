@@ -32,7 +32,7 @@ public class WebParser {
     /** 总超时时间：120 秒后强制完成，防止永久阻塞 */
     private static final long TOTAL_TIMEOUT_MS = 120_000;
     // ========== 内存缓存 ==========
-    private static final long CACHE_TTL_MS = 30 * 1000; // 30秒有效，与 OkHttp stale-while-revalidate 对齐
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5分钟有效，下拉刷新时主动清除
     private static final Map<String, CacheEntry> sHtmlCache = new ConcurrentHashMap<>();
 
     private static class CacheEntry {
@@ -284,5 +284,12 @@ public class WebParser {
                 .timeout(TOTAL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .firstElement()
                 .toObservable();
+    }
+
+    /**
+     * 清除指定 URL 的内存缓存，用于下拉刷新时强制重新获取
+     */
+    public static void clearCache(String url) {
+        sHtmlCache.remove(url);
     }
 }

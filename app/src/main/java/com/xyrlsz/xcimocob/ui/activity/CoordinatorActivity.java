@@ -9,6 +9,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.xyrlsz.xcimocob.R;
@@ -27,6 +28,7 @@ public abstract class CoordinatorActivity extends BackActivity implements
     FloatingActionButton mActionButton2;
     RecyclerView mRecyclerView;
     CoordinatorLayout mCoordinatorLayout;
+    SwipeRefreshLayout mSwipeRefresh;
 
     FrameLayout mLayoutView;
 
@@ -38,6 +40,7 @@ public abstract class CoordinatorActivity extends BackActivity implements
         mRecyclerView = findViewById(R.id.coordinator_recycler_view);
         mCoordinatorLayout = findViewById(R.id.coordinator_layout);
         mLayoutView = findViewById(R.id.coordinator_frame_layout);
+        mSwipeRefresh = findViewById(R.id.coordinator_swipe_refresh);
     }
 
     @Override
@@ -93,6 +96,28 @@ public abstract class CoordinatorActivity extends BackActivity implements
     @Override
     protected View getLayoutView() {
         return mCoordinatorLayout;
+    }
+
+    /**
+     * 启用下拉刷新，子类调用并设置刷新监听器
+     */
+    protected void enablePullRefresh(SwipeRefreshLayout.OnRefreshListener listener) {
+        if (mSwipeRefresh != null) {
+            mSwipeRefresh.setOnRefreshListener(listener);
+            mSwipeRefresh.setColorSchemeResources(
+                    android.R.color.holo_blue_light,
+                    android.R.color.holo_orange_light,
+                    android.R.color.holo_green_light);
+        }
+    }
+
+    /**
+     * 停止下拉刷新动画
+     */
+    protected void stopPullRefresh() {
+        if (mSwipeRefresh != null && mSwipeRefresh.isRefreshing()) {
+            mSwipeRefresh.setRefreshing(false);
+        }
     }
 
 }

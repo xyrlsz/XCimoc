@@ -115,7 +115,11 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
         String cid = getIntent().getStringExtra(Extra.EXTRA_CID);
         mPresenter.load(id, source, cid);
 
-
+        // 启用下拉刷新
+        enablePullRefresh(() -> {
+            mPresenter.refresh();
+            // 网络加载完成后停止刷新动画（由 onChapterLoadSuccess / onParseError 触发）
+        });
     }
 
     @Override
@@ -407,6 +411,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     @Override
     public void onChapterLoadSuccess(List<Chapter> list) {
         hideProgressBar();
+        stopPullRefresh();
         if (mPresenter.getComic().getTitle() != null && mPresenter.getComic().getCover() != null) {
             mDetailAdapter.setData(list);
         }
@@ -455,6 +460,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.VIEW_ITEM, bundle);
 //        }
         hideProgressBar();
+        stopPullRefresh();
         showSnackbar(R.string.common_parse_error);
 
 
