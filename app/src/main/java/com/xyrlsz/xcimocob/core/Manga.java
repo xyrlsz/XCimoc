@@ -7,6 +7,7 @@ import android.util.Pair;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.manager.ChapterManager;
+import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.model.Comic;
@@ -32,11 +33,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
 
 /**
  * Created by Hiroshi on 2016/8/20.
@@ -119,7 +120,7 @@ public class Manga {
                             || indexOfIgnoreCase(comic.getAuthor(), keyword, stSame)
                             || (!strictSearch))) {
                         result.add(comic);
-                        Thread.sleep(random.nextInt(200));
+//                        Thread.sleep(random.nextInt(200));
                     }
                 }
                 return Observable.fromIterable(result);
@@ -148,7 +149,7 @@ public class Manga {
                                 && (indexOfIgnoreCase(comic.getTitle().strip(), keyword.strip(), stSame)
                                 || (!strictSearch))) {
                             result.add(comic);
-                            Thread.sleep(random.nextInt(200));
+//                            Thread.sleep(random.nextInt(200));
                         }
                     } else if (searchType == SEARCH_AUTHOR) {
                         if (comic != null) {
@@ -166,7 +167,7 @@ public class Manga {
 
                             if (findAuthor || (!strictSearch)) {
                                 result.add(comic);
-                                Thread.sleep(random.nextInt(200));
+//                                Thread.sleep(random.nextInt(200));
                             }
                         }
                     }
@@ -274,7 +275,9 @@ public class Manga {
             if (!parser.isParseImagesUseWebParser()) {
                 response = Objects.requireNonNull(App.getHttpClient()).newCall(request).execute();
                 if (response.isSuccessful()) {
-                    List<Chapter> chapter = mChapterManager.getChapter(path, title);
+                    Comic comic = ComicManager.getInstance(parser).load(source, cid);
+                    long sourceComic = IdCreator.createSourceComic(comic);
+                    List<Chapter> chapter = mChapterManager.getChapter(sourceComic, path);
                     if (chapter != null && !chapter.isEmpty()) {
                         list.addAll(parser.parseImages(response.body().string(), chapter.get(0)));
                     }
@@ -289,7 +292,9 @@ public class Manga {
                 WebParser webParser = new WebParser(App.getAppContext(), request.url().toString(), request.headers());
 
                 String html = webParser.getHtmlObservable().blockingFirst();
-                List<Chapter> chapter = mChapterManager.getChapter(path, title);
+                Comic comic = ComicManager.getInstance(parser).load(source, cid);
+                long sourceComic = IdCreator.createSourceComic(comic);
+                List<Chapter> chapter = mChapterManager.getChapter(sourceComic, path);
                 if (chapter != null && !chapter.isEmpty()) {
                     list.addAll(parser.parseImages(html, chapter.get(0)));
                 }
@@ -374,19 +379,6 @@ public class Manga {
         }).subscribeOn(Schedulers.io());
     }
 
-    /**
-     * 漫画检查更新结果包装类
-     */
-    public static class CheckUpdateEvent {
-        public final Comic comic;
-        public final boolean hasUpdate;
-
-        public CheckUpdateEvent(Comic comic, boolean hasUpdate) {
-            this.comic = comic;
-            this.hasUpdate = hasUpdate;
-        }
-    }
-
     public static Observable<CheckUpdateEvent> checkUpdate(
             final SourceManager manager, final List<Comic> list) {
         return Observable.fromIterable(list)
@@ -431,6 +423,10 @@ public class Manga {
                 );
     }
 
+    public static String getResponseBody(OkHttpClient client, Request request) throws NetworkErrorException {
+        return getResponseBody(client, request, true);
+    }
+
     //    public static Observable<Comic> checkUpdate(
 //            final SourceManager manager, final List<Comic> list) {
 //        return Observable.create(new Observable.OnSubscribe<Comic>() {
@@ -466,10 +462,6 @@ public class Manga {
 //        }).subscribeOn(Schedulers.io());
 //    }
 
-    public static String getResponseBody(OkHttpClient client, Request request) throws NetworkErrorException {
-        return getResponseBody(client, request, true);
-    }
-
     private static String getResponseBody(OkHttpClient client, Request request, boolean retry) throws NetworkErrorException {
         Response response = null;
         try {
@@ -496,6 +488,19 @@ public class Manga {
             }
         }
         throw new NetworkErrorException();
+    }
+
+    /**
+     * 漫画检查更新结果包装类
+     */
+    public static class CheckUpdateEvent {
+        public final Comic comic;
+        public final boolean hasUpdate;
+
+        public CheckUpdateEvent(Comic comic, boolean hasUpdate) {
+            this.comic = comic;
+            this.hasUpdate = hasUpdate;
+        }
     }
 
     public static class ParseErrorException extends Exception {
