@@ -73,7 +73,7 @@ public class Local {
                 emitter.onNext(list);
                 emitter.onComplete();
             } else {
-                emitter.onError(new Exception());
+                emitter.onError(new Exception("No local images found"));
             }
         }).subscribeOn(Schedulers.io());
     }

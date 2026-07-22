@@ -170,7 +170,7 @@ public class Storage {
                                 return;
                             }
                         }
-                        emitter.onError(new Exception());
+                        emitter.onError(new Exception("Directory move failed"));
                     } catch (Exception e) {
                         // 源目录无法访问（content:// URI 已失效抛 SecurityException 等），
                         // 此时无数据可迁移，视为操作成功
@@ -198,7 +198,7 @@ public class Storage {
                     } catch (IOException ignored) {
 
                     }
-                    emitter.onError(new Exception());
+                    emitter.onError(new Exception("Save picture failed"));
                 })
                 .subscribeOn(Schedulers.io());
     }

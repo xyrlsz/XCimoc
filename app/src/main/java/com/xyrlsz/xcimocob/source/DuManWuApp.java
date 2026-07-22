@@ -91,7 +91,9 @@ public class DuManWuApp extends MangaParser {
         JSONObject data = new JSONObject(html);
         String responseData = data.getString("responseData");
         String aes128Decrypt = Aes128Decrypt(g8bh4z, responseData);
-        assert aes128Decrypt != null;
+        if (aes128Decrypt == null) {
+            return null;
+        }
         JSONObject searchData = new JSONObject(aes128Decrypt);
         return new JsonIterator(searchData.getJSONArray("updata")) {
             @Override
@@ -255,6 +257,9 @@ public class DuManWuApp extends MangaParser {
             SecretKeySpec secretKeySpec = new SecretKeySpec(bytes, "AES");
             byte[] decode = Base64.getDecoder().decode(encryptedData);
             Intrinsics.checkNotNull(decode);
+            if (decode.length < 16) {
+                return null;
+            }
             byte[] sliceArray = ArraysKt.sliceArray(decode, RangesKt.until(0, 16));
             byte[] sliceArray2 = ArraysKt.sliceArray(decode, RangesKt.until(16, decode.length));
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");

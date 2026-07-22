@@ -210,17 +210,9 @@ public class App extends Application implements AppGetter, Thread.UncaughtExcept
             if (e instanceof io.reactivex.rxjava3.exceptions.UndeliverableException) {
                 e = (Throwable) e.getCause();
             }
-            // SecurityException: Android 14+ SystemUI NotificationProviderPublic bug (MIUI/HyperOS)
-            // 此异常由系统 Bug 引发，应用层无法根治，忽略即可
-            if (!(e instanceof java.net.UnknownHostException
-                    || e instanceof java.net.ConnectException
-                    || e instanceof java.net.SocketTimeoutException
-                    || e instanceof javax.net.ssl.SSLException
-                    || e instanceof java.io.InterruptedIOException
-                    || e instanceof java.lang.SecurityException)) {
-                Thread.currentThread().getUncaughtExceptionHandler()
-                        .uncaughtException(Thread.currentThread(), e);
-            }
+            // 所有未送达异常只记录日志，不触发崩溃
+            // 常见原因：Rx 链下游已取消订阅，但上游仍在执行
+            Log.w("RxJavaError", "Undeliverable exception ignored: " + e.getMessage(), e);
         });
 
         // 初始化ObjectBox

@@ -143,7 +143,7 @@ public class MainPresenter extends BasePresenter<MainView> {
                             }
                         }
                         if (!checkSuccess && !emitter.isDisposed()) {
-                            emitter.tryOnError(new Exception());
+                            emitter.tryOnError(new Exception("Main check update failed"));
                         }
                 }).subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())

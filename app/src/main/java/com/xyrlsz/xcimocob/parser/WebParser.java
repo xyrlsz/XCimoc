@@ -26,9 +26,12 @@ import okhttp3.Headers;
 
 public class WebParser {
     // ========== 参数（可调） ==========
-    private static final int MAX_SCROLL = 512; // 最多滚动次数
-    private static final int SAME_LIMIT = 5; // 高度连续不变次数
-    private static final int SCROLL_DELAY = 30; // 滚动间隔（ms）
+    private static final int MAX_SCROLL = 768; // 最多滚动次数
+    private static final int SAME_LIMIT = 10; // 高度连续不变次数（保守，避免误判）
+    private static final int SCROLL_STEP = 600; // 每次滚动像素（适度放大，平衡速度与图片加载时间）
+    private static final int SCROLL_DELAY_NEAR = 100; // 接近底部时的滚动间隔（ms）
+    private static final int SCROLL_DELAY_FAR = 50; // 远离底部时的滚动间隔（ms）
+    private static final int SCROLL_DELAY_ERR = 50; // 出错重试间隔（ms）
     /** 总超时时间：120 秒后强制完成，防止永久阻塞 */
     private static final long TOTAL_TIMEOUT_MS = 120_000;
     // ========== 内存缓存 ==========
@@ -49,7 +52,13 @@ public class WebParser {
     // =============================
 
     /** 滚动停止后，等待动态内容加载的稳定期（ms）后重新检查高度 */
-    private static final long STABILIZE_WAIT_MS = 500;
+    private static final long STABILIZE_WAIT_MS = 800;
+    /** 稳定期检测最多重试次数（已确认高度不变后，再等一轮复查，防止图片尚在下载中） */
+    private static final int STABILIZE_RETRY_MAX = 2;
+    /** 距离底部多少 px 视为"接近底部"，改用慢速滚动 */
+    private static final int NEAR_BOTTOM_THRESHOLD = 800;
+    /** 距离底部多少 px 视为"到达底部"，触发稳定期检测 */
+    private static final int AT_BOTTOM_THRESHOLD = 80;
 
     private final String url;
     private final Headers headers;
@@ -58,9 +67,15 @@ public class WebParser {
     private String UA = "";
     /** 构造函数中查到缓存时，直接存下来，跳过 WebView 创建 */
     private String cachedResult = null;
+    // 滚动控制
+    private int lastHeight = 0;
+    private int sameCount = 0;
+    private int scrollCount = 0;
+
     /** 防止重复调用 onPageFinished 导致多个 autoScroll 并发运行 */
     private volatile boolean scrollGuard = false;
 
+    private int errTimes = 0;
     private volatile boolean emitted = false;
 
     public WebParser(Context context, String url, Headers headers) {
@@ -139,8 +154,6 @@ public class WebParser {
         // WebView 缓存：关闭 WebView 自身缓存，完全由我们的 sHtmlCache 控制内存缓存
         // 避免断网加载到错误页面后，WebView 内部缓存了错误页面，重连后仍返回错误结果
         webView.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
-        // JS 桥接：注入 Android 接口，使 JS 可直接回调 Java，避免轮询
-        webView.addJavascriptInterface(new JsBridge(), "XCimoc");
 
         if (!StringUtils.isEmpty(UA)) {
             webView.getSettings().setUserAgentString(UA);
@@ -181,10 +194,10 @@ public class WebParser {
                             "})()";
 
                     webView.evaluateJavascript(jsCode, s -> {
-                        new Handler(Looper.getMainLooper()).postDelayed(this::startJsAutoScroll, 500);
+                        new Handler(Looper.getMainLooper()).postDelayed(this::autoScroll, 300);
                     });
                 } else {
-                    new Handler(Looper.getMainLooper()).postDelayed(this::startJsAutoScroll, 300);
+                    new Handler(Looper.getMainLooper()).postDelayed(this::autoScroll, 200);
                 }
             } else if (!scrollGuard) {
                 // DOM 未完成加载，继续轮询（如果还没开始滚动）
@@ -194,96 +207,142 @@ public class WebParser {
     }
 
     /**
-     * 在 JS 内完成滚动，规避 Java↔JS 桥接的每步开销，大幅提升速度
+     * 核心：智能滚动，滚动停止后增加稳定期检测，确保动态内容加载完成。
+     * 优化：增大步长到 SCROLL_STEP、缩短延迟，大幅减少 Java↔JS 桥接次数。
      */
-    private void startJsAutoScroll() {
+    private void autoScroll() {
+        // 如果已经发射过结果，不再继续滚动
         if (emitted) {
             return;
         }
+
         String js = "(function(){"
-                + "var MAX=" + MAX_SCROLL + ",SAME=" + SAME_LIMIT + ",STEP=" + 1000 + ",DELAY=" + 30 + ",STABILIZE=" + STABILIZE_WAIT_MS + ";"
-                + "var lastH=0,same=0,count=0,observer=null;"
-                + "function scroll(){"
-                + "if(count>=MAX){done();return}"
                 + "var h=document.body.scrollHeight;"
-                + "var rem=h-(window.innerHeight+(window.pageYOffset||document.documentElement.scrollTop));"
-                + "if(rem<=100){stabilize();return}"
-                + "if(h===lastH){same++}else{same=0;lastH=h}"
-                + "if(same>=SAME){stabilize();return}"
-                + "count++;window.scrollBy(0,STEP);setTimeout(scroll,DELAY)"
-                + "}"
-                + "function stabilize(){"
-                + "setTimeout(function(){"
-                + "var h2=document.body.scrollHeight;"
-                + "if(h2>lastH+50){lastH=h2;same=0;count=Math.max(0,count-5);scroll()}"
-                + "else{waitForIdle()}"
-                + "},STABILIZE)"
-                + "}"
-                + "function waitForIdle(){"
-                + "// 注册 MutationObserver 监听 DOM 变化"
-                + "observer=new MutationObserver(function(){"
-                + "// DOM 有变化，重置空闲计时器"
-                + "clearTimeout(window._idleTimer);"
-                + "window._idleTimer=setTimeout(function(){"
-                + "observer.disconnect();"
-                + "observer=null;"
-                + "done()"
-                + "},2000)"
-                + "});"
-                + "observer.observe(document.body,{childList:true,subtree:true,attributes:false,characterData:false});"
-                + "// 同时检查网络是否空闲"
-                + "checkNetworkIdle()"
-                + "}"
-                + "function checkNetworkIdle(){"
-                + "if(window.performance&&window.performance.getEntriesByType){"
-                + "var entries=window.performance.getEntriesByType('resource');"
-                + "var pending=0;"
-                + "for(var i=0;i<entries.length;i++){"
-                + "if(entries[i].responseEnd===0||entries[i].responseEnd===undefined){pending++}"
-                + "}"
-                + "if(pending>0){"
-                + "setTimeout(checkNetworkIdle,500);"
-                + "return"
-                + "}"
-                + "}"
-                + "// 网络空闲，启动空闲计时器"
-                + "if(!window._idleTimer){"
-                + "window._idleTimer=setTimeout(function(){"
-                + "if(observer){observer.disconnect();observer=null}"
-                + "done()"
-                + "},2000)"
-                + "}"
-                + "}"
-                + "function done(){"
-                + "if(observer){observer.disconnect();observer=null}"
-                + "clearTimeout(window._idleTimer);"
-                + "try{XCimoc.onScrollDone()}catch(e){}"
-                + "}"
-                + "scroll()"
+                + "var ch=document.body.clientHeight;"
+                + "var st=document.body.scrollTop||document.documentElement.scrollTop;"
+                + "window.scrollBy(0," + SCROLL_STEP + ");"  // 步长放大，减少桥接调用
+                + "return h+','+ch+','+st;"
                 + "})()";
-        webView.evaluateJavascript(js, null);
+
+        webView.evaluateJavascript(js, value -> {
+            try {
+                if (value == null)
+                    return;
+
+                String[] parts = value.replace("\"", "").split(",");
+                double currentScrollHeight = Double.parseDouble(parts[0]);
+                double clientHeight = Double.parseDouble(parts[1]);
+                double currentScrollTop = Double.parseDouble(parts[2]);
+
+                double distanceToBottom = currentScrollHeight - (currentScrollTop + clientHeight);
+
+                // 1. 到底检测
+                if (distanceToBottom <= AT_BOTTOM_THRESHOLD) {
+                    stabilizeAndFinish();
+                    return;
+                }
+
+                // 2. 高度不变检测（防死循环）
+                if (currentScrollHeight == lastHeight) {
+                    sameCount++;
+                } else {
+                    sameCount = 0;
+                    lastHeight = (int) currentScrollHeight;
+                }
+
+                scrollCount++;
+
+                if (sameCount >= SAME_LIMIT || scrollCount >= MAX_SCROLL) {
+                    stabilizeAndFinish();
+                    return;
+                }
+
+                // 接近底部用慢速让内容有时间加载，远处快速通过
+                int nextDelay = (distanceToBottom < NEAR_BOTTOM_THRESHOLD) ? SCROLL_DELAY_NEAR : SCROLL_DELAY_FAR;
+
+                new Handler(Looper.getMainLooper()).postDelayed(this::autoScroll, nextDelay);
+
+            } catch (Exception ignored) {
+                if (errTimes <= 5) {
+                    new Handler(Looper.getMainLooper()).postDelayed(this::autoScroll, SCROLL_DELAY_ERR);
+                    errTimes++;
+                } else {
+                    emitError(new Exception("WebParser: autoScroll failed after retries"));
+                }
+            }
+        });
+    }
+
+    /**
+     * 稳定期检测：等待 STABILIZE_WAIT_MS 后重新检查页面高度。
+     * 最多重试 STABILIZE_RETRY_MAX 次，每次等足稳定期再复查，
+     * 防止因图片尚在下载中而误判为"加载完成"。
+     */
+    private void stabilizeAndFinish() {
+        stabilizeAndFinish(0);
+    }
+
+    private void stabilizeAndFinish(int retryCount) {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (emitted) {
+                return;
+            }
+            String js = "(function(){"
+                    + "var h = document.body.scrollHeight;"
+                    + "var st = document.body.scrollTop || document.documentElement.scrollTop;"
+                    + "return h + ',' + st;"
+                    + "})()";
+            webView.evaluateJavascript(js, value -> {
+                try {
+                    if (value == null || emitted) {
+                        return;
+                    }
+                    String[] parts = value.replace("\"", "").split(",");
+                    double newHeight = Double.parseDouble(parts[0]);
+
+                    // 如果高度比停止时增加了，说明有动态内容刚加载出来，继续滚动
+                    if (newHeight > lastHeight + 50) {
+                        lastHeight = (int) newHeight;
+                        sameCount = 0;
+                        scrollCount = Math.max(0, scrollCount - 5);
+                        new Handler(Looper.getMainLooper()).post(this::autoScroll);
+                    } else if (retryCount < STABILIZE_RETRY_MAX) {
+                        // 本轮稳定，但再等一轮复查（图片可能尚在下载，高度还未变化）
+                        stabilizeAndFinish(retryCount + 1);
+                    } else {
+                        // 多轮复查均稳定，真正结束
+                        getPageHtml();
+                    }
+                } catch (Exception e) {
+                    // 稳定期检测失败，直接结束
+                    getPageHtml();
+                }
+            });
+        }, STABILIZE_WAIT_MS);
     }
 
     /**
      * 获取 HTML
      */
     private void getPageHtml() {
-        webView.evaluateJavascript(
-                "(function(){return document.documentElement.outerHTML})()", value -> {
-                    if (value != null) {
-                        String result = value.replace("\\u003C", "<")
-                                .replace("\\u003E", ">")
-                                .replace("\\n", "\n")
-                                .replace("\\\"", "\"")
-                                .replace("\\'", "'")
-                                .replace("\\t", "    ")
-                                .replace("\\\\/", "\\/");
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            webView.evaluateJavascript(
+                    "(function(){return document.documentElement.outerHTML})()", value -> {
+                        if (value != null) {
+                            String result = value.replace("\\u003C", "<")
+                                    .replace("\\u003E", ">")
+                                    .replace("\\n", "\n")
+                                    .replace("\\\"", "\"")
+                                    .replace("\\'", "'")
+                                    .replace("\\t", "    ")
+                                    .replace("\\\\/", "\\/");
 
-                        emitResult(result);
-                    } else {
-                        emitError(new Exception("WebParser: failed to get HTML"));
-                    }
-                });
+                            emitResult(result);
+                        } else {
+                            emitError(new Exception("WebParser: failed to get HTML"));
+                        }
+                    });
+        }, 150); // 最后缓冲
     }
 
     /**
@@ -298,21 +357,6 @@ public class WebParser {
                 .timeout(TOTAL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .firstElement()
                 .toObservable();
-    }
-
-    /**
-     * JS 桥接接口 — 滚动完成后由 JS 直接回调，避免轮询
-     */
-    private class JsBridge {
-        @android.webkit.JavascriptInterface
-        @SuppressWarnings("unused")
-        public void onScrollDone() {
-            new Handler(Looper.getMainLooper()).post(() -> {
-                if (!emitted) {
-                    getPageHtml();
-                }
-            });
-        }
     }
 
     /**

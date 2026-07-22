@@ -62,7 +62,24 @@ public class DuManWu extends MangaParser {
     public SearchIterator getSearchIterator(String html, int page) {
         try {
             JSONObject object = new JSONObject(html);
-            JSONArray data = object.getJSONArray("data");
+            JSONArray data;
+            if (object.isNull("data")) {
+                return null;
+            }
+            Object dataObj = object.get("data");
+            if (dataObj instanceof JSONArray) {
+                data = (JSONArray) dataObj;
+            } else if (dataObj instanceof String) {
+                // "data" 可能是被转义的 JSON 字符串，尝试重新解析
+                try {
+                    data = new JSONArray((String) dataObj);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            } else {
+                return null;
+            }
             return new JsonIterator(data) {
                 @Override
                 protected Comic parse(JSONObject object) throws JSONException {

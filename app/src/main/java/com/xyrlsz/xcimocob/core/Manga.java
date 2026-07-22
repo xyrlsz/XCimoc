@@ -89,6 +89,9 @@ public class Manga {
     public static Observable<Comic> getSearchResult(final MangaParser parser, final String keyword, final int page, final boolean strictSearch, final boolean stSame) {
         return Observable.defer(() -> {
             Request request = parser.getSearchRequest(keyword, page);
+            if (request == null) {
+                return Observable.error(new Exception("Search request returned null"));
+            }
             String url = request.url().toString();
             Observable<String> htmlObs = parser.isGetSearchUseWebParser()
                     ? new WebParser(App.getAppContext(), url, request.headers()).getHtmlObservable()
@@ -97,8 +100,9 @@ public class Manga {
                     .flatMap(html -> {
                         SearchIterator iterator = parser.getSearchIterator(html, page);
                         if (iterator == null || iterator.empty()) {
-                            return Observable.error(new Exception());
+                            return Observable.error(new Exception("Search returned no results"));
                         }
+
                         Random random = new Random();
                         List<Comic> result = new ArrayList<>();
                         while (iterator.hasNext()) {
@@ -124,6 +128,9 @@ public class Manga {
     public static Observable<Comic> getSearchResult(final MangaParser parser, final String keyword, final int page, final boolean strictSearch, final boolean stSame, final int searchType) {
         return Observable.defer(() -> {
             Request request = parser.getSearchRequest(keyword, page);
+            if (request == null) {
+                return Observable.error(new Exception("Search request returned null"));
+            }
             String url = request.url().toString();
             Observable<String> htmlObs = parser.isGetSearchUseWebParser()
                     ? new WebParser(App.getAppContext(), url, request.headers()).getHtmlObservable()
@@ -132,8 +139,9 @@ public class Manga {
                     .flatMap(html -> {
                         SearchIterator iterator = parser.getSearchIterator(html, page);
                         if (iterator == null || iterator.empty()) {
-                            return Observable.error(new Exception());
+                            return Observable.error(new Exception("Search returned no results"));
                         }
+
                         Random random = new Random();
                         List<Comic> result = new ArrayList<>();
                         while (iterator.hasNext()) {
@@ -179,15 +187,32 @@ public class Manga {
 
     public static Observable<List<Chapter>> getComicInfo(final MangaParser parser, final Comic comic) {
         return Observable.defer(() -> {
-            comic.setUrl(parser.getUrl(comic.getCid()));
-            Request infoRequest = parser.getInfoRequest(comic.getCid());
+            String cid = comic.getCid();
+            if (cid == null) {
+                return Observable.error(new Exception("Comic CID is null"));
+            }
+            String comicUrl = parser.getUrl(cid);
+            if (comicUrl == null) {
+                return Observable.error(new Exception("Comic URL is null"));
+            }
+            comic.setUrl(comicUrl);
+            Request infoRequest = parser.getInfoRequest(cid);
+            if (infoRequest == null) {
+                return Observable.error(new Exception("Info request returned null"));
+            }
             String infoUrl = infoRequest.url().toString();
             Observable<String> infoHtmlObs = parser.isParseInfoUseWebParser()
                     ? new WebParser(App.getAppContext(), infoUrl, infoRequest.headers()).getHtmlObservable()
                     : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), infoRequest));
             return infoHtmlObs
                     .flatMap(html -> {
+                        if (html == null) {
+                            return Observable.error(new Exception("Info HTML is null"));
+                        }
                         Comic newComic = parser.parseInfo(html, comic);
+                        if (newComic == null) {
+                            return Observable.error(new Exception("Parse info returned null"));
+                        }
                         RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_UPDATE_INFO, newComic));
                         Request chapterReq = parser.getChapterRequest(html, comic.getCid());
                         if (chapterReq != null) {
@@ -196,18 +221,25 @@ public class Manga {
                                     ? new WebParser(App.getAppContext(), chapterUrl, chapterReq.headers()).getHtmlObservable()
                                     : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), chapterReq));
                             return chapterHtmlObs.flatMap(chapterHtml -> {
+                                if (chapterHtml == null) {
+                                    WebParser.clearCache(infoUrl);
+                                    WebParser.clearCache(chapterUrl);
+                                    setForceRefreshUrl(infoUrl);
+                                    setForceRefreshUrl(chapterUrl);
+                                    return Observable.error(new Exception("Chapter HTML is null"));
+                                }
                                 Long sourceComic = IdCreator.createSourceComic(comic);
                                 List<Chapter> list = parser.parseChapter(chapterHtml, comic, sourceComic);
                                 if (list == null) {
                                     list = parser.parseChapter(chapterHtml);
                                 }
-                                if (list.isEmpty()) {
+                                if (list == null || list.isEmpty()) {
                                     // 解析失败 → 清除缓存，下次重试走网络
                                     WebParser.clearCache(infoUrl);
                                     WebParser.clearCache(chapterUrl);
                                     setForceRefreshUrl(infoUrl);
                                     setForceRefreshUrl(chapterUrl);
-                                    return Observable.error(new ParseErrorException());
+                                    return Observable.error(new Exception("Parse chapter list empty"));
                                 }
                                 return Observable.just(list);
                             });
@@ -217,11 +249,11 @@ public class Manga {
                             if (list == null) {
                                 list = parser.parseChapter(html);
                             }
-                            if (list.isEmpty()) {
+                            if (list == null || list.isEmpty()) {
                                 // 解析失败 → 清除缓存，下次重试走网络
                                 WebParser.clearCache(infoUrl);
                                 setForceRefreshUrl(infoUrl);
-                                return Observable.error(new ParseErrorException());
+                                return Observable.error(new Exception("Parse chapter list empty"));
                             }
                             return Observable.just(list);
                         }
@@ -241,6 +273,10 @@ public class Manga {
             String url = null;
             try {
                 Request request = parser.getCategoryRequest(format, page);
+                if (request == null) {
+                    emitter.onError(new Exception("Category request returned null"));
+                    return;
+                }
                 url = request.url().toString();
                 String html = getResponseBody(App.getHttpClient(), request);
                 List<Comic> list = parser.parseCategory(html, page);
@@ -253,7 +289,7 @@ public class Manga {
                         WebParser.clearCache(url);
                     }
                     setForceRefreshUrl(url);
-                    throw new Exception();
+                    throw new Exception("Parse category list empty");
                 }
             } catch (Exception e) {
                 emitter.onError(e);
@@ -267,6 +303,9 @@ public class Manga {
                                                              final String path) {
         return Observable.defer(() -> {
             Request request = parser.getImagesRequest(cid, path);
+            if (request == null) {
+                return Observable.error(new Exception("Images request returned null"));
+            }
             String url = request.url().toString();
             Observable<String> htmlObs = parser.isParseImagesUseWebParser()
                     ? new WebParser(App.getAppContext(), url, request.headers()).getHtmlObservable()
@@ -277,11 +316,11 @@ public class Manga {
                         if (list == null || list.isEmpty()) {
                             list = parser.parseImages(html);
                         }
-                        if (list.isEmpty()) {
+                        if (list == null || list.isEmpty()) {
                             // 解析失败 → 清除该 URL 的 WebParser 内存缓存 + 跳过 OkHttp 磁盘缓存
                             WebParser.clearCache(url);
                             setForceRefreshUrl(url);
-                            return Observable.error(new Exception());
+                            return Observable.error(new Exception("Parse images list empty"));
                         }
                         for (ImageUrl imageUrl : list) {
                             imageUrl.setChapter(path);
@@ -306,6 +345,9 @@ public class Manga {
                 return list;
             }
             Request request = parser.getImagesRequest(cid, path);
+            if (request == null) {
+                return list;
+            }
             if (!parser.isParseImagesUseWebParser()) {
                 response = Objects.requireNonNull(App.getHttpClient()).newCall(request).execute();
                 if (response.isSuccessful()) {
@@ -493,7 +535,7 @@ public class Manga {
         Response response = null;
         try {
             response = client.newCall(request).execute();
-            if (response.isSuccessful()) {
+            if (response.isSuccessful() && response.body() != null) {
                 byte[] bodybytes = response.body().bytes();
                 String body = new String(bodybytes);
                 Matcher m = Pattern.compile("charset=([\\w\\-]+)").matcher(body);
@@ -530,8 +572,6 @@ public class Manga {
         }
     }
 
-    public static class ParseErrorException extends Exception {
-    }
 
     public static class NetworkErrorException extends Exception {
     }

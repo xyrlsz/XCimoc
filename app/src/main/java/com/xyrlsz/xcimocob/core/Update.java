@@ -85,7 +85,7 @@ public class Update {
                 }
             }
             if (!checkSuccess && !emitter.isDisposed()) {
-                emitter.tryOnError(new Exception());
+                emitter.tryOnError(new Exception("Check update failed"));
             }
         }).subscribeOn(Schedulers.io());
     }

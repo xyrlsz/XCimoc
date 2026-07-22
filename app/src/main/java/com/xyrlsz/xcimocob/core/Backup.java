@@ -102,7 +102,7 @@ public class Backup {
                     return;
                 }
             }
-            emitter.onError(new Exception());
+            emitter.onError(new Exception("No backup files found"));
         }).subscribeOn(Schedulers.io());
     }
 

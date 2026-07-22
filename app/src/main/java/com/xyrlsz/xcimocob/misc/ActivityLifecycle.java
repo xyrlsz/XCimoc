@@ -22,7 +22,8 @@ public class ActivityLifecycle implements Application.ActivityLifecycleCallbacks
     }
 
     public void clear() {
-        for (Activity activity : mActivityList) {
+        List<Activity> copy = new LinkedList<>(mActivityList);
+        for (Activity activity : copy) {
             activity.finish();
         }
         mActivityList.clear();
