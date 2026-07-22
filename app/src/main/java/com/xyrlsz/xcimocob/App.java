@@ -121,22 +121,39 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
                     // 3.OkHttp访问https的Client实例（带HTTP缓存）
                     File cacheDir = new File(mApp.getCacheDir(), "http");
                     Cache httpCache = new Cache(cacheDir, 20 * 1024 * 1024); // 20MB缓存
+
+                    // 首次运行或缓存超过限额时清理
+                    if (mPreference.getBoolean(PreferenceManager.PREF_HTTP_CACHE_CLEANUP, true)) {
+                        try {
+                            httpCache.evictAll();
+                        } catch (Exception ignored) {
+                        }
+                        mPreference.putBoolean(PreferenceManager.PREF_HTTP_CACHE_CLEANUP, false);
+                    }
+
                     client = new OkHttpClient()
                             .newBuilder()
                             .cache(httpCache)
                             .addNetworkInterceptor(chain -> {
                                 Response response = chain.proceed(chain.request());
                                 // 有缓存头（Cache-Control/ETag/Last-Modified/Expires）→ 走标准缓存（含条件更新）
-                                // 无任何缓存头且响应成功（2xx）→ 缓存5分钟，5~10分钟间可复用旧缓存同时后台异步更新
+                                // 无任何缓存头且响应成功（2xx）→ 视内容类型决定是否缓存
                                 // 非成功响应（4xx/5xx 等）→ 不缓存，避免解析失败后一直取到缓存的错误页面
                                 if (response.isSuccessful()
                                         && response.header("Cache-Control") == null
                                         && response.header("ETag") == null
                                         && response.header("Last-Modified") == null
                                         && response.header("Expires") == null) {
-                                    return response.newBuilder()
-                                            .header("Cache-Control", "max-age=300, stale-while-revalidate=300")
-                                            .build();
+                                    // 图片已有 Fresco 自己的缓存（image_cache/），OkHttp 再缓存是双重缓存，只浪费空间
+                                    // 只缓存 HTML/文本/JSON 等页面内容，不缓存图片/视频/音频
+                                    String contentType = response.header("Content-Type", "");
+                                    if (!contentType.startsWith("image/")
+                                            && !contentType.startsWith("video/")
+                                            && !contentType.startsWith("audio/")) {
+                                        return response.newBuilder()
+                                                .header("Cache-Control", "max-age=300, stale-while-revalidate=300")
+                                                .build();
+                                    }
                                 }
                                 return response;
                             })

@@ -165,6 +165,9 @@ public class PreferenceManager {
     public static final String PREF_DATA_SERVER_URL = "pref_data_server_url";
     public static final String PREF_DATA_SERVER_AUTO_SYNC = "pref_data_server_auto_sync";
 
+    // HTTP 缓存清理标记（首次启动或版本升级时清理一次）
+    public static final String PREF_HTTP_CACHE_CLEANUP = "pref_http_cache_cleanup";
+
     private static final String PREFERENCES_NAME = "cimoc_preferences";
     private final SharedPreferences mSharedPreferences;
 
