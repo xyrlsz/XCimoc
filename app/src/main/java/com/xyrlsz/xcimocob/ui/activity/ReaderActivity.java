@@ -20,7 +20,7 @@ import android.view.animation.TranslateAnimation;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -61,7 +61,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-
 
 import okhttp3.Headers;
 
@@ -247,7 +246,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mSeekBar.setLayoutDirection(turn == PreferenceManager.READER_TURN_RTL ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         mSeekBar.addOnChangeListener(this);
         if (primaryColorResId != 0) {
-            int primaryColor = getColor(primaryColorResId);
+            int primaryColor = ContextCompat.getColor(this, primaryColorResId);
             mSeekBar.setTrackActiveTintList(ColorStateList.valueOf(primaryColor));
             mSeekBar.setThumbTintList(ColorStateList.valueOf(primaryColor));
             mSeekBar.setHaloTintList(ColorStateList.valueOf(primaryColor));
@@ -380,8 +379,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 Animation.RELATIVE_TO_SELF, 0.0f, Animation.RELATIVE_TO_SELF, -1.0f,
                 Animation.RELATIVE_TO_SELF, 0.0f);
         downAction.setDuration(300);
-        // 确保 valueFrom 已被正确设置（防御性，Android 16+ 上 Slider 初始值可能为 0）
-        mSeekBar.setValueFrom(0);
+        mSeekBar.setValueFrom(1);
         if ((int) mSeekBar.getValueTo() != max) {
             mSeekBar.setValueTo(max);
         }

@@ -4,12 +4,12 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
+import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
-
-import android.view.View;
 
 import com.google.android.material.slider.Slider;
 import com.xyrlsz.xcimocob.R;
@@ -50,16 +50,17 @@ public class SliderDialogFragment extends DialogFragment implements DialogInterf
         int primaryDarkResId = ThemeUtils.getResourceId(requireActivity(), R.attr.colorPrimaryDark);
         int primaryResId = ThemeUtils.getResourceId(requireActivity(), R.attr.colorPrimary);
         if (primaryDarkResId != 0) {
-            int primaryDarkColor = requireActivity().getColor(primaryDarkResId);
+            int primaryDarkColor = ContextCompat.getColor(requireContext(), primaryDarkResId);
             mSeekBar.setTrackActiveTintList(ColorStateList.valueOf(primaryDarkColor));
             mSeekBar.setThumbTintList(ColorStateList.valueOf(primaryDarkColor));
             mSeekBar.setHaloTintList(ColorStateList.valueOf(primaryDarkColor));
         }
         if (primaryResId != 0) {
-            int primaryColor = requireActivity().getColor(primaryResId);
+            int primaryColor = ContextCompat.getColor(requireContext(), primaryResId);
             mSeekBar.setTrackInactiveTintList(ColorStateList.valueOf(primaryColor));
         }
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
+        assert getArguments() != null;
         builder.setTitle(getArguments().getInt(DialogCaller.EXTRA_DIALOG_TITLE))
                 .setView(view)
                 .setPositiveButton(R.string.dialog_positive, this);

@@ -133,6 +133,10 @@ android {
         main {
         }
     }
+    lint {
+        abortOnError true
+        fatal "NewApi"
+    }
 }
 
 dependencies {
