@@ -121,16 +121,6 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
                     // 3.OkHttp访问https的Client实例（带HTTP缓存）
                     File cacheDir = new File(mApp.getCacheDir(), "http");
                     Cache httpCache = new Cache(cacheDir, 20 * 1024 * 1024); // 20MB缓存
-
-                    // 首次运行或缓存超过限额时清理
-                    if (mPreference.getBoolean(PreferenceManager.PREF_HTTP_CACHE_CLEANUP, true)) {
-                        try {
-                            httpCache.evictAll();
-                        } catch (Exception ignored) {
-                        }
-                        mPreference.putBoolean(PreferenceManager.PREF_HTTP_CACHE_CLEANUP, false);
-                    }
-
                     client = new OkHttpClient()
                             .newBuilder()
                             .cache(httpCache)
