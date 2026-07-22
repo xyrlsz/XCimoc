@@ -452,6 +452,10 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                     if (result[4] == 1 && mNightMask != null) {
                         mNightMask.setBackgroundColor(result[5] << 24);
                     }
+                    // 深色模式变更 → 重建 Activity 使新主题生效
+                    if (result.length > 6 && result[6] == 1) {
+                        recreate();
+                    }
                     break;
             }
         }

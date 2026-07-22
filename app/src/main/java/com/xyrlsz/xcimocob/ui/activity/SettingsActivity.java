@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
 
 import com.xyrlsz.xcimocob.App;
@@ -56,7 +57,8 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     private static final int DIALOG_REQUEST_DETAIL_TEXT_ST = 10;
     private static final int DIALOG_REQUEST_ST_ENGINE = 11;
     private static final int DIALOG_REQUEST_OTHER_DARK_MOD = 12;
-    private final int[] mResultArray = new int[6];
+
+    private final int[] mResultArray = new int[8];
     private final Intent mResultIntent = new Intent();
 
     List<TextView> mTitleList;
@@ -317,8 +319,17 @@ public class SettingsActivity extends BackActivity implements SettingsView {
                 mStEngine.setValue(bundle.getInt(EXTRA_DIALOG_RESULT_INDEX));
                 break;
             case DIALOG_REQUEST_OTHER_DARK_MOD:
-                mOtherDarkMod.setValue(bundle.getInt(EXTRA_DIALOG_RESULT_INDEX));
-                HintUtils.showToast(getApplicationContext(), "重启生效");
+                int darkModeIndex = bundle.getInt(EXTRA_DIALOG_RESULT_INDEX);
+                mOtherDarkMod.setValue(darkModeIndex);
+                // 立即应用深色模式，无需重启
+                applyDarkMode(darkModeIndex);
+                mResultArray[6] = 1;
+                mResultArray[7] = darkModeIndex;
+                mResultIntent.putExtra(Extra.EXTRA_RESULT, mResultArray);
+                setResult(Activity.RESULT_OK, mResultIntent);
+                HintUtils.showToast(getApplicationContext(), "深色模式已切换");
+                // 返回主界面，主界面收到结果后重建应用新主题
+                finish();
                 break;
         }
     }
@@ -412,6 +423,23 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     public void onExecuteFail() {
         hideProgressDialog();
         showSnackbar(R.string.common_execute_fail);
+    }
+
+    /**
+     * 立即应用深色模式，无需重启
+     */
+    private void applyDarkMode(int darkModeIndex) {
+        switch (darkModeIndex) {
+            case PreferenceManager.DARK_MODE_FALLOW_SYSTEM:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
+                break;
+            case PreferenceManager.DARK_MODE_ALWAYS_DARK:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
+                break;
+            case PreferenceManager.DARK_MODE_ALWAYS_LIGHT:
+                AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
+                break;
+        }
     }
 
     @Override
