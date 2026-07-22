@@ -1,6 +1,7 @@
 package com.xyrlsz.xcimocob.ui.view;
 
 import com.xyrlsz.xcimocob.component.DialogCaller;
+import com.xyrlsz.xcimocob.model.SearchHistory;
 import com.xyrlsz.xcimocob.model.Source;
 
 import java.util.List;
@@ -16,5 +17,11 @@ public interface SearchView extends BaseView, DialogCaller {
     void onSourceLoadFail();
 
     void onAutoCompleteLoadSuccess(List<String> list);
+
+    void onSearchHistoryLoadSuccess(List<SearchHistory> list);
+
+    void onSearchHistoryDeleteSuccess();
+
+    void onSearchHistoryClearSuccess();
 
 }

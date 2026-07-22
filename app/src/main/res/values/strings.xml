@@ -33,6 +33,9 @@
     <string name="search_source_select">图源选择</string>
     <string name="search_source_none">未选择图源</string>
     <string name="search_source_load_fail">读取图源失败</string>
+    <string name="search_history_title">搜索历史</string>
+    <string name="search_history_clear">清空</string>
+    <string name="search_history_empty">暂无搜索历史</string>
 
     <string name="result">搜索结果</string>
     <string name="result_empty">搜索结果为空</string>

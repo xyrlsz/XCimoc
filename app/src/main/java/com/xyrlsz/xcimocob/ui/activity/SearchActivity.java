@@ -19,10 +19,13 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.misc.Switcher;
+import com.xyrlsz.xcimocob.model.SearchHistory;
 import com.xyrlsz.xcimocob.model.Source;
 import com.xyrlsz.xcimocob.presenter.BasePresenter;
 import com.xyrlsz.xcimocob.presenter.SearchPresenter;
@@ -64,11 +67,20 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
         mSTSameCheckBox = findViewById(R.id.search_STSame_checkbox);
         mTypeSpinner = findViewById(R.id.search_type_spinner);
         mLayoutView = findViewById(R.id.search_root);
+        mHistoryContainer = findViewById(R.id.search_history_container);
+        mHistoryClear = findViewById(R.id.search_history_clear);
+        mHistoryLayout = findViewById(R.id.search_history_layout);
+        mInputClear = findViewById(R.id.search_input_clear);
     }
 
     private SearchPresenter mPresenter;
     private List<Switcher<Source>> mSourceList;
     private boolean mAutoComplete;
+
+    private ChipGroup mHistoryContainer;
+    private TextView mHistoryClear;
+    private View mHistoryLayout;
+    private android.widget.ImageButton mInputClear;
 
     @Override
     protected BasePresenter initPresenter() {
@@ -100,6 +112,8 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
 
             @Override
             public void afterTextChanged(Editable s) {
+                // 控制清空按钮显隐
+                mInputClear.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
                 if (mAutoComplete) {
                     String keyword = mEditText.getText().toString();
                     if (!StringUtils.isEmpty(keyword)) {
@@ -117,6 +131,7 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
         mTypeSpinner.setAdapter(new ArrayAdapter<>(this, R.layout.custom_spinner_item, searchTypes));
         mTypeSpinner.setSelection(SEARCH_TITLE);
         findViewById(R.id.search_action_button).setOnClickListener(v -> onSearchButtonClick());
+        mInputClear.setOnClickListener(v -> mEditText.setText(""));
         ViewCompat.setOnApplyWindowInsetsListener(mLayoutView, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(
@@ -127,12 +142,21 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
             );
             return insets;
         });
+
+        // 初始化搜索历史 — 清空按钮
+        mHistoryClear.setOnClickListener(v -> mPresenter.clearSearchHistory());
     }
 
     @Override
     protected void initData() {
         mSourceList = new ArrayList<>();
         mPresenter.loadSource();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mPresenter.loadSearchHistory();
     }
 
     @Override
@@ -186,7 +210,7 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
     }
 
     void onSearchButtonClick() {
-        String keyword = mEditText.getText().toString();
+        String keyword = mEditText.getText().toString().trim();
         boolean strictSearch = mStrictCheckBox.isChecked();
         boolean stSame = mSTSameCheckBox.isChecked();
         if (StringUtils.isEmpty(keyword)) {
@@ -201,6 +225,10 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
             if (list.isEmpty()) {
                 HintUtils.showToast(this, R.string.search_source_none);
             } else {
+                // 保存搜索历史
+                mPresenter.saveSearchHistory(keyword);
+                // 重新加载历史列表
+                mPresenter.loadSearchHistory();
                 startActivity(ResultActivity.createIntent(this, keyword, strictSearch, stSame,
                         CollectionUtils.unbox(list), ResultActivity.LAUNCH_MODE_SEARCH, mTypeSpinner.getSelectedItemPosition()));
             }
@@ -209,8 +237,10 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
 
     @Override
     public void onAutoCompleteLoadSuccess(List<String> list) {
-        mArrayAdapter.clear();
-        mArrayAdapter.addAll(list);
+        if (mArrayAdapter != null) {
+            mArrayAdapter.clear();
+            mArrayAdapter.addAll(list);
+        }
     }
 
     @Override
@@ -225,6 +255,59 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
     public void onSourceLoadFail() {
         hideProgressBar();
         HintUtils.showToast(this, R.string.search_source_load_fail);
+    }
+
+    @Override
+    public void onSearchHistoryLoadSuccess(List<SearchHistory> list) {
+        mHistoryContainer.removeAllViews();
+        if (list == null || list.isEmpty()) {
+            mHistoryContainer.setVisibility(View.GONE);
+            mHistoryClear.setVisibility(View.GONE);
+        } else {
+            for (SearchHistory history : list) {
+                mHistoryContainer.addView(createHistoryChip(history));
+            }
+            mHistoryContainer.setVisibility(View.VISIBLE);
+            mHistoryClear.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private Chip createHistoryChip(SearchHistory history) {
+        Chip chip = new Chip(this);
+        chip.setText(history.getKeyword());
+        chip.setTextSize(13);
+        chip.setCheckable(false);
+        chip.setClickable(true);
+        chip.setFocusable(true);
+        chip.setCloseIconVisible(true);
+        chip.setCloseIconSize(16 * getResources().getDisplayMetrics().density);
+        chip.setChipCornerRadius(16 * getResources().getDisplayMetrics().density);
+        chip.setChipMinHeight(32 * getResources().getDisplayMetrics().density);
+        chip.setChipStrokeWidth(0);
+        // 点击关键词 → 填入搜索框并搜索
+        chip.setOnClickListener(v -> {
+            mEditText.setText(history.getKeyword());
+            mEditText.setSelection(history.getKeyword().length());
+            mActionButton.performClick();
+        });
+        // 点击 × → 删除单条历史
+        chip.setOnCloseIconClickListener(v -> {
+            mPresenter.deleteSearchHistory(history);
+        });
+        return chip;
+    }
+
+    @Override
+    public void onSearchHistoryDeleteSuccess() {
+        mPresenter.loadSearchHistory();
+    }
+
+    @Override
+    public void onSearchHistoryClearSuccess() {
+        mHistoryContainer.removeAllViews();
+        mHistoryContainer.setVisibility(View.GONE);
+        mHistoryClear.setVisibility(View.GONE);
+        HintUtils.showToast(this, R.string.search_history_empty);
     }
 
     @Override
