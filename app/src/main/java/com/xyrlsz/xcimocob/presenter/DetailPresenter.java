@@ -15,6 +15,7 @@ import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.model.Comic;
 import com.xyrlsz.xcimocob.model.MiniComic;
 import com.xyrlsz.xcimocob.model.Task;
+import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
@@ -337,6 +338,8 @@ public class DetailPresenter extends BasePresenter<DetailView> {
 
     public void unfavoriteComic() {
         long id = mComic.getId();
+        // 标记收藏已取消，防止同步时被服务端恢复
+        DataSyncManager.markFavoriteDeleted(mComic.getSource(), mComic.getCid());
         mComic.setFavorite(null);
         mTagRefManager.deleteByComic(id);
         mComicManager.updateOrDelete(mComic);

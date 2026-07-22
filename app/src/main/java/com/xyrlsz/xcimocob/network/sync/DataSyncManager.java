@@ -306,11 +306,49 @@ public class DataSyncManager {
             }
         }
 
+        // 附加标记了"收藏已取消"的漫画，通知服务端清除收藏
+        Set<String> favoriteDeletedKeys = getFavoriteDeletedKeys();
+        if (!favoriteDeletedKeys.isEmpty()) {
+            for (String key : favoriteDeletedKeys) {
+                String[] parts = key.split(":", 2);
+                if (parts.length != 2) continue;
+
+                int source;
+                try {
+                    source = Integer.parseInt(parts[0]);
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid favorite deleted key (source not int): " + key);
+                    continue;
+                }
+                String cid = parts[1];
+
+                if (uploadedKeys.contains(key)) {
+                    // 该漫画在本地仍有数据（如历史记录），但用户已取消收藏
+                    // 需要标记 clear_favorite，让服务端也清除收藏，避免下次下载时恢复
+                    for (DataSyncModels.ComicSyncItem item : items) {
+                        if (item.source == source && item.cid != null && item.cid.equals(cid)) {
+                            item.clear_favorite = true;
+                            break;
+                        }
+                    }
+                } else {
+                    DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
+                    item.source = source;
+                    item.cid = cid;
+                    item.clear_favorite = true;
+                    items.add(item);
+                }
+            }
+        }
+
         client.syncComics(token, items);
 
         // 上传成功后清除所有删除标记
         if (!deletedKeys.isEmpty()) {
             clearHistoryDeletedKeys();
+        }
+        if (!favoriteDeletedKeys.isEmpty()) {
+            clearFavoriteDeletedKeys();
         }
     }
 
@@ -435,7 +473,9 @@ public class DataSyncManager {
     /** 将服务端漫画数据合并到本地（服务端数据优先） */
     private boolean mergeServerComic(Comic local, DataSyncModels.ComicServerItem s) {
         boolean changed = false;
-        if (s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
+        // 如果本地明确标记了"收藏已取消"，则不从服务端恢复收藏
+        boolean favoriteDeleted = isFavoriteDeleted(s.source, s.cid);
+        if (!favoriteDeleted && s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
             local.setFavorite(s.favorite);
             changed = true;
         }
@@ -463,6 +503,7 @@ public class DataSyncManager {
     // ==================== 历史删除标记追踪 ====================
 
     private static final String PREF_HISTORY_DELETED_KEYS = "history_deleted_keys";
+    private static final String PREF_FAVORITE_DELETED_KEYS = "favorite_deleted_keys";
 
     /**
      * 添加一条"历史已删除"的漫画标记（source:cid）
@@ -539,6 +580,59 @@ public class DataSyncManager {
      */
     public static void clearHistoryDeletedKeysAfterUpload() {
         clearHistoryDeletedKeys();
+    }
+
+    // ==================== 收藏删除标记追踪 ====================
+
+    /**
+     * 添加一条"收藏已取消"的漫画标记（source:cid）
+     */
+    public static void markFavoriteDeleted(int source, String cid) {
+        Set<String> keys = getFavoriteDeletedKeys();
+        keys.add(source + ":" + cid);
+        saveFavoriteDeletedKeys(keys);
+    }
+
+    /**
+     * 检查某漫画是否被标记为"收藏已取消"
+     */
+    public static boolean isFavoriteDeleted(int source, String cid) {
+        return getFavoriteDeletedKeys().contains(source + ":" + cid);
+    }
+
+    /**
+     * 获取所有"收藏已取消"标记
+     */
+    private static Set<String> getFavoriteDeletedKeys() {
+        String json = App.getPreferenceManager().getString(PREF_FAVORITE_DELETED_KEYS, "");
+        if (json.isEmpty()) return new HashSet<>();
+        Set<String> result = new HashSet<>();
+        for (String key : json.split(",")) {
+            String trimmed = key.trim();
+            if (!trimmed.isEmpty()) {
+                result.add(trimmed);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 持久化"收藏已取消"标记集合
+     */
+    private static void saveFavoriteDeletedKeys(Set<String> keys) {
+        StringBuilder sb = new StringBuilder();
+        for (String key : keys) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(key);
+        }
+        App.getPreferenceManager().putString(PREF_FAVORITE_DELETED_KEYS, sb.toString());
+    }
+
+    /**
+     * 清除所有"收藏已取消"标记（上传成功后调用）
+     */
+    private static void clearFavoriteDeletedKeys() {
+        App.getPreferenceManager().putString(PREF_FAVORITE_DELETED_KEYS, "");
     }
 
 }

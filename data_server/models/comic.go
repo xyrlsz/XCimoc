@@ -29,17 +29,18 @@ type ComicSyncRequest struct {
 }
 
 type ComicSyncItem struct {
-	Source       int    `json:"source"`
-	Cid          string `json:"cid"`
-	Title        string `json:"title"`
-	Cover        string `json:"cover"`
-	Update       string `json:"update"`
-	Finish       bool   `json:"finish"`
-	Favorite     *int64 `json:"favorite"`
-	History      *int64 `json:"history"`
-	Last         string `json:"last"`
-	Page         *int   `json:"page"`
-	Chapter      string `json:"chapter"`
-	ChapterCount *int   `json:"chapter_count"`
-	ClearHistory bool   `json:"clear_history"` // true 时表示客户端明确要求清除历史记录
+	Source        int    `json:"source"`
+	Cid           string `json:"cid"`
+	Title         string `json:"title"`
+	Cover         string `json:"cover"`
+	Update        string `json:"update"`
+	Finish        bool   `json:"finish"`
+	Favorite      *int64 `json:"favorite"`
+	History       *int64 `json:"history"`
+	Last          string `json:"last"`
+	Page          *int   `json:"page"`
+	Chapter       string `json:"chapter"`
+	ChapterCount  *int   `json:"chapter_count"`
+	ClearHistory  bool   `json:"clear_history"`  // true 时表示客户端明确要求清除历史记录
+	ClearFavorite bool   `json:"clear_favorite"` // true 时表示客户端明确要求清除收藏
 }

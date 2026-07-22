@@ -48,6 +48,7 @@ public class DataSyncModels {
         public String chapter;
         public Integer chapter_count;
         public boolean clear_history; // true 表示客户端要求清除历史记录
+        public boolean clear_favorite; // true 表示客户端要求清除收藏
 
         public ComicSyncItem() {
         }

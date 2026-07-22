@@ -8,6 +8,7 @@ import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.manager.TagRefManager;
 import com.xyrlsz.xcimocob.model.Comic;
 import com.xyrlsz.xcimocob.model.MiniComic;
+import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 import com.xyrlsz.xcimocob.rx.ToAnotherList;
 import com.xyrlsz.xcimocob.ui.view.FavoriteView;
@@ -145,6 +146,8 @@ public class FavoritePresenter extends BasePresenter<FavoriteView> {
     public void unfavoriteComic(long id) {
         if (mBaseView == null) return;
         Comic comic = mComicManager.load(id);
+        // 标记收藏已取消，防止同步时被服务端恢复
+        DataSyncManager.markFavoriteDeleted(comic.getSource(), comic.getCid());
         comic.setFavorite(null);
         mTagRefManager.deleteByComic(id);
         mComicManager.updateOrDelete(comic);
