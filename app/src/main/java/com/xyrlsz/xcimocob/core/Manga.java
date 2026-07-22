@@ -26,7 +26,6 @@ import org.json.JSONObject;
 
 import java.io.InterruptedIOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -48,11 +47,14 @@ import okhttp3.Response;
  */
 public class Manga {
 
-    /** 全局强制刷新标志，用于下拉刷新时跳过所有 OkHttp 缓存（一次性） */
-    private static volatile boolean sForceRefresh = false;
-
-    /** URL 级别强制刷新集合：只有匹配 URL 的请求才跳过缓存（精准失效，无竞态） */
+    /**
+     * URL 级别强制刷新集合：只有匹配 URL 的请求才跳过缓存（精准失效，无竞态）
+     */
     private static final Set<String> sForceRefreshUrls = ConcurrentHashMap.newKeySet();
+    /**
+     * 全局强制刷新标志，用于下拉刷新时跳过所有 OkHttp 缓存（一次性）
+     */
+    private static volatile boolean sForceRefresh = false;
 
     /**
      * 标记指定 URL 需要强制从网络获取，精准失效（不被其他无关请求消费）
@@ -400,7 +402,9 @@ public class Manga {
     public static Observable<List<String>> loadAutoComplete(final String keyword) {
         return Observable.create((io.reactivex.rxjava3.core.ObservableOnSubscribe<List<String>>) emitter -> {
             Request request = new Request.Builder()
-                    .url("http://m.ac.qq.com/search/smart?word=" + keyword)
+                    .url("https://m.ac.qq.com/search/smart?word=" + keyword)
+                    .addHeader("referer", "https://m.ac.qq.com/search/index")
+                    .addHeader("user-agent", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36")
                     .build();
             try {
                 String jsonString = getResponseBody(App.getHttpClient(), request);
