@@ -104,35 +104,31 @@ public class SourceFragment extends RecyclerViewFragment implements SourceView, 
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.comic_search:
+        int __id = item.getItemId();
+        if (__id == R.id.comic_search) {
                 Intent intent = new Intent(getActivity(), SearchActivity.class);
                 startActivity(intent);
-                break;
-            case R.id.comic_inverseSelection:
+        } else if (__id == R.id.comic_inverseSelection) {
                 for (int i = 0; i < mSourceAdapter.getItemCount(); i++) {
                     Source source = mSourceAdapter.getItem(i);
                     source.setEnable(!source.getEnable());
                     mPresenter.update(source);
                 }
                 mSourceAdapter.notifyDataSetChanged();
-                break;
-            case R.id.comic_allSelection:
+        } else if (__id == R.id.comic_allSelection) {
                 for (int i = 0; i < mSourceAdapter.getItemCount(); i++) {
                     Source source = mSourceAdapter.getItem(i);
                     source.setEnable(true);
                     mPresenter.update(source);
                 }
                 mSourceAdapter.notifyDataSetChanged();
-                break;
-            case R.id.comic_AllDeselect:
+        } else if (__id == R.id.comic_AllDeselect) {
                 for (int i = 0; i < mSourceAdapter.getItemCount(); i++) {
                     Source source = mSourceAdapter.getItem(i);
                     source.setEnable(false);
                     mPresenter.update(source);
                 }
                 mSourceAdapter.notifyDataSetChanged();
-                break;
         }
         return super.onOptionsItemSelected(item);
     }

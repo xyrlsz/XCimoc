@@ -80,16 +80,14 @@ public class TagFragment extends RecyclerViewFragment implements TagView {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.comic_search:
+        int __id = item.getItemId();
+        if (__id == R.id.comic_search) {
                 Intent intent = new Intent(getActivity(), SearchActivity.class);
                 startActivity(intent);
-                break;
-            case R.id.tag_add:
+        } else if (__id == R.id.tag_add) {
                 EditorDialogFragment fragment = EditorDialogFragment.newInstance(R.string.tag_add, null, DIALOG_REQUEST_EDITOR);
                 fragment.setTargetFragment(this, 0);
                 fragment.show(requireActivity().getSupportFragmentManager(), null);
-                break;
         }
         return super.onOptionsItemSelected(item);
     }

@@ -12,7 +12,7 @@ import com.xyrlsz.xcimocob.model.ImageUrl;
 import com.xyrlsz.xcimocob.ui.adapter.ReaderAdapter;
 import com.xyrlsz.xcimocob.ui.widget.ZoomableRecyclerView;
 
-import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
+import com.google.android.material.slider.Slider;
 
 import java.util.List;
 
@@ -108,10 +108,11 @@ public class StreamReaderActivity extends ReaderActivity {
     }
 
     @Override
-    public void onProgressChanged(DiscreteSeekBar seekBar, int value, boolean fromUser) {
+    public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
         if (fromUser) {
-            int current = mLastPosition + value - progress;
-            int pos = mReaderAdapter.getPositionByNum(current, value, value < progress);
+            int intValue = Math.round(value);
+            int current = mLastPosition + intValue - progress;
+            int pos = mReaderAdapter.getPositionByNum(current, intValue, intValue < progress);
             mLayoutManager.scrollToPositionWithOffset(pos, 0);
         }
     }

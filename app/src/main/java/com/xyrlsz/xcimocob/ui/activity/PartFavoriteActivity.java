@@ -117,11 +117,10 @@ public class PartFavoriteActivity extends BackActivity implements PartFavoriteVi
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.part_favorite_add:
+        int __id = item.getItemId();
+        if (__id == R.id.part_favorite_add) {
                 showProgressDialog();
                 mPresenter.loadComicTitle(mGridAdapter.getDateSet());
-                break;
         }
         return super.onOptionsItemSelected(item);
     }

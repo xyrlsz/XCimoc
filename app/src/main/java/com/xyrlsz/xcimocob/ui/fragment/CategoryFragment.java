@@ -473,12 +473,11 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.category_refresh:
+        int __id = item.getItemId();
+        if (__id == R.id.category_refresh) {
                 updateSourceList();
                 // mComicList.clear();
                 // categoryGridAdapter.notifyDataSetChanged();
-                break;
         }
         return super.onOptionsItemSelected(item);
     }

@@ -91,17 +91,17 @@ public class ComicFragment extends BaseFragment implements ComicView {
         mViewPager.setOffscreenPageLimit(4);
         mViewPager.setAdapter(mTabAdapter);
         mBottomNavigationView.setOnNavigationItemSelectedListener(item -> {
-            switch (item.getItemId()) {
-                case R.id.navigation_history:
+            int __id = item.getItemId();
+            if (__id == R.id.navigation_history) {
                     mViewPager.setCurrentItem(0);
                     return true;
-                case R.id.navigation_favorite:
+            } else if (__id == R.id.navigation_favorite) {
                     mViewPager.setCurrentItem(1);
                     return true;
-                case R.id.navigation_download:
+            } else if (__id == R.id.navigation_download) {
                     mViewPager.setCurrentItem(2);
                     return true;
-                case R.id.navigation_local:
+            } else if (__id == R.id.navigation_local) {
                     mViewPager.setCurrentItem(3);
                     return true;
             }
@@ -172,18 +172,16 @@ public class ComicFragment extends BaseFragment implements ComicView {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.comic_filter:
+        int __id = item.getItemId();
+        if (__id == R.id.comic_filter) {
 //                showProgressDialog();
 //                mTagList.clear();
 //                mPresenter.loadTag();
                 ComicFilterDialog comicFilterDialog = getComicFilterDialog();
                 comicFilterDialog.show();
-                break;
-            case R.id.comic_search:
+        } else if (__id == R.id.comic_search) {
                 Intent intent = new Intent(getActivity(), SearchActivity.class);
                 startActivity(intent);
-                break;
 //            case R.id.comic_bbs:
 //                intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_gitter_url)));
 //                try {
@@ -191,15 +189,11 @@ public class ComicFragment extends BaseFragment implements ComicView {
 //                } catch (Exception e) {
 //                }
 //                break;
-            case R.id.comic_cancel_highlight:
+        } else if (__id == R.id.comic_cancel_highlight) {
                 ((FavoriteFragment) mTabAdapter.getItem(1)).cancelAllHighlight();
-                break;
-
-            case R.id.comic_open_use_url:
+        } else if (__id == R.id.comic_open_use_url) {
                 AlertDialog dialog = getAlertDialog();
                 dialog.show();
-                break;
-
 //            case R.id.comic_filter_by_keyword:
 //                AlertDialog dialog1 = InputDialog.getInputDialog(getContext(), getString(R.string.comic_filter_by_keyword), getString(R.string.search_keyword_input), getString(R.string.dialog_positive), getString(R.string.dialog_negative), new InputDialog.OnItemClickListener() {
 //

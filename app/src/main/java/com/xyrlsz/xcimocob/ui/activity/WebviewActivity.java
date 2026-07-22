@@ -130,8 +130,8 @@ public class WebviewActivity extends BackActivity {
 
         popup.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             public boolean onMenuItemClick(MenuItem item) {
-                switch (item.getItemId()) {
-                    case R.id.copy_link:
+                int __id = item.getItemId();
+                if (__id == R.id.copy_link) {
                         // 复制链接到剪贴板
                         String url = webView.getUrl();
                         ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
@@ -139,11 +139,11 @@ public class WebviewActivity extends BackActivity {
                         clipboard.setPrimaryClip(clip);
                         HintUtils.showToast(WebviewActivity.this, "链接已复制到剪贴板");
                         return true;
-                    case R.id.refresh_page:
+                } else if (__id == R.id.refresh_page) {
                         // 刷新
                         webView.reload();
                         return true;
-                    case R.id.edit_url:
+                } else if (__id == R.id.edit_url) {
                         // 编辑 URL
                         String currentUrl = webView.getUrl();
                         AlertDialog.Builder builder = new AlertDialog.Builder(WebviewActivity.this);
@@ -158,8 +158,7 @@ public class WebviewActivity extends BackActivity {
                         builder.setNegativeButton(getString(R.string.dialog_negative), (dialog, which) -> dialog.cancel());
                         builder.create().show();
                         return true;
-
-                    case R.id.show_button:
+                } else if (__id == R.id.show_button) {
                         // 显示按钮
                         if (isShowButton) {
                             buttonPanel.setVisibility(View.GONE);
@@ -168,9 +167,7 @@ public class WebviewActivity extends BackActivity {
                             buttonPanel.setVisibility(View.VISIBLE);
                             isShowButton = true;
                         }
-
                         return true;
-
 //                    case R.id.change_ua_to_pc:
 //                        // 切换 UA 为 PC 版
 //                        String pcUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0";
@@ -181,8 +178,7 @@ public class WebviewActivity extends BackActivity {
 //                        webView.getSettings().setUserAgentString(WebSettings.getDefaultUserAgent(WebviewActivity.this));
 //                        webView.reload(); // 刷新使UA生效
 //                        return true;
-
-                    default:
+                } else {
                         return false;
                 }
             }

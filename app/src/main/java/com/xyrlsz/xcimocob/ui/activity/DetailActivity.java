@@ -165,7 +165,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 
         if (!isProgressBarShown()) {
-            switch (item.getItemId()) {
+            int __id = item.getItemId();
 //                case R.id.detail_history:
 //                    if (!mDetailAdapter.getDateSet().isEmpty()) {
 //                        String path = mPresenter.getComic().getLast();
@@ -175,12 +175,11 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                        startReader(path);
 //                    }
 //                    break;
-                case R.id.detail_download:
+            if (__id == R.id.detail_download) {
                     if (!mDetailAdapter.getDateSet().isEmpty()) {
                         Intent intent1 = ChapterActivity.createIntent(this, new ArrayList<>(mDetailAdapter.getDateSet()));
                         startActivityForResult(intent1, REQUEST_CODE_DOWNLOAD);
                     }
-                    break;
 //                case R.id.detail_tag:
 //                    if (mPresenter.getComic().getFavorite() != null) {
 //                        intent = TagEditorActivity.createIntent(this, mPresenter.getComic().getId());
@@ -189,7 +188,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                        showSnackbar(R.string.detail_tag_favorite);
 //                    }
 //                    break;
-                case R.id.detail_search_title:
+            } else if (__id == R.id.detail_search_title) {
                     if (!StringUtils.isEmpty(mPresenter.getComic().getTitle())) {
 //                        if(App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_FIREBASE_EVENT, true)) {
 //                            Bundle bundle = new Bundle();
@@ -204,23 +203,20 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
                     } else {
                         showSnackbar(R.string.common_keyword_empty);
                     }
-                    break;
-                case R.id.detail_search_author:
+            } else if (__id == R.id.detail_search_author) {
                     if (!StringUtils.isEmpty(mPresenter.getComic().getAuthor())) {
                         Intent intent3 = ResultActivity.createIntent(this, mPresenter.getComic().getAuthor(), null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_AUTHOR);
                         startActivity(intent3);
                     } else {
                         showSnackbar(R.string.common_keyword_empty);
                     }
-                    break;
-                case R.id.detail_share_url:
+            } else if (__id == R.id.detail_share_url) {
                     String url = mPresenter.getComic().getUrl();
                     Intent intent4 = new Intent(Intent.ACTION_SEND);
                     intent4.setType("text/plain");
                     intent4.putExtra(Intent.EXTRA_TEXT, url);
                     intent4.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(Intent.createChooser(intent4, url));
-
                     // firebase analytics
 //                    if(App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_FIREBASE_EVENT, true)) {
 //                        Bundle bundle = new Bundle();
@@ -229,10 +225,8 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                        FirebaseAnalytics mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 //                        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, bundle);
 //                    }
-                    break;
-                case R.id.detail_reverse_list:
+            } else if (__id == R.id.detail_reverse_list) {
                     mDetailAdapter.reverse();
-                    break;
 //                case R.id.detail_disqus:
 //                    intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_cimqus_url) + "/cimoc/" + mPresenter.getComic().getTitle()));
 //                    try {

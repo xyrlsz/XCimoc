@@ -197,16 +197,15 @@ public class TaskActivity extends CoordinatorActivity implements TaskView {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (!mTaskAdapter.getDateSet().isEmpty()) {
-            switch (item.getItemId()) {
-                case R.id.task_history:
+            int __id = item.getItemId();
+            if (__id == R.id.task_history) {
                     String path = mPresenter.getComic().getLast();
                     if (path == null) {
                         path = mTaskAdapter.getItem(mTaskOrder ?
                                 0 : mTaskAdapter.getDateSet().size() - 1).getPath();
                     }
                     startReader(path, true);
-                    break;
-                case R.id.task_delete:
+            } else if (__id == R.id.task_delete) {
                     ArrayList<Chapter> list = new ArrayList<>(mTaskAdapter.getItemCount());
                     int i = 0;
                     for (Task task : mTaskAdapter.getDateSet()) {
@@ -216,8 +215,7 @@ public class TaskActivity extends CoordinatorActivity implements TaskView {
                     }
                     Intent intent1 = ChapterActivity.createIntent(this, list);
                     startActivityForResult(intent1, REQUEST_CODE_DELETE);
-                    break;
-                case R.id.detail_search_title:
+            } else if (__id == R.id.detail_search_title) {
                     if (!StringUtils.isEmpty(mPresenter.getComic().getTitle())) {
                         Intent intent2 = ResultActivity.createIntent(this, mPresenter.getComic().getTitle(),
                                 null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_TITLE);
@@ -225,8 +223,7 @@ public class TaskActivity extends CoordinatorActivity implements TaskView {
                     } else {
                         showSnackbar(R.string.common_keyword_empty);
                     }
-                    break;
-                case R.id.detail_search_author:
+            } else if (__id == R.id.detail_search_author) {
                     if (!StringUtils.isEmpty(mPresenter.getComic().getAuthor())) {
                         Intent intent3 = ResultActivity.createIntent(this, mPresenter.getComic().getAuthor(),
                                 null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_AUTHOR);
@@ -234,12 +231,10 @@ public class TaskActivity extends CoordinatorActivity implements TaskView {
                     } else {
                         showSnackbar(R.string.common_keyword_empty);
                     }
-                    break;
-                case R.id.task_sort:
+            } else if (__id == R.id.task_sort) {
                     mTaskAdapter.reverse();
                     mTaskOrder = !mTaskOrder;
                     mPreference.putBoolean(PreferenceManager.PREF_CHAPTER_ASCEND_MODE, mTaskOrder);
-                    break;
             }
         }
         return super.onOptionsItemSelected(item);

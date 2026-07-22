@@ -13,7 +13,7 @@ import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager;
 import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager.OnPageChangedListener;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 
-import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
+import com.google.android.material.slider.Slider;
 
 import java.util.List;
 
@@ -88,10 +88,11 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
     }
 
     @Override
-    public void onProgressChanged(DiscreteSeekBar seekBar, int value, boolean fromUser) {
+    public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
         if (fromUser) {
-            int current = getCurPosition() + value - progress;
-            int pos = mReaderAdapter.getPositionByNum(current, value, value < progress);
+            int intValue = Math.round(value);
+            int current = getCurPosition() + intValue - progress;
+            int pos = mReaderAdapter.getPositionByNum(current, intValue, intValue < progress);
             mRecyclerView.scrollToPosition(pos);
         }
     }

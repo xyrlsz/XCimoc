@@ -125,39 +125,34 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (!isProgressBarShown()) {
-            switch (item.getItemId()) {
-                case R.id.chapter_all:
+            int __id = item.getItemId();
+            if (__id == R.id.chapter_all) {
                     for (Switcher<Chapter> switcher : mChapterAdapter.getDateSet()) {
                         switcher.setEnable(true);
                     }
                     mChapterAdapter.notifyDataSetChanged();
-                    break;
-                case R.id.chapter_none:
+            } else if (__id == R.id.chapter_none) {
                     for (Switcher<Chapter> switcher : mChapterAdapter.getDateSet()) {
                         if (!(switcher.getElement().isDownload())) {
                             switcher.setEnable(false);
                         }
                     }
                     mChapterAdapter.notifyDataSetChanged();
-                    break;
-                case R.id.chapter_opposition:
+            } else if (__id == R.id.chapter_opposition) {
                     for (Switcher<Chapter> switcher : mChapterAdapter.getDateSet()) {
                         if (!(switcher.getElement().isDownload())) {
                             switcher.setEnable(!switcher.isEnable());
                         }
                     }
                     mChapterAdapter.notifyDataSetChanged();
-                    break;
-                case R.id.chapter_sort:
+            } else if (__id == R.id.chapter_sort) {
                     mChapterAdapter.reverse();
                     isAscendMode = !isAscendMode;
                     mPreference.putBoolean(PreferenceManager.PREF_CHAPTER_ASCEND_MODE, isAscendMode);
-                    break;
-                case R.id.chapter_switch_view:
+            } else if (__id == R.id.chapter_switch_view) {
                     isButtonMode = !isButtonMode;
                     switchMode();
                     mPreference.putBoolean(PreferenceManager.PREF_CHAPTER_BUTTON_MODE, isButtonMode);
-                    break;
             }
         }
         return super.onOptionsItemSelected(item);

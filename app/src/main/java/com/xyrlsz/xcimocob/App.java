@@ -4,6 +4,7 @@ import static com.xyrlsz.xcimocob.utils.TrustAllSslUtils.createSSLSocketFactory;
 import static com.xyrlsz.xcimocob.utils.TrustAllSslUtils.getTrustAllCerts;
 
 import android.app.Activity;
+import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,8 +17,7 @@ import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
-import androidx.multidex.MultiDex;
-import androidx.multidex.MultiDexApplication;
+
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.xyrlsz.opencc.android.lib.ChineseConverter;
@@ -55,7 +55,7 @@ import okhttp3.Response;
 /**
  * Created by Hiroshi on 2016/7/5.
  */
-public class App extends MultiDexApplication implements AppGetter, Thread.UncaughtExceptionHandler {
+public class App extends Application implements AppGetter, Thread.UncaughtExceptionHandler {
     public static int mWidthPixels;
     public static int mHeightPixels;
     public static int mCoverWidthPixels;
@@ -448,6 +448,6 @@ public class App extends MultiDexApplication implements AppGetter, Thread.Uncaug
     @Override
     protected void attachBaseContext(Context base) {
         super.attachBaseContext(base);
-        MultiDex.install(this);
+//        MultiDex.install(this);
     }
 }

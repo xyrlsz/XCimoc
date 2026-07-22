@@ -303,14 +303,14 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
     }
 
     private String getFragmentTag(int checkItem) {
-        switch (checkItem) {
-            case R.id.drawer_comic:
+        int __id = checkItem;
+        if (__id == R.id.drawer_comic) {
                 return TAG_FRAGMENT_COMIC;
-            case R.id.drawer_source:
+        } else if (__id == R.id.drawer_source) {
                 return TAG_FRAGMENT_SOURCE;
-            case R.id.drawer_category:
+        } else if (__id == R.id.drawer_category) {
                 return TAG_FRAGMENT_CATEGORY;
-            default:
+        } else {
                 return TAG_FRAGMENT_COMIC;
         }
     }
@@ -319,17 +319,14 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
         mCurrentFragment = mFragmentArray.get(mCheckItem);
         if (mCurrentFragment == null) {
             String tag = getFragmentTag(mCheckItem);
-            switch (mCheckItem) {
-                case R.id.drawer_comic:
+            int __id = mCheckItem;
+            if (__id == R.id.drawer_comic) {
                     mComicFragment = new ComicFragment();
                     mCurrentFragment = mComicFragment;
-                    break;
-                case R.id.drawer_source:
+            } else if (__id == R.id.drawer_source) {
                     mCurrentFragment = new SourceFragment();
-                    break;
-                case R.id.drawer_category:
+            } else if (__id == R.id.drawer_category) {
                     mCurrentFragment = new CategoryFragment();
-                    break;
             }
             mFragmentArray.put(mCheckItem, mCurrentFragment);
             return false;
@@ -370,15 +367,18 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         int itemId = item.getItemId();
         if (itemId != mCheckItem) {
-            switch (itemId) {
-                case R.id.drawer_comic:
+            int __id = itemId;
+            if (__id == R.id.drawer_comic) {
                     String title = "";
                     if (mComicFragment == null) {
                         mComicFragment = new ComicFragment(getBaseContext());
                         title = mComicFragment.getCurrTitle();
                     }
                     Objects.requireNonNull(mToolbarTitle).setText(title.isEmpty() ? mComicFragment.getCurrTitle() : title);
-                case R.id.drawer_source:
+                    mCheckItem = itemId;
+                    getSupportFragmentManager().beginTransaction().hide(mCurrentFragment).commit();
+                    mDrawerLayout.closeDrawer(GravityCompat.START);
+            } else if (__id == R.id.drawer_source) {
 //                case R.id.drawer_tag:
                     mCheckItem = itemId;
                     getSupportFragmentManager().beginTransaction().hide(mCurrentFragment).commit();
@@ -386,22 +386,19 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                         Objects.requireNonNull(mToolbarTitle).setText(Objects.requireNonNull(item.getTitle()).toString());
                     }
                     mDrawerLayout.closeDrawer(GravityCompat.START);
-                    break;
-                case R.id.drawer_category:
+            } else if (__id == R.id.drawer_category) {
                     mCheckItem = itemId;
                     getSupportFragmentManager().beginTransaction().hide(mCurrentFragment).commit();
                     Objects.requireNonNull(mToolbarTitle).setText(Objects.requireNonNull(item.getTitle()).toString());
                     mDrawerLayout.closeDrawer(GravityCompat.START);
-                    break;
-                case R.id.drawer_comiclist:
+            } else if (__id == R.id.drawer_comiclist) {
                     Intent intentBaidu = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_comiclist_url)));
                     try {
                         startActivity(intentBaidu);
                     } catch (Exception e) {
                         showSnackbar(R.string.about_resource_fail);
                     }
-                    break;
-                case R.id.drawer_comicUpdate:
+            } else if (__id == R.id.drawer_comicUpdate) {
 //                    update.startUpdate(versionName, content, mUrl, versionCode, md5);
                     new Thread(() -> {
                         boolean checkGithubOk = false;
@@ -424,20 +421,15 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                         intent.setData(Uri.parse(releaseUrl));
                         startActivity(intent);
                     }).start();
-                    break;
-                case R.id.drawer_night:
+            } else if (__id == R.id.drawer_night) {
                     onNightSwitch();
                     mPreference.putBoolean(PreferenceManager.PREF_NIGHT, night);
-                    break;
-                case R.id.drawer_settings:
+            } else if (__id == R.id.drawer_settings) {
                     startActivityForResult(new Intent(MainActivity.this, SettingsActivity.class), REQUEST_ACTIVITY_SETTINGS);
-                    break;
-                case R.id.drawer_about:
+            } else if (__id == R.id.drawer_about) {
                     startActivity(new Intent(MainActivity.this, AboutActivity.class));
-                    break;
-                case R.id.drawer_backup:
+            } else if (__id == R.id.drawer_backup) {
                     startActivity(new Intent(MainActivity.this, BackupActivity.class));
-                    break;
 //                case R.id.user_info:
 //                    loginout();
 //                    break;

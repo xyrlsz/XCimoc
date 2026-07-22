@@ -146,8 +146,8 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.search_menu_source:
+        int __id = item.getItemId();
+        if (__id == R.id.search_menu_source) {
                 if (!mSourceList.isEmpty()) {
                     int size = mSourceList.size();
                     String[] arr1 = new String[size];
@@ -159,7 +159,6 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
                     MultiAdpaterDialogFragment fragment =
                             MultiAdpaterDialogFragment.newInstance(R.string.search_source_select, arr1, arr2, DIALOG_REQUEST_SOURCE);
                     fragment.show(getSupportFragmentManager(), null);
-                    break;
                 }
         }
         return super.onOptionsItemSelected(item);

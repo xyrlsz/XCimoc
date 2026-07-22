@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.res.ColorStateList;
 import android.graphics.Point;
 import android.net.Uri;
 import android.os.Build;
@@ -19,10 +20,12 @@ import android.view.animation.TranslateAnimation;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.facebook.imagepipeline.core.ImagePipelineFactory;
+import com.google.android.material.slider.Slider;
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.fresco.ComicFrescoHeaders;
@@ -42,14 +45,12 @@ import com.xyrlsz.xcimocob.ui.view.ReaderView;
 import com.xyrlsz.xcimocob.ui.widget.OnTapGestureListener;
 import com.xyrlsz.xcimocob.ui.widget.PreCacheLayoutManager;
 import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
-import com.xyrlsz.xcimocob.ui.widget.ReverseSeekBar;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
+import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
-import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar;
-import org.adw.library.widgets.discreteseekbar.DiscreteSeekBar.OnProgressChangeListener;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -68,7 +69,7 @@ import okhttp3.Headers;
  * Created by Hiroshi on 2016/8/6.
  */
 public abstract class ReaderActivity extends BaseActivity implements OnTapGestureListener,
-        OnProgressChangeListener, OnLazyLoadListener, ReaderView {
+        Slider.OnChangeListener, OnLazyLoadListener, ReaderView {
 
     private static final String SAVED_STATE_PROGRESS = "saved_state_progress";
     private static final String SAVED_STATE_MAX = "saved_state_max";
@@ -106,7 +107,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     View mProgressLayout;
     View mBackLayout;
     View mInfoLayout;
-    ReverseSeekBar mSeekBar;
+    Slider mSeekBar;
     TextView mLoadingText;
     RecyclerView mRecyclerView;
     RelativeLayout mReaderBox;
@@ -241,8 +242,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     private void initSeekBar() {
-        mSeekBar.setReverse(turn == PreferenceManager.READER_TURN_RTL);
-        mSeekBar.setOnProgressChangeListener(this);
+        mSeekBar.setLayoutDirection(turn == PreferenceManager.READER_TURN_RTL ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        mSeekBar.addOnChangeListener(this);
+        int primaryColorResId = ThemeUtils.getResourceId(this, R.attr.colorPrimary);
+        if (primaryColorResId != 0) {
+            int primaryColor = getColor(primaryColorResId);
+            mSeekBar.setTrackActiveTintList(ColorStateList.valueOf(primaryColor));
+            mSeekBar.setThumbTintList(ColorStateList.valueOf(primaryColor));
+            mSeekBar.setHaloTintList(ColorStateList.valueOf(primaryColor));
+        }
+        mSeekBar.setTrackInactiveTintList(ColorStateList.valueOf(android.graphics.Color.WHITE));
     }
 
     private void initReaderAdapter() {
@@ -336,14 +345,6 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     @Override
-    public void onStartTrackingTouch(DiscreteSeekBar seekBar) {
-    }
-
-    @Override
-    public void onStopTrackingTouch(DiscreteSeekBar seekBar) {
-    }
-
-    @Override
     public void onLoad(ImageUrl imageUrl) {
         mPresenter.lazyLoad(imageUrl);
     }
@@ -378,11 +379,10 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 Animation.RELATIVE_TO_SELF, 0.0f, Animation.RELATIVE_TO_SELF, -1.0f,
                 Animation.RELATIVE_TO_SELF, 0.0f);
         downAction.setDuration(300);
-        if (mSeekBar.getMax() != max) {
-            mSeekBar.setMax(max);
-            mSeekBar.setProgress(max);
+        if ((int) mSeekBar.getValueTo() != max) {
+            mSeekBar.setValueTo(max);
         }
-        mSeekBar.setProgress(progress);
+        mSeekBar.setValue(progress);
         mProgressLayout.startAnimation(upAction);
         mProgressLayout.setVisibility(View.VISIBLE);
         mBackLayout.startAnimation(downAction);
