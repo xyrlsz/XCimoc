@@ -21,5 +21,6 @@
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
         android:contentDescription="@string/button"
+        app:tint="@color/white"
         app:layout_behavior="com.xyrlsz.xcimocob.ui.widget.ScrollAwareFABBehavior" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

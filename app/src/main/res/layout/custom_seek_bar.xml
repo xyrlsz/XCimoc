@@ -16,5 +16,6 @@
         android:layout_gravity="center"
         android:valueFrom="1"
         android:valueTo="100"
-        android:value="1" />
+        android:value="1"
+        android:stepSize="1" />
 </FrameLayout>

@@ -53,8 +53,6 @@
 -dontwarn com.squareup.okhttp.**
 -dontwarn okhttp3.**
 -dontwarn javax.annotation.**
--dontwarn com.android.volley.toolbox.**
--dontwarn com.facebook.infer.**
 
 -keep class **$Properties
 -keep class **$Properties{*;}
@@ -76,7 +74,6 @@
 # OkHttp3
 -keep class okhttp3.** { *; }
 -keep interface okhttp3.** { *; }
--dontwarn okhttp3.**
 
 # Gson
 -keepattributes Signature
@@ -100,30 +97,10 @@
 # jsoup
 -keeppackagenames org.jsoup.nodes
 
-# andrroid v4 v7
--dontwarn android.support.v4.**
--dontwarn android.support.v7.**
-
 # rx3
--dontwarn sun.misc.**
 -keep class io.reactivex.rxjava3.** { *; }
 -keep interface io.reactivex.rxjava3.** { *; }
 -dontwarn io.reactivex.rxjava3.**
-
-#mongodb
--dontwarn javax.**
--dontwarn java.lang.management.**
--dontwarn io.netty.**
--dontwarn org.ietf.jgss.**
--dontwarn org.slf4j.**
--dontwarn org.xerial.snappy.**
-
--keep class javax.** { *; }
--keep class java.lang.management.** { *; }
--keep class io.netty.** { *; }
--keep class org.ietf.jgss.** { *; }
--keep class org.slf4j.** { *; }
--keep class org.xerial.snappy.** { *; }
 
 # guava
 -dontwarn com.google.common.base.**
@@ -137,30 +114,6 @@
 -dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
 #-keep class org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement { *; }
 
--keep class xyropencc.** { *; }
--keep interface xyropencc.** { *; }
--dontwarn xyropencc.**
--keep class com.xyrlsz.xcimocob.utils.dmzj.protos.** { *; }
 # Please add these rules to your existing keep rules in order to suppress warnings.
 # This is generated automatically by the Android Gradle plugin.
 -dontwarn com.facebook.common.internal.VisibleForTesting
--dontwarn java.awt.Color
--dontwarn java.awt.Font
--dontwarn java.awt.Point
--dontwarn java.awt.Rectangle
--dontwarn org.javamoney.moneta.Money
--dontwarn org.joda.time.DateTime
--dontwarn org.joda.time.DateTimeZone
--dontwarn org.joda.time.Duration
--dontwarn org.joda.time.Instant
--dontwarn org.joda.time.LocalDate
--dontwarn org.joda.time.LocalDateTime
--dontwarn org.joda.time.LocalTime
--dontwarn org.joda.time.Period
--dontwarn org.joda.time.ReadablePartial
--dontwarn org.joda.time.format.DateTimeFormat
--dontwarn org.joda.time.format.DateTimeFormatter
--dontwarn springfox.documentation.spring.web.json.Json
--dontwarn org.glassfish.jersey.**
-
--dontwarn com.alibaba.fastjson.*

@@ -44,6 +44,7 @@
             android:scaleType="center"
             android:src="@drawable/ic_history_white_18dp"
             android:visibility="invisible"
+            app:tint="@color/white"
             app:layout_behavior="com.xyrlsz.xcimocob.ui.widget.ScrollAwareFABBehavior" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -53,6 +54,7 @@
             android:layout_gravity="bottom|end"
             android:layout_margin="16dp"
             android:visibility="invisible"
+            app:tint="@color/white"
             app:layout_behavior="com.xyrlsz.xcimocob.ui.widget.ScrollAwareFABBehavior" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

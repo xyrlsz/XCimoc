@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <style name="AppThemeNoDark" parent="Theme.AppCompat.Light.NoActionBar">
+    <style name="AppThemeNoDark" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="android:forceDarkAllowed">false</item>
+        <item name="colorPrimary">@color/colorPrimaryOrange</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryOrangeDark</item>
+        <item name="colorAccent">@color/colorPrimaryOrangeDark</item>
+        <item name="colorSecondary">@color/colorPrimaryOrangeDark</item>
+        <item name="materialButtonStyle">@style/Widget.MyApp.MaterialButton</item>
     </style>
 </resources>

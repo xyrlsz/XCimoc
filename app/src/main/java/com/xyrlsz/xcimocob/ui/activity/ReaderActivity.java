@@ -188,6 +188,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mHideInfo = mPreference.getBoolean(PreferenceManager.PREF_READER_HIDE_INFO, false);
         mControllerTrigThreshold = mPreference.getNumber(PreferenceManager.PREF_READER_CONTROLLER_TRIG_THRESHOLD, 30).intValue() * 0.01f;
         mInfoLayout.setVisibility(mHideInfo ? View.INVISIBLE : View.VISIBLE);
+        // 在切换主题前保存当前主题的颜色，防止 setTheme 后无法正确解析
+        int savedPrimaryColorResId = ThemeUtils.getResourceId(this, R.attr.colorPrimary);
         // 防止miui及其他魔改ROM启用反色
         setTheme(R.style.AppThemeNoDark);
         String key = mode == PreferenceManager.READER_MODE_PAGE ?
@@ -196,7 +198,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_BACKGROUND, false)) {
             mReaderBox.setBackgroundResource(R.color.white);
         }
-        initSeekBar();
+        initSeekBar(savedPrimaryColorResId);
 
         initLayoutManager();
         initReaderAdapter();
@@ -241,10 +243,9 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         }
     }
 
-    private void initSeekBar() {
+    private void initSeekBar(int primaryColorResId) {
         mSeekBar.setLayoutDirection(turn == PreferenceManager.READER_TURN_RTL ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         mSeekBar.addOnChangeListener(this);
-        int primaryColorResId = ThemeUtils.getResourceId(this, R.attr.colorPrimary);
         if (primaryColorResId != 0) {
             int primaryColor = getColor(primaryColorResId);
             mSeekBar.setTrackActiveTintList(ColorStateList.valueOf(primaryColor));

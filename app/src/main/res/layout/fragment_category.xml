@@ -208,7 +208,8 @@
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
                     android:layout_margin="16dp"
-                    android:src="@drawable/ic_search_white_24dp" />
+                    android:src="@drawable/ic_search_white_24dp"
+                    app:tint="@color/white" />
             </LinearLayout>
 
             <ImageButton
@@ -243,5 +244,6 @@
         android:layout_margin="16dp"
         android:contentDescription="@string/button"
         android:src="@drawable/ic_material_symbols_arrow_shape_up_outline"
+        app:tint="@color/white"
         app:layout_behavior="com.xyrlsz.xcimocob.ui.widget.ScrollAwareFABBehavior" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

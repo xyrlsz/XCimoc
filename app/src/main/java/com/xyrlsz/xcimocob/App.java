@@ -445,9 +445,4 @@ public class App extends Application implements AppGetter, Thread.UncaughtExcept
         return mBuilderProvider;
     }
 
-    @Override
-    protected void attachBaseContext(Context base) {
-        super.attachBaseContext(base);
-//        MultiDex.install(this);
-    }
 }

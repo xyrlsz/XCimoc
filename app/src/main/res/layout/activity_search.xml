@@ -97,6 +97,7 @@
         android:layout_margin="16dp"
         android:src="@drawable/ic_search_white_24dp"
         android:visibility="invisible"
+        app:tint="@color/white"
         app:layout_anchor="@id/search_frame_layout"
         app:layout_anchorGravity="bottom|end" />
 
