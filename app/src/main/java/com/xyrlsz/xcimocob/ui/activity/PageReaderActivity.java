@@ -90,7 +90,7 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
     @Override
     public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
         if (fromUser) {
-            int intValue = Math.round(value);
+            int intValue = Math.max(Math.round(value), 1);
             int current = getCurPosition() + intValue - progress;
             int pos = mReaderAdapter.getPositionByNum(current, intValue, intValue < progress);
             mRecyclerView.scrollToPosition(pos);

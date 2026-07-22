@@ -110,7 +110,7 @@ public class StreamReaderActivity extends ReaderActivity {
     @Override
     public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
         if (fromUser) {
-            int intValue = Math.round(value);
+            int intValue = Math.max(Math.round(value), 1);
             int current = mLastPosition + intValue - progress;
             int pos = mReaderAdapter.getPositionByNum(current, intValue, intValue < progress);
             mLayoutManager.scrollToPositionWithOffset(pos, 0);

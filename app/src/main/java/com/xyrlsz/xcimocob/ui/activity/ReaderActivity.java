@@ -380,10 +380,13 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 Animation.RELATIVE_TO_SELF, 0.0f, Animation.RELATIVE_TO_SELF, -1.0f,
                 Animation.RELATIVE_TO_SELF, 0.0f);
         downAction.setDuration(300);
+        // 确保 valueFrom 已被正确设置（防御性，Android 16+ 上 Slider 初始值可能为 0）
+        mSeekBar.setValueFrom(0);
         if ((int) mSeekBar.getValueTo() != max) {
             mSeekBar.setValueTo(max);
         }
-        mSeekBar.setValue(progress);
+        // 确保值不小于 1（页面从 1 开始计数）
+        mSeekBar.setValue(Math.max(progress, 1));
         mProgressLayout.startAnimation(upAction);
         mProgressLayout.setVisibility(View.VISIBLE);
         mBackLayout.startAnimation(downAction);
