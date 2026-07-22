@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
@@ -238,24 +239,47 @@ public class DetailPresenter extends BasePresenter<DetailView> {
     }
 
     private void load() {
-        mCompositeSubscription.add(
-                Manga.getComicInfo(mSourceManager.getParser(mComic.getSource()), mComic)
-                        .doOnNext(new Consumer<List<Chapter>>() {
-                            @Override
-                            public void accept(List<Chapter> list) {
-                                // 数据库写入在 IO 线程完成，不阻塞主线程
-                                if (mComic.getId() > 0) {
-                                    Long sourceComic = IdCreator.createSourceComic(mComic);
-                                    for (Chapter chapter : list) {
-                                        chapter.setSourceComic(sourceComic);
-                                    }
-                                }
-                                mChapterManager.updateOrInsert(list);
-                                if (mComic.getId() > 0) {
-                                    updateChapterList(list);
-                                }
+        // 网络请求 Observable（共享，避免重复请求）
+        Observable<List<Chapter>> networkObs = Manga.getComicInfo(mSourceManager.getParser(mComic.getSource()), mComic)
+                .doOnNext(new Consumer<List<Chapter>>() {
+                    @Override
+                    public void accept(List<Chapter> list) {
+                        // 数据库写入在 IO 线程完成，不阻塞主线程
+                        if (mComic.getId() > 0) {
+                            Long sourceComic = IdCreator.createSourceComic(mComic);
+                            for (Chapter chapter : list) {
+                                chapter.setSourceComic(sourceComic);
                             }
-                        })
+                        }
+                        mChapterManager.updateOrInsert(list);
+                        if (mComic.getId() > 0) {
+                            updateChapterList(list);
+                        }
+                    }
+                })
+                .share();
+
+        // 超时降级：8 秒后网络未返回，用数据库缓存数据先展示 UI
+        // takeUntil(networkObs) 保证网络先返回时，缓存降级不会覆盖新数据
+        Observable<List<Chapter>> cacheObs = Observable.timer(8, TimeUnit.SECONDS)
+                .flatMap(new io.reactivex.rxjava3.functions.Function<Long, Observable<List<Chapter>>>() {
+                    @Override
+                    public Observable<List<Chapter>> apply(Long tick) {
+                        if (mComic.getId() > 0) {
+                            List<Chapter> cached =
+                                    mChapterManager.getChapterList(IdCreator.createSourceComic(mComic));
+                            if (!cached.isEmpty()) {
+                                return Observable.just(cached);
+                            }
+                        }
+                        // 没有缓存数据，不发射，让网络请求继续等待
+                        return Observable.never();
+                    }
+                })
+                .takeUntil(networkObs);
+
+        mCompositeSubscription.add(
+                Observable.merge(networkObs, cacheObs)
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
                                 new Consumer<List<Chapter>>() {
