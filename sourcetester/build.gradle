@@ -1,0 +1,86 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+    google()
+}
+
+application {
+    mainClass = 'com.xyrlsz.xcimocob.test.Main'
+}
+
+dependencies {
+    // 漫画源代码使用的第三方库
+    implementation 'com.squareup.okhttp3:okhttp:5.4.0'
+    implementation 'org.jsoup:jsoup:1.22.2'
+    implementation 'org.mozilla:rhino:1.8.1'
+    implementation 'com.google.code.gson:gson:2.14.0'
+    implementation 'com.google.guava:guava:33.6.0-android'
+    implementation 'io.reactivex.rxjava3:rxjava:3.1.12'
+    implementation 'com.google.re2j:re2j:1.8'
+
+    // JSON 解析（兼容 Android org.json 用法）
+    implementation 'org.json:json:20231013'
+}
+
+// 使用 Gradle 任务复制需要的漫画解析器源文件
+def parserSourceDir = file('../app/src/main/java')
+def parserBuildDir = file("${buildDir}/generated/sources/parser")
+
+task copyParserSources(type: Copy) {
+    from parserSourceDir
+    into parserBuildDir
+
+    // 只包含解析器相关文件
+    include 'com/xyrlsz/xcimocob/parser/**'
+    include 'com/xyrlsz/xcimocob/source/**'
+    include 'com/xyrlsz/xcimocob/soup/**'
+    include 'com/xyrlsz/xcimocob/model/**'
+    include 'com/xyrlsz/xcimocob/utils/DecryptionUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/StringUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/IdCreator.java'
+    include 'com/xyrlsz/xcimocob/utils/HashUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/ByteUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/BinStreamUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/pictureUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/RandomUtils.java'
+    // STConvertUtils has a stub in the tester source
+    include 'com/xyrlsz/xcimocob/utils/UicodeBackslashU.java'
+    include 'com/xyrlsz/xcimocob/utils/UrlEncodeUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/HttpUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/JwtManualParser.java'
+    include 'com/xyrlsz/xcimocob/utils/interpretationUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/CollectionUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/TimestampUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/FileUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/CopyMangaHeaderBuilder.java'
+    include 'com/xyrlsz/xcimocob/utils/KomiicUtils.java'
+    include 'com/xyrlsz/xcimocob/utils/ZaiManhuaSignUtils.java'
+    include 'com/xyrlsz/xcimocob/component/AppGetter.java'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/main/java'
+            srcDir parserBuildDir
+        }
+    }
+}
+
+compileJava.dependsOn copyParserSources
+
+// 打包依赖为 fat jar
+tasks.register('fatJar', Jar) {
+    archiveBaseName = 'sourcetester'
+    archiveVersion = '1.0'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from sourceSets.main.output
+    from configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    manifest {
+        attributes 'Main-Class': application.mainClass
+    }
+}

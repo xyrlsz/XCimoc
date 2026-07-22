@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XCimoc 漫画源测试报告</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0d1117;color:#c9d1d9;padding:20px;line-height:1.6}
+.container{max-width:1100px;margin:0 auto}
+h1{color:#58a6ff;margin-bottom:10px;font-size:24px}
+h2{color:#f0f6fc;margin:20px 0 10px;font-size:18px}
+.meta{color:#8b949e;font-size:13px;margin-bottom:20px}
+.summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:16px;text-align:center}
+.card .num{font-size:28px;font-weight:700}
+.card .label{font-size:12px;color:#8b949e;margin-top:4px}
+.card.pass{border-color:#3fb950}.card.pass .num{color:#3fb950}
+.card.fail{border-color:#f85149}.card.fail .num{color:#f85149}
+.card.skip{border-color:#d29922}.card.skip .num{color:#d29922}
+.card.total{border-color:#58a6ff}.card.total .num{color:#58a6ff}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #21262d}
+th{background:#161b22;color:#8b949e;font-weight:600;font-size:12px;text-transform:uppercase;position:sticky;top:0}
+.source-row{cursor:pointer;transition:background .15s}
+.source-row:hover{background:#1c2128}
+.status-pass td:first-child{border-left:3px solid #3fb950}
+.status-fail td:first-child{border-left:3px solid #f85149}
+.status-skip td:first-child{border-left:3px solid #d29922}
+.status-cell{font-weight:600;font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-pass{background:rgba(63,185,80,0.15);color:#3fb950}
+.badge-fail{background:rgba(248,81,73,0.15);color:#f85149}
+.badge-skip{background:rgba(210,153,34,0.15);color:#d29922}
+.badge-error{background:rgba(248,81,73,0.15);color:#f85149}
+.duration{font-family:'SF Mono',monospace;font-size:12px;color:#8b949e}
+.test-detail{color:#8b949e;font-size:12px;word-break:break-all}
+.test-error{color:#f85149;font-size:12px;word-break:break-all}
+.details-row td{padding:0;background:#0d1117}
+.details-row .test-table{margin:0}
+.details-row .test-table th{background:#161b22}
+code{font-family:'SF Mono',monospace;font-size:12px;color:#8b949e}
+.footer{text-align:center;color:#484f58;font-size:12px;margin-top:30px;padding-top:16px;border-top:1px solid #21262d}
+.progress-bar{background:#21262d;border-radius:8px;height:8px;margin:8px 0 16px;overflow:hidden}
+.progress-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,#3fb950,#58a6ff);transition:width .5s}
+.legend{display:flex;gap:16px;margin-bottom:16px;font-size:12px;color:#8b949e}
+@media(max-width:600px){.summary-cards{grid-template-columns:repeat(2,1fr)}td,th{padding:8px;font-size:13px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📊 XCimoc 漫画源测试报告</h1>
+<div class="meta">🕐 2026-07-23T02:05:52Z &nbsp;|&nbsp; ⏱ 耗时 5.4 秒</div>
+<div class="summary-cards">
+<div class="card total"><div class="num">3</div><div class="label">漫画源总数</div></div>
+<div class="card pass"><div class="num">0</div><div class="label">通过 ✓</div></div>
+<div class="card fail"><div class="num">3</div><div class="label">失败 ✗</div></div>
+<div class="card skip"><div class="num">0</div><div class="label">跳过 ⏭</div></div>
+</div>
+<h2>📋 测试详情</h2>
+<div class="legend"><span>🟢 通过 (7/16)</span><span>🔴 失败 (5)</span><span>🟡 跳过 (4)</span><span>📈 通过率 43.8%</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:0.0%"></div></div>
+<table>
+<thead>
+<tr><th>TYPE</th><th>源名称</th><th>Base URL</th><th>状态</th><th>通过/总数</th></tr>
+</thead>
+<tbody>
+<tr class="source-row status-fail" onclick="toggleDetails('d0')">
+<td>0</td>
+<td><strong>漫画柜</strong></td>
+<td><code>https://www.manhuagui.com</code></td>
+<td class="status-cell">❌ FAIL</td>
+<td>1/6</td>
+</tr>
+<tr id="d0" class="details-row" style="display:none">
+<td colspan="5">
+<table class="test-table">
+<thead>
+<tr><th>测试项</th><th>结果</th><th>耗时</th><th>详情</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>基础连通性</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">1413ms</td>
+<td><div class="test-detail">HTTP 410</div></td>
+</tr>
+<tr>
+<td>搜索+提取CID</td>
+<td><span class="badge badge-fail">失败</span></td>
+<td class="duration">309ms</td>
+<td><div class="test-error">搜索返回空 (关键词=a, 来源=默认轮换)</div></td>
+</tr>
+<tr>
+<td>详情页</td>
+<td><span class="badge badge-skip">跳过</span></td>
+<td class="duration">0ms</td>
+<td><div class="test-detail">未提取到漫画 ID</div></td>
+</tr>
+<tr>
+<td>章节列表</td>
+<td><span class="badge badge-skip">跳过</span></td>
+<td class="duration">0ms</td>
+<td><div class="test-detail">未提取到漫画 ID</div></td>
+</tr>
+<tr>
+<td>图片列表</td>
+<td><span class="badge badge-skip">跳过</span></td>
+<td class="duration">0ms</td>
+<td><div class="test-detail">未提取到漫画 ID</div></td>
+</tr>
+<tr>
+<td>分类浏览</td>
+<td><span class="badge badge-skip">跳过</span></td>
+<td class="duration">0ms</td>
+<td><div class="test-detail">无分类</div></td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="source-row status-fail" onclick="toggleDetails('d102')">
+<td>102</td>
+<td><strong>热辣漫画</strong></td>
+<td><code>https://www.manga2026.com</code></td>
+<td class="status-cell">❌ FAIL</td>
+<td>3/5</td>
+</tr>
+<tr id="d102" class="details-row" style="display:none">
+<td colspan="5">
+<table class="test-table">
+<thead>
+<tr><th>测试项</th><th>结果</th><th>耗时</th><th>详情</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>基础连通性</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">603ms</td>
+<td><div class="test-detail">HTTP 200</div></td>
+</tr>
+<tr>
+<td>搜索+提取CID</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">512ms</td>
+<td><div class="test-detail">关键词=b(默认轮换), CID=b-b-idol-koutarou-cbz, 共1结果</div></td>
+</tr>
+<tr>
+<td>详情页</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">180ms</td>
+<td><div class="test-detail">1394 字节, 标题=B.B.IDOL, 作者=こうたろう, 有封面</div></td>
+</tr>
+<tr>
+<td>章节列表</td>
+<td><span class="badge badge-error">错误</span></td>
+<td class="duration">184ms</td>
+<td><div class="test-error">JSONException: JSONObject[&quot;list&quot;] not found.</div></td>
+</tr>
+<tr>
+<td>分类浏览</td>
+<td><span class="badge badge-fail">失败</span></td>
+<td class="duration">231ms</td>
+<td><div class="test-error">分类页面解析失败 (未解析到漫画)</div></td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+<tr class="source-row status-fail" onclick="toggleDetails('d103')">
+<td>103</td>
+<td><strong>MYCOMIC</strong></td>
+<td><code>https://mycomic.com</code></td>
+<td class="status-cell">❌ FAIL</td>
+<td>3/5</td>
+</tr>
+<tr id="d103" class="details-row" style="display:none">
+<td colspan="5">
+<table class="test-table">
+<thead>
+<tr><th>测试项</th><th>结果</th><th>耗时</th><th>详情</th></tr>
+</thead>
+<tbody>
+<tr>
+<td>基础连通性</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">230ms</td>
+<td><div class="test-detail">HTTP 200</div></td>
+</tr>
+<tr>
+<td>搜索+提取CID</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">658ms</td>
+<td><div class="test-detail">关键词=c(默认轮换), CID=19, 共1结果</div></td>
+</tr>
+<tr>
+<td>详情页</td>
+<td><span class="badge badge-pass">通过</span></td>
+<td class="duration">551ms</td>
+<td><div class="test-detail">226691 字节, 标题=愛的魔法ColorfulComic, 作者=築地俊彥, 有封面</div></td>
+</tr>
+<tr>
+<td>章节列表</td>
+<td><span class="badge badge-fail">失败</span></td>
+<td class="duration">112ms</td>
+<td><div class="test-error">未解析到章节</div></td>
+</tr>
+<tr>
+<td>分类浏览</td>
+<td><span class="badge badge-fail">失败</span></td>
+<td class="duration">423ms</td>
+<td><div class="test-error">分类页面解析失败 (未解析到漫画)</div></td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="footer">XCimoc Source Tester — Java 源码测试 · 由 GitHub Actions 自动生成</div>
+<script>
+function toggleDetails(id){var r=document.getElementById(id);r.style.display=r.style.display==='none'?'table-row':'none';}
+</script>
+</div>
+</body>
+</html>
+

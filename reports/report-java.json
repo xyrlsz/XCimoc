@@ -1,0 +1,151 @@
+{
+  "timestamp": "2026-07-23T02:05:52Z",
+  "total_sources": 3,
+  "passed_sources": 0,
+  "failed_sources": 3,
+  "skipped_sources": 0,
+  "total_tests": 16,
+  "passed_tests": 7,
+  "failed_tests": 5,
+  "skipped_tests": 4,
+  "duration_seconds": 5.4,
+  "sources": [
+    {
+      "type_id": 0,
+      "title": "漫画柜",
+      "base_url": "https://www.manhuagui.com",
+      "overall": "fail",
+      "results": [
+        {
+          "name": "基础连通性",
+          "status": "pass",
+          "duration_ms": 1413,
+          "detail": "HTTP 410",
+          "error": ""
+        },
+        {
+          "name": "搜索+提取CID",
+          "status": "fail",
+          "duration_ms": 309,
+          "detail": "",
+          "error": "搜索返回空 (关键词=a, 来源=默认轮换)"
+        },
+        {
+          "name": "详情页",
+          "status": "skip",
+          "duration_ms": 0,
+          "detail": "未提取到漫画 ID",
+          "error": ""
+        },
+        {
+          "name": "章节列表",
+          "status": "skip",
+          "duration_ms": 0,
+          "detail": "未提取到漫画 ID",
+          "error": ""
+        },
+        {
+          "name": "图片列表",
+          "status": "skip",
+          "duration_ms": 0,
+          "detail": "未提取到漫画 ID",
+          "error": ""
+        },
+        {
+          "name": "分类浏览",
+          "status": "skip",
+          "duration_ms": 0,
+          "detail": "无分类",
+          "error": ""
+        }
+      ]
+    },
+    {
+      "type_id": 102,
+      "title": "热辣漫画",
+      "base_url": "https://www.manga2026.com",
+      "overall": "fail",
+      "results": [
+        {
+          "name": "基础连通性",
+          "status": "pass",
+          "duration_ms": 603,
+          "detail": "HTTP 200",
+          "error": ""
+        },
+        {
+          "name": "搜索+提取CID",
+          "status": "pass",
+          "duration_ms": 512,
+          "detail": "关键词=b(默认轮换), CID=b-b-idol-koutarou-cbz, 共1结果",
+          "error": ""
+        },
+        {
+          "name": "详情页",
+          "status": "pass",
+          "duration_ms": 180,
+          "detail": "1394 字节, 标题=B.B.IDOL, 作者=こうたろう, 有封面",
+          "error": ""
+        },
+        {
+          "name": "章节列表",
+          "status": "error",
+          "duration_ms": 184,
+          "detail": "",
+          "error": "JSONException: JSONObject[\"list\"] not found."
+        },
+        {
+          "name": "分类浏览",
+          "status": "fail",
+          "duration_ms": 231,
+          "detail": "",
+          "error": "分类页面解析失败 (未解析到漫画)"
+        }
+      ]
+    },
+    {
+      "type_id": 103,
+      "title": "MYCOMIC",
+      "base_url": "https://mycomic.com",
+      "overall": "fail",
+      "results": [
+        {
+          "name": "基础连通性",
+          "status": "pass",
+          "duration_ms": 230,
+          "detail": "HTTP 200",
+          "error": ""
+        },
+        {
+          "name": "搜索+提取CID",
+          "status": "pass",
+          "duration_ms": 658,
+          "detail": "关键词=c(默认轮换), CID=19, 共1结果",
+          "error": ""
+        },
+        {
+          "name": "详情页",
+          "status": "pass",
+          "duration_ms": 551,
+          "detail": "226691 字节, 标题=愛的魔法ColorfulComic, 作者=築地俊彥, 有封面",
+          "error": ""
+        },
+        {
+          "name": "章节列表",
+          "status": "fail",
+          "duration_ms": 112,
+          "detail": "",
+          "error": "未解析到章节"
+        },
+        {
+          "name": "分类浏览",
+          "status": "fail",
+          "duration_ms": 423,
+          "detail": "",
+          "error": "分类页面解析失败 (未解析到漫画)"
+        }
+      ]
+    }
+  ]
+}
+

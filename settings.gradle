@@ -1,4 +1,5 @@
 include ':app'
+include ':sourcetester'
 
 long beginOfSetting = System.currentTimeMillis()
 def beginOfConfig

@@ -92,6 +92,78 @@ forked from https://github.com/Haleydu/Cimoc
 
 > 此功能为可选项，不配置服务器不影响单机使用。
 
+# 漫画源测试
+
+本项目包含一套自动化的漫画源测试工具，用于验证所有内置漫画源网站的解析功能。
+
+## ✨ 特点
+
+- **直接复用 Java 源代码** — 编译运行真实的 Android 漫画源解析器
+- **零 Android 依赖** — 内置 30+ Android 桩代码和 ObjectBox 桩代码
+- **完整的测试流程** — 搜索→提取CID→详情解析→章节列表→图片列表
+- **自动发现代码 bug** — 发现 JSON 类型不匹配、API 变更等源码级别问题
+
+## 工具概览
+
+| 组件 | 说明 |
+|------|------|
+| `sourcetester/` | Java 测试模块，直接编译运行漫画源代码 |
+| `.github/workflows/test-sources.yml` | GitHub Actions 工作流，定时运行测试并生成报告 |
+| `docs/` | GitHub Pages 静态页面，展示最新测试报告 |
+
+## 在线测试报告
+
+测试结果通过 GitHub Pages 在线展示：  
+👉 **[查看最新测试报告](https://xyrlsz.github.io/XCimoc/)**
+
+报告包含：
+- 所有漫画源的通过/失败状态
+- 每个测试项的详细耗时和错误信息
+- 通过率统计和进度条
+- 可展开查看每个源的详细测试结果
+
+## 测试内容
+
+对每个漫画源执行以下测试：
+
+1. **基础连通性** — 源网站是否可访问
+2. **搜索+提取CID** — 用 a-z 轮换关键词搜索，从结果中提取漫画 ID
+3. **详情页** — 访问漫画详情页，解析标题、作者、封面等信息
+4. **章节列表** — 提取章节列表，获取首个章节路径
+5. **分类浏览** — 分类页面是否可访问（如适用）
+
+## 本地运行
+
+```bash
+# 测试所有源
+./gradlew :sourcetester:run
+
+# 测试指定源（按 TYPE）
+./gradlew :sourcetester:run --args="--source 0,5,26"
+
+# 生成报告到指定目录
+./gradlew :sourcetester:run --args="--output-dir ./reports"
+
+# 详细输出
+./gradlew :sourcetester:run --args="--verbose"
+```
+
+## GitHub Actions
+
+工作流 `test-sources.yml` 支持：
+
+- **定时触发** — 每天 UTC 02:00 自动运行测试
+- **手动触发** — 通过 GitHub Actions 页面手动运行，可指定要测试的源
+- **代码推送触发** — 当漫画源代码变更时自动运行
+- **自动部署** — 测试完成后自动将报告部署到 GitHub Pages
+
+### 部署到你的 GitHub Pages
+
+1. 将代码推送到 GitHub 仓库
+2. 在仓库 Settings → Pages 中，选择 "GitHub Actions" 作为 Source
+3. 确保 `docs/` 目录包含 `index.html` 和 `report.html`
+4. 首次运行 workflow 后，报告将自动部署到 GitHub Pages
+
 # 关于淘宝售卖和会员破解
 
 - 本程序没有任何破解网站VIP的功能，仅仅作为网页浏览器显示网站免费浏览部分，淘宝卖家自行添加的破解或其他功能与本程序无任何关系。

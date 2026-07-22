@@ -1,0 +1,32 @@
+[
+  {
+    "type": 0,
+    "keyword": "海贼王",
+    "comicId": null,
+    "connectUrl": null
+  },
+  {
+    "type": 5,
+    "keyword": "火影忍者",
+    "comicId": null,
+    "connectUrl": null
+  },
+  {
+    "type": 26,
+    "keyword": null,
+    "comicId": "12345",
+    "connectUrl": null
+  },
+  {
+    "type": 117,
+    "keyword": null,
+    "comicId": null,
+    "connectUrl": "https://d9zfb53b.lstool.xyz"
+  },
+  {
+    "type": 118,
+    "keyword": "a",
+    "comicId": null,
+    "connectUrl": null
+  }
+]

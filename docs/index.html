@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XCimoc 漫画源测试</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117; color: #c9d1d9;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
+        }
+        .container { text-align: center; max-width: 600px; }
+        h1 { font-size: 32px; margin-bottom: 8px; }
+        .subtitle { color: #8b949e; margin-bottom: 32px; font-size: 14px; }
+        .card {
+            background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+            padding: 32px; margin-bottom: 16px;
+        }
+        .card p { margin-bottom: 12px; color: #8b949e; }
+        .card .highlight { color: #58a6ff; font-weight: 600; }
+        .btn {
+            display: inline-block; padding: 12px 28px; border-radius: 8px;
+            text-decoration: none; font-weight: 600; font-size: 15px;
+            transition: all 0.2s; cursor: pointer;
+        }
+        .btn-primary {
+            background: #1f6feb; color: #fff; border: 1px solid #388bfd;
+        }
+        .btn-primary:hover { background: #388bfd; }
+        .btn-secondary {
+            background: #21262d; color: #c9d1d9; border: 1px solid #30363d;
+            margin-left: 8px;
+        }
+        .btn-secondary:hover { background: #30363d; }
+        .info { font-size: 13px; color: #484f58; margin-top: 24px; line-height: 1.8; }
+        .info a { color: #58a6ff; text-decoration: none; }
+        .info a:hover { text-decoration: underline; }
+        .badge { display: inline-block; margin-top: 20px; }
+        .badge img { height: 20px; }
+        .tag {
+            display: inline-block; padding: 2px 8px; border-radius: 12px;
+            font-size: 11px; font-weight: 600; margin: 0 4px;
+        }
+        .tag-java { background: rgba(31,111,235,0.15); color: #58a6ff; }
+    </style>
+    <meta http-equiv="refresh" content="0;url=report.html">
+</head>
+<body>
+    <div class="container">
+        <h1>📊 XCimoc 漫画源测试</h1>
+        <p class="subtitle">
+            <span class="tag tag-java">Java</span>
+            直接复用漫画源代码 · 测试完整解析流程
+        </p>
+
+        <div class="card">
+            <p>正在跳转到最新测试报告...</p>
+            <p style="font-size: 13px; color: #484f58;">如果未自动跳转，请点击下方按钮</p>
+            <div style="margin-top: 20px;">
+                <a href="report.html" class="btn btn-primary">📋 查看最新报告</a>
+                <a href="https://github.com/用户/XCimoc/actions/workflows/test-sources.yml"
+                   class="btn btn-secondary">⚙️ GitHub Actions</a>
+            </div>
+        </div>
+
+        <div class="info">
+            <p>🕐 报告由 GitHub Actions 自动生成</p>
+            <p>📅 每天 UTC 02:00 自动运行测试</p>
+            <p>
+                <a href="https://github.com/用户/XCimoc">项目源码</a>
+                &nbsp;·&nbsp;
+                <a href="https://github.com/用户/XCimoc/blob/main/.github/workflows/test-sources.yml">工作流配置</a>
+            </p>
+        </div>
+
+        <div class="badge">
+            <a href="https://github.com/用户/XCimoc/actions/workflows/test-sources.yml">
+                <img src="https://github.com/用户/XCimoc/actions/workflows/test-sources.yml/badge.svg" alt="测试状态">
+            </a>
+        </div>
+    </div>
+</body>
+</html>
