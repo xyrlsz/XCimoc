@@ -20,7 +20,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.textfield.TextInputLayout;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.misc.Switcher;
@@ -48,7 +47,6 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
     public static final int SEARCH_TITLE = 0;
     public static final int SEARCH_AUTHOR = 1;
     private final static int DIALOG_REQUEST_SOURCE = 0;
-    TextInputLayout mInputLayout;
     AppCompatAutoCompleteTextView mEditText;
     FloatingActionButton mActionButton;
     AppCompatCheckBox mStrictCheckBox;
@@ -60,7 +58,6 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
     @Override
     protected void initViewById() {
         super.initViewById();
-        mInputLayout = findViewById(R.id.search_text_layout);
         mEditText = findViewById(R.id.search_keyword_input);
         mActionButton = findViewById(R.id.search_action_button);
         mStrictCheckBox = findViewById(R.id.search_strict_checkbox);
@@ -94,7 +91,7 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
         mEditText.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                mInputLayout.setError(null);
+                mEditText.setError(null);
             }
 
             @Override
@@ -193,7 +190,7 @@ public class SearchActivity extends BackActivity implements SearchView, TextView
         boolean strictSearch = mStrictCheckBox.isChecked();
         boolean stSame = mSTSameCheckBox.isChecked();
         if (StringUtils.isEmpty(keyword)) {
-            mInputLayout.setError(getString(R.string.search_keyword_empty));
+            mEditText.setError(getString(R.string.search_keyword_empty));
         } else {
             ArrayList<Integer> list = new ArrayList<>();
             for (Switcher<Source> switcher : mSourceList) {

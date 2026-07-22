@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/search_root"
@@ -15,43 +16,55 @@
 
         <include layout="@layout/custom_progress_bar" />
 
+        <!-- 移除固定高度160dp，使用 paddingBottom 确保控件不重叠，自适应不同屏幕/字号 -->
         <FrameLayout
             android:id="@+id/search_frame_layout"
             android:layout_width="match_parent"
-            android:layout_height="160dp"
-            android:background="?attr/colorPrimary"
-            android:focusable="true"
-            android:focusableInTouchMode="true">
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:background="?attr/colorPrimary">
 
-            <com.google.android.material.textfield.TextInputLayout
+            <RelativeLayout
                 android:id="@+id/search_text_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
-                android:layout_marginLeft="20dp"
-                android:layout_marginRight="20dp"
-                android:hint="@string/search_keyword_input"
-                android:textColorHint="@color/white"
-                app:counterEnabled="true"
-                app:theme="@style/TextInputTheme">
+                android:layout_marginStart="20dp"
+                android:layout_marginEnd="20dp"
+                android:layout_marginTop="16dp"
+                android:padding="12dp">
 
                 <androidx.appcompat.widget.AppCompatAutoCompleteTextView
                     android:id="@+id/search_keyword_input"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:background="@color/transparent"
                     android:completionThreshold="1"
+                    android:hint="@string/search_keyword_input"
                     android:imeOptions="actionSearch"
-                    android:singleLine="true"
+                    android:inputType="text"
+                    android:maxLines="1"
                     android:textColor="@color/white"
+                    android:textColorHint="@color/white"
                     android:textSize="14sp"
                     tools:ignore="TextFields" />
-            </com.google.android.material.textfield.TextInputLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_below="@id/search_keyword_input"
+                    android:layout_marginBottom="30dp"
+                    android:background="?attr/colorAccent" />
+            </RelativeLayout>
 
             <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
                 android:layout_marginStart="20dp"
-                android:layout_marginTop="120dp">
+                android:layout_marginEnd="20dp"
+                android:layout_marginTop="100dp">
 
                 <androidx.appcompat.widget.AppCompatCheckBox
                     android:id="@+id/search_strict_checkbox"
@@ -67,7 +80,7 @@
                     android:id="@+id/search_STSame_checkbox"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
+                    android:layout_marginStart="8dp"
                     android:layout_toEndOf="@id/search_strict_checkbox"
                     android:checked="true"
                     android:text="@string/search_STSame"
@@ -78,13 +91,11 @@
                     android:id="@+id/search_type_spinner"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="5dp"
+                    android:layout_alignBaseline="@id/search_strict_checkbox"
+                    android:layout_marginStart="8dp"
                     android:layout_toEndOf="@id/search_STSame_checkbox"
                     android:spinnerMode="dropdown"
-                    android:textColor="@color/white"
-                    app:backgroundTint="@color/black"
-                    android:layout_alignBaseline="@id/search_strict_checkbox"
-                    android:textSize="14sp" />
+                    app:backgroundTint="@color/black" />
             </RelativeLayout>
 
         </FrameLayout>
@@ -97,9 +108,9 @@
         android:layout_margin="16dp"
         android:src="@drawable/ic_search_white_24dp"
         android:visibility="invisible"
-        app:tint="@color/white"
         app:layout_anchor="@id/search_frame_layout"
-        app:layout_anchorGravity="bottom|end" />
+        app:layout_anchorGravity="bottom|end"
+        app:tint="@color/white" />
 
     <include layout="@layout/custom_night_mask" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
