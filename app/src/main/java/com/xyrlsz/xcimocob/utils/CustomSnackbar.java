@@ -13,6 +13,7 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
 
 import com.google.android.material.snackbar.BaseTransientBottomBar;
 import com.google.android.material.snackbar.Snackbar;
@@ -39,12 +40,16 @@ public class CustomSnackbar {
             int bgColor = parentView.getContext().getResources().getColor(
                     ThemeUtils.getThemeColorById(theme));
 
-            // 设置 Snackbar 宽度自适应内容，水平居中
+            // 设置 Snackbar 宽度自适应内容，底部居中
             ViewGroup.LayoutParams layoutParams = snackbarLayout.getLayoutParams();
             if (layoutParams instanceof FrameLayout.LayoutParams frameParams) {
                 frameParams.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-                frameParams.gravity = Gravity.CENTER_HORIZONTAL;
+                frameParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
                 frameParams.setMargins(48, 0, 48, 48);
+            } else if (layoutParams instanceof CoordinatorLayout.LayoutParams coordinatorParams) {
+                coordinatorParams.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                coordinatorParams.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                coordinatorParams.setMargins(48, 0, 48, 48);
             } else if (layoutParams instanceof ViewGroup.MarginLayoutParams marginParams) {
                 marginParams.width = ViewGroup.LayoutParams.WRAP_CONTENT;
                 marginParams.setMargins(48, 0, 48, 48);

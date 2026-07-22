@@ -95,7 +95,7 @@ public abstract class CoordinatorActivity extends BackActivity implements
 
     @Override
     protected View getLayoutView() {
-        return mCoordinatorLayout;
+        return mLayoutView;
     }
 
     /**
