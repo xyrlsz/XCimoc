@@ -49,6 +49,8 @@
                     android:paddingEnd="44dp"
                     android:textColor="@color/white"
                     android:textColorHint="#B3FFFFFF"
+                    android:textColorHighlight="#80FFFFFF"
+                    android:textCursorDrawable="@null"
                     android:textSize="14sp"
                     tools:ignore="TextFields" />
 
