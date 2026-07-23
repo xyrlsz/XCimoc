@@ -240,14 +240,9 @@ public class ComicManager {
     }
 
     public int updateOrDelete(Comic comic) {
-        if (comic.getFavorite() == null && comic.getHistory() == null && comic.getDownload() == null
-                && !comic.getLocal()) {
-            delete(comic);
-            return RESULT_DELETE;
-        } else {
-            update(comic);
-            return RESULT_UPDATE;
-        }
+        // 不再物理删除，始终保留漫画记录，仅更新字段
+        update(comic);
+        return RESULT_UPDATE;
     }
 
     public void deleteByKey(long key) {

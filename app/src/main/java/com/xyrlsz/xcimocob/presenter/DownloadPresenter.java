@@ -3,7 +3,6 @@ package com.xyrlsz.xcimocob.presenter;
 import androidx.collection.LongSparseArray;
 
 import com.xyrlsz.xcimocob.core.Download;
-import com.xyrlsz.xcimocob.manager.ChapterManager;
 import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.manager.TaskManager;
@@ -14,7 +13,6 @@ import com.xyrlsz.xcimocob.rx.RxEvent;
 import com.xyrlsz.xcimocob.rx.ToAnotherList;
 import com.xyrlsz.xcimocob.ui.view.DownloadView;
 import com.xyrlsz.xcimocob.utils.ComicUtils;
-import com.xyrlsz.xcimocob.utils.IdCreator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,14 +31,12 @@ public class DownloadPresenter extends BasePresenter<DownloadView> {
     private ComicManager mComicManager;
     private TaskManager mTaskManager;
     private SourceManager mSourceManager;
-    private ChapterManager mChapterManager;
 
     @Override
     protected void onViewAttach() {
         mComicManager = ComicManager.getInstance(mBaseView);
         mTaskManager = TaskManager.getInstance(mBaseView);
         mSourceManager = SourceManager.getInstance(mBaseView);
-        mChapterManager = ChapterManager.getInstance(mBaseView);
     }
 
     @SuppressWarnings("unchecked")
@@ -97,10 +93,7 @@ public class DownloadPresenter extends BasePresenter<DownloadView> {
                             Comic comic1 = mComicManager.load(id);
                             mTaskManager.deleteByComicId(id);
                             comic1.setDownload(null);
-                            int res = mComicManager.updateOrDelete(comic1);
-                            if (res == ComicManager.RESULT_DELETE) {
-                                mChapterManager.deleteBySourceComic(IdCreator.createSourceComic(comic1));
-                            }
+                            mComicManager.updateOrDelete(comic1);
                             return comic1;
                         });
                         Download.delete(mBaseView.getAppInstance().getDocumentFile(), comic, mSourceManager.getParser(comic.getSource()).getTitle());

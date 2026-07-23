@@ -1,6 +1,5 @@
 package com.xyrlsz.xcimocob.presenter;
 
-import com.xyrlsz.xcimocob.manager.ChapterManager;
 import com.xyrlsz.xcimocob.manager.ComicManager;
 import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.model.Comic;
@@ -8,7 +7,6 @@ import com.xyrlsz.xcimocob.model.MiniComic;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 import com.xyrlsz.xcimocob.rx.ToAnotherList;
 import com.xyrlsz.xcimocob.ui.view.HistoryView;
-import com.xyrlsz.xcimocob.utils.IdCreator;
 
 import java.util.List;
 
@@ -24,12 +22,10 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 public class HistoryPresenter extends BasePresenter<HistoryView> {
 
     private ComicManager mComicManager;
-    private ChapterManager mChapterManager;
 
     @Override
     protected void onViewAttach() {
         mComicManager = ComicManager.getInstance(mBaseView);
-        mChapterManager = ChapterManager.getInstance(mBaseView);
     }
 
     @SuppressWarnings("unchecked")
@@ -89,10 +85,7 @@ public class HistoryPresenter extends BasePresenter<HistoryView> {
                         Comic comic = mComicManager.load(id1);
                         if (comic != null) {
                             comic.setHistory(null);
-                            int res = mComicManager.updateOrDelete(comic);
-                            if (res == ComicManager.RESULT_DELETE) {
-                                mChapterManager.deleteBySourceComic(IdCreator.createSourceComic(comic));
-                            }
+                            mComicManager.updateOrDelete(comic);
                         }
                     }
                 })
@@ -125,10 +118,7 @@ public class HistoryPresenter extends BasePresenter<HistoryView> {
                             public void run() {
                                 for (Comic comic : list) {
                                     comic.setHistory(null);
-                                    int res = mComicManager.updateOrDelete(comic);
-                                    if (res == ComicManager.RESULT_DELETE) {
-                                        mChapterManager.deleteBySourceComic(IdCreator.createSourceComic(comic));
-                                    }
+                                    mComicManager.updateOrDelete(comic);
                                 }
                             }
                         });

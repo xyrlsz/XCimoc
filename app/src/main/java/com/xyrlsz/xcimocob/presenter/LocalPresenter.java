@@ -118,7 +118,11 @@ public class LocalPresenter extends BasePresenter<LocalView> {
         mCompositeSubscription.add(Observable.just(id)
                 .doOnNext(id1 -> mComicManager.runInTx(() -> {
                     mTaskManager.deleteByComicId(id1);
-                    mComicManager.deleteByKey(id1);
+                    Comic comic = mComicManager.load(id1);
+                    if (comic != null) {
+                        comic.setLocal(false);
+                        mComicManager.updateOrDelete(comic);
+                    }
                 }))
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
