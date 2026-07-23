@@ -171,12 +171,6 @@ public class DetailPresenter extends BasePresenter<DetailView> {
         if (mComic == null || mBaseView == null) {
             return;
         }
-        // 清除 WebParser 内存缓存
-        try {
-            String url = mSourceManager.getParser(mComic.getSource()).getUrl(mComic.getCid());
-            com.xyrlsz.xcimocob.parser.WebParser.clearCache(url);
-        } catch (Exception ignored) {
-        }
         // 跳过 OkHttp HTTP 缓存
         Manga.setForceRefresh(true);
         // 重新发起网络请求

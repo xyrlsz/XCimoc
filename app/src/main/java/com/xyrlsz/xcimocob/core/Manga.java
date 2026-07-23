@@ -118,7 +118,7 @@ public class Manga {
                         return Observable.fromIterable(result);
                     })
                     .onErrorResumeNext(e -> {
-                        WebParser.clearCache(url);
+
                         setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
@@ -178,7 +178,7 @@ public class Manga {
                         return Observable.fromIterable(result);
                     })
                     .onErrorResumeNext(e -> {
-                        WebParser.clearCache(url);
+
                         setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
@@ -222,8 +222,7 @@ public class Manga {
                                     : Observable.fromCallable(() -> getResponseBody(App.getHttpClient(), chapterReq));
                             return chapterHtmlObs.flatMap(chapterHtml -> {
                                 if (chapterHtml == null) {
-                                    WebParser.clearCache(infoUrl);
-                                    WebParser.clearCache(chapterUrl);
+
                                     setForceRefreshUrl(infoUrl);
                                     setForceRefreshUrl(chapterUrl);
                                     return Observable.error(new Exception("Chapter HTML is null"));
@@ -235,8 +234,7 @@ public class Manga {
                                 }
                                 if (list == null || list.isEmpty()) {
                                     // 解析失败 → 清除缓存，下次重试走网络
-                                    WebParser.clearCache(infoUrl);
-                                    WebParser.clearCache(chapterUrl);
+
                                     setForceRefreshUrl(infoUrl);
                                     setForceRefreshUrl(chapterUrl);
                                     return Observable.error(new Exception("Parse chapter list empty"));
@@ -251,7 +249,7 @@ public class Manga {
                             }
                             if (list == null || list.isEmpty()) {
                                 // 解析失败 → 清除缓存，下次重试走网络
-                                WebParser.clearCache(infoUrl);
+
                                 setForceRefreshUrl(infoUrl);
                                 return Observable.error(new Exception("Parse chapter list empty"));
                             }
@@ -260,7 +258,7 @@ public class Manga {
                     })
                     // infoHtmlObs 或 chapterHtmlObs 出错时（包括 WebParser 超时/错误），清除缓存确保重试走网络
                     .onErrorResumeNext(e -> {
-                        WebParser.clearCache(infoUrl);
+
                         setForceRefreshUrl(infoUrl);
                         return Observable.error(e);
                     });
@@ -285,9 +283,7 @@ public class Manga {
                     emitter.onComplete();
                 } else {
                     // 解析失败 → 清除缓存，下次重试走网络
-                    if (url != null) {
-                        WebParser.clearCache(url);
-                    }
+
                     setForceRefreshUrl(url);
                     throw new Exception("Parse category list empty");
                 }
@@ -318,7 +314,7 @@ public class Manga {
                         }
                         if (list == null || list.isEmpty()) {
                             // 解析失败 → 清除该 URL 的 WebParser 内存缓存 + 跳过 OkHttp 磁盘缓存
-                            WebParser.clearCache(url);
+
                             setForceRefreshUrl(url);
                             return Observable.error(new Exception("Parse images list empty"));
                         }
@@ -329,7 +325,7 @@ public class Manga {
                     })
                     // WebParser 超时/错误 或 OkHttp 请求失败时，也清除缓存确保下次重试走网络
                     .onErrorResumeNext(e -> {
-                        WebParser.clearCache(url);
+
                         setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
@@ -434,7 +430,7 @@ public class Manga {
                         }
                     })
                     .onErrorResumeNext(e -> {
-                        WebParser.clearCache(reqUrl);
+
                         setForceRefreshUrl(reqUrl);
                         return Observable.error(e);
                     });
