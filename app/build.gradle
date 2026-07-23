@@ -37,7 +37,7 @@ def _keyAlias = System.getenv("KEY_ALIAS")
 def _keyPassword = System.getenv("KEY_PASSWORD")
 
 android {
-    compileSdk 36
+    compileSdk 37
     namespace "com.xyrlsz.xcimocob"
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -47,7 +47,7 @@ android {
     defaultConfig {
         applicationId "com.xyrlsz.xcimocob"
         minSdkVersion 21
-        targetSdkVersion 36
+        targetSdkVersion 37
         versionCode buildVersion // 动态生成的版本号
         versionName version
         resourceConfigurations += ['en', 'zh']
@@ -152,6 +152,7 @@ dependencies {
     //noinspection GradleDependency uses-sdk:minSdkVersion 21 cannot be smaller than version 23 declared in library [androidx.activity:activity:1.12.0]
     implementation 'androidx.activity:activity-ktx:1.11.0'
     implementation 'io.objectbox:objectbox-android:5.4.2'
+    annotationProcessor 'io.objectbox:objectbox-processor:5.4.2'
     implementation 'com.squareup.okhttp3:okhttp:5.4.0'
     //noinspection NewerVersionAvailable 1.9.0 minSdk 是 26
     implementation 'org.mozilla:rhino:1.8.1'

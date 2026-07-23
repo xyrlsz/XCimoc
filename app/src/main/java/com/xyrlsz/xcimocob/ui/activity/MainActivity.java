@@ -631,11 +631,21 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+ (API 33+): 使用细粒度媒体权限
             // 不需要 MANAGE_EXTERNAL_STORAGE，只需要 READ_MEDIA_IMAGES 读取漫画图片
-            ActivityCompat.requestPermissions(activity, new String[]{
-                    Manifest.permission.READ_MEDIA_IMAGES,
-                    Manifest.permission.READ_PHONE_STATE,
-                    Manifest.permission.POST_NOTIFICATIONS
-            }, REQUEST_CODE_STORAGE);
+            if (Build.VERSION.SDK_INT >= 37) {
+                // Android 17+ (API 37+): 需要 ACCESS_LOCAL_NETWORK 本地网络权限
+                ActivityCompat.requestPermissions(activity, new String[]{
+                        Manifest.permission.READ_MEDIA_IMAGES,
+                        Manifest.permission.READ_PHONE_STATE,
+                        Manifest.permission.POST_NOTIFICATIONS,
+                        Manifest.permission.ACCESS_LOCAL_NETWORK
+                }, REQUEST_CODE_STORAGE);
+            } else {
+                ActivityCompat.requestPermissions(activity, new String[]{
+                        Manifest.permission.READ_MEDIA_IMAGES,
+                        Manifest.permission.READ_PHONE_STATE,
+                        Manifest.permission.POST_NOTIFICATIONS
+                }, REQUEST_CODE_STORAGE);
+            }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             // Android 11-12 (API 30-32): 需要 MANAGE_EXTERNAL_STORAGE
             // 注意：MANAGE_EXTERNAL_STORAGE 通过 Settings Intent 申请，不在 requestPermissions 中

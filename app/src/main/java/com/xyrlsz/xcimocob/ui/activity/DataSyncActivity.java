@@ -4,6 +4,8 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 
+import androidx.appcompat.app.AlertDialog;
+
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
@@ -72,8 +74,7 @@ public class DataSyncActivity extends BackActivity implements BackupView {
     }
 
     void onConfigClick() {
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this,
-                ThemeUtils.getDialogThemeById(ThemeUtils.getThemeId()));
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(R.string.data_server_config_title);
 
         android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
@@ -112,7 +113,7 @@ public class DataSyncActivity extends BackActivity implements BackupView {
     }
 
     void onLogoutClick() {
-        new android.app.AlertDialog.Builder(this, ThemeUtils.getDialogThemeById(ThemeUtils.getThemeId()))
+        new AlertDialog.Builder(this)
                 .setTitle(R.string.user_login_logout)
                 .setMessage(R.string.user_login_logout_tips)
                 .setPositiveButton(R.string.dialog_positive, (dialog, which) -> mPresenter.dataSyncLogout())

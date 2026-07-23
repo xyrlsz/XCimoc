@@ -42,7 +42,7 @@ public class PermissionUtils {
     }
 
     /**
-     * 检查 App 所需的所有权限
+     * 检查 App 所需的所有权限（含 Android 17+ 新增权限）
      */
     public static boolean hasAllPermissions(Activity activity) {
         boolean hasStorage = hasStoragePermission(activity);
@@ -51,14 +51,27 @@ public class PermissionUtils {
             int postNotifications = checkPermission(activity, Manifest.permission.POST_NOTIFICATIONS);
             return hasStorage &&
                     readPhoneState == PackageManager.PERMISSION_GRANTED &&
-                    postNotifications == PackageManager.PERMISSION_GRANTED;
+                    postNotifications == PackageManager.PERMISSION_GRANTED &&
+                    hasExtraPermissions(activity);
         }
         return hasStorage &&
-                readPhoneState == PackageManager.PERMISSION_GRANTED;
+                readPhoneState == PackageManager.PERMISSION_GRANTED &&
+                hasExtraPermissions(activity);
     }
 
     /**
-     * 检查是否需要显示权限 rationale
+     * 检查 Android 17+ 所需的所有额外权限（不含存储等已有权限）
+     */
+    public static boolean hasExtraPermissions(Activity activity) {
+        if (Build.VERSION.SDK_INT >= 37) {
+            // ACCESS_LOCAL_NETWORK 属于 NEARBY_DEVICES 权限组
+            return hasLocalNetworkPermission(activity);
+        }
+        return true;
+    }
+
+    /**
+     * 检查是否需要显示权限 rationale（仅检查存储权限，其他权限由系统默认处理）
      */
     public static boolean shouldShowPermissionRationale(Activity activity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -70,6 +83,19 @@ public class PermissionUtils {
         } else {
             return ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.WRITE_EXTERNAL_STORAGE);
         }
+    }
+
+    /**
+     * 检查本地网络权限
+     * <p>
+     * Android 17+ (API 37+): 需要 ACCESS_LOCAL_NETWORK 运行时权限才能访问本地网络设备
+     * Android 16 及以下: 不需要此权限
+     */
+    public static boolean hasLocalNetworkPermission(Activity activity) {
+        if (Build.VERSION.SDK_INT >= 37) {
+            return checkPermission(activity, Manifest.permission.ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
     }
 
     public static int checkPermission(@NonNull Activity activity, @NonNull String permission) {

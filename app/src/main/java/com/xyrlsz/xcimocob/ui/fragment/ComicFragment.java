@@ -2,7 +2,7 @@ package com.xyrlsz.xcimocob.ui.fragment;
 
 import static com.xyrlsz.xcimocob.ui.activity.BrowserFilter.URL_KEY;
 
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.ColorStateList;

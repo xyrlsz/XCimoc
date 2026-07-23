@@ -391,6 +391,7 @@
     <string name="common_operation_select">操作選擇</string>
     <string name="common_null">null</string>
     <string name="common_uploud_fail">上傳失敗</string>
+    <string name="common_permission_local_network_fail">需要本地網絡權限才能使用 WebDAV 雲備份功能</string>
     <string name="about_version" />
     <string name="detail_disqus">評論</string>
 

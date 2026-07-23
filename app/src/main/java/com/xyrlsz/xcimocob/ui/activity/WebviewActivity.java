@@ -3,7 +3,7 @@ package com.xyrlsz.xcimocob.ui.activity;
 import static com.xyrlsz.xcimocob.ui.activity.BrowserFilter.URL_KEY;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
