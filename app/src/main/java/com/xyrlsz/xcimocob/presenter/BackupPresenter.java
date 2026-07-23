@@ -403,24 +403,73 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                         items.add(item);
                         uploadedKeys.add(comic.getSource() + ":" + comic.getCid());
                     }
-                    // 附加标记了"历史已删除"的漫画（跳过已在本地重新有数据的）
+                    // 附加标记了"历史已删除"的漫画，通知服务端清除历史
                     Set<String> deletedKeys = DataSyncManager.getHistoryDeletedKeysForUpload();
-                    for (String key : deletedKeys) {
-                        if (uploadedKeys.contains(key)) {
-                            continue;
-                        }
-                        String[] parts = key.split(":", 2);
-                        if (parts.length == 2) {
-                            DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                    if (!deletedKeys.isEmpty()) {
+                        for (String key : deletedKeys) {
+                            String[] parts = key.split(":", 2);
+                            if (parts.length != 2) continue;
+
+                            int source;
                             try {
-                                delItem.source = Integer.parseInt(parts[0]);
+                                source = Integer.parseInt(parts[0]);
                             } catch (NumberFormatException e) {
                                 Log.w("BackupPresenter", "Invalid history deleted key (source not int): " + key);
                                 continue;
                             }
-                            delItem.cid = parts[1];
-                            delItem.clear_history = true;
-                            items.add(delItem);
+                            String cid = parts[1];
+
+                            if (uploadedKeys.contains(key)) {
+                                // 该漫画在本地仍有数据（如收藏），但用户已清除历史记录
+                                // 需要标记 clear_history，让服务端也清除历史，避免下次下载时恢复
+                                for (DataSyncModels.ComicSyncItem item : items) {
+                                    if (item.source == source && item.cid != null && item.cid.equals(cid)) {
+                                        item.clear_history = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                                delItem.source = source;
+                                delItem.cid = cid;
+                                delItem.clear_history = true;
+                                items.add(delItem);
+                            }
+                        }
+                    }
+
+                    // 附加标记了"收藏已取消"的漫画，通知服务端清除收藏
+                    Set<String> favoriteDeletedKeys = DataSyncManager.getFavoriteDeletedKeysForUpload();
+                    if (!favoriteDeletedKeys.isEmpty()) {
+                        for (String key : favoriteDeletedKeys) {
+                            String[] parts = key.split(":", 2);
+                            if (parts.length != 2) continue;
+
+                            int source;
+                            try {
+                                source = Integer.parseInt(parts[0]);
+                            } catch (NumberFormatException e) {
+                                Log.w("BackupPresenter", "Invalid favorite deleted key (source not int): " + key);
+                                continue;
+                            }
+                            String cid = parts[1];
+
+                            if (uploadedKeys.contains(key)) {
+                                // 该漫画在本地仍有数据（如历史记录），但用户已取消收藏
+                                // 需要标记 clear_favorite，让服务端也清除收藏，避免下次下载时恢复
+                                for (DataSyncModels.ComicSyncItem item : items) {
+                                    if (item.source == source && item.cid != null && item.cid.equals(cid)) {
+                                        item.clear_favorite = true;
+                                        break;
+                                    }
+                                }
+                            } else {
+                                DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                                delItem.source = source;
+                                delItem.cid = cid;
+                                delItem.clear_favorite = true;
+                                items.add(delItem);
+                            }
                         }
                     }
                     return items;
@@ -443,8 +492,9 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(resp -> {
-                    // 上传成功后清除历史删除标记
+                    // 上传成功后清除所有删除标记
                     DataSyncManager.clearHistoryDeletedKeysAfterUpload();
+                    DataSyncManager.clearFavoriteDeletedKeysAfterUpload();
                     mBaseView.onDataSyncComicSuccess(resp.synced, resp.skipped);
                 }, e -> mBaseView.onDataSyncError(getErrorMessage(e))));
     }
@@ -505,7 +555,9 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                     try {
                         // 1. 同步漫画
                         List<Comic> comics = mComicManager.listFavoriteOrHistory();
-                        List<DataSyncModels.ComicSyncItem> comicItems = new ArrayList<>(comics.size());
+                        List<DataSyncModels.ComicSyncItem> comicItems = new ArrayList<>(comics.size() + 8);
+                        // 记录已出现在常规上传中的漫画 key，避免与清除标记冲突
+                        Set<String> uploadedKeys = new HashSet<>();
                         for (Comic comic : comics) {
                             DataSyncModels.ComicSyncItem item = new DataSyncModels.ComicSyncItem();
                             item.source = comic.getSource();
@@ -521,8 +573,84 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                             item.chapter = comic.getChapter();
                             item.chapter_count = comic.getChapterCount();
                             comicItems.add(item);
+                            uploadedKeys.add(comic.getSource() + ":" + comic.getCid());
                         }
+
+                        // 附加标记了"历史已删除"的漫画
+                        Set<String> deletedKeys = DataSyncManager.getHistoryDeletedKeysForUpload();
+                        if (!deletedKeys.isEmpty()) {
+                            for (String key : deletedKeys) {
+                                String[] parts = key.split(":", 2);
+                                if (parts.length != 2) continue;
+
+                                int source;
+                                try {
+                                    source = Integer.parseInt(parts[0]);
+                                } catch (NumberFormatException e) {
+                                    Log.w("BackupPresenter", "Invalid history deleted key (source not int): " + key);
+                                    continue;
+                                }
+                                String cid = parts[1];
+
+                                if (uploadedKeys.contains(key)) {
+                                    for (DataSyncModels.ComicSyncItem item : comicItems) {
+                                        if (item.source == source && item.cid != null && item.cid.equals(cid)) {
+                                            item.clear_history = true;
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                                    delItem.source = source;
+                                    delItem.cid = cid;
+                                    delItem.clear_history = true;
+                                    comicItems.add(delItem);
+                                }
+                            }
+                        }
+
+                        // 附加标记了"收藏已取消"的漫画
+                        Set<String> favoriteDeletedKeys = DataSyncManager.getFavoriteDeletedKeysForUpload();
+                        if (!favoriteDeletedKeys.isEmpty()) {
+                            for (String key : favoriteDeletedKeys) {
+                                String[] parts = key.split(":", 2);
+                                if (parts.length != 2) continue;
+
+                                int source;
+                                try {
+                                    source = Integer.parseInt(parts[0]);
+                                } catch (NumberFormatException e) {
+                                    Log.w("BackupPresenter", "Invalid favorite deleted key (source not int): " + key);
+                                    continue;
+                                }
+                                String cid = parts[1];
+
+                                if (uploadedKeys.contains(key)) {
+                                    for (DataSyncModels.ComicSyncItem item : comicItems) {
+                                        if (item.source == source && item.cid != null && item.cid.equals(cid)) {
+                                            item.clear_favorite = true;
+                                            break;
+                                        }
+                                    }
+                                } else {
+                                    DataSyncModels.ComicSyncItem delItem = new DataSyncModels.ComicSyncItem();
+                                    delItem.source = source;
+                                    delItem.cid = cid;
+                                    delItem.clear_favorite = true;
+                                    comicItems.add(delItem);
+                                }
+                            }
+                        }
+
                         client.syncComics(token, comicItems);
+
+                        // 上传成功后清除所有删除标记
+                        if (!deletedKeys.isEmpty()) {
+                            DataSyncManager.clearHistoryDeletedKeysAfterUpload();
+                        }
+                        if (!favoriteDeletedKeys.isEmpty()) {
+                            DataSyncManager.clearFavoriteDeletedKeysAfterUpload();
+                        }
 
                         // 2. 同步设置（过滤敏感 key）
                         Map<String, ?> allPrefs = App.getPreferenceManager().getAll();
@@ -610,24 +738,48 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                     }
                                     mComicManager.insert(local);
                                 } else {
-                                    // 本地已有 → 合并，取较新的值
+                                    // 本地已有 → 合并
                                     boolean changed = false;
 
-                                    // 用服务器端较新的收藏时间戳
-                                    if (item.favorite != null && (local.getFavorite() == null || item.favorite > local.getFavorite())) {
-                                        local.setFavorite(item.favorite);
+                                    // 用服务器端收藏信息合并
+                                    boolean favoriteDeleted = DataSyncManager.isFavoriteDeleted(item.source, item.cid);
+                                    if (favoriteDeleted) {
+                                        // 本地已取消收藏 → 不恢复
+                                    } else if (item.favorite != null) {
+                                        // 服务端有收藏 → 取较新的
+                                        if (local.getFavorite() == null || item.favorite > local.getFavorite()) {
+                                            local.setFavorite(item.favorite);
+                                            changed = true;
+                                        }
+                                    } else if (local.getFavorite() != null) {
+                                        // 服务端收藏为 null（另一台设备取消了收藏）→ 同步清除本地
+                                        local.setFavorite(null);
                                         changed = true;
                                     }
-                                    // 用服务器端较新的历史时间戳（如果本地未标记为"已删除"）
+
+                                    // 用服务器端历史信息合并
                                     boolean historyDeleted = DataSyncManager.isHistoryDeleted(item.source, item.cid);
-                                    if (!historyDeleted && item.history != null && (local.getHistory() == null || item.history > local.getHistory())) {
-                                        local.setHistory(item.history);
-                                        local.setLast(item.last);
-                                        local.setPage(item.page);
-                                        local.setChapter(item.chapter);
+                                    if (historyDeleted) {
+                                        // 本地已删除历史 → 不恢复
+                                    } else if (item.history != null) {
+                                        // 服务端有历史 → 取较新的
+                                        if (local.getHistory() == null || item.history > local.getHistory()) {
+                                            local.setHistory(item.history);
+                                            local.setLast(item.last);
+                                            local.setPage(item.page);
+                                            local.setChapter(item.chapter);
+                                            changed = true;
+                                        }
+                                    } else if (local.getHistory() != null) {
+                                        // 服务端历史为 null（另一台设备清除了历史）→ 同步清除本地
+                                        local.setHistory(null);
+                                        local.setLast(null);
+                                        local.setPage(null);
+                                        local.setChapter(null);
                                         changed = true;
                                     }
-                                                    // 如果本地没有标题/封面，用服务器的填充
+
+                                    // 如果本地没有标题/封面，用服务器的填充
                                     if (local.getTitle() == null || local.getTitle().isEmpty()) {
                                         local.setTitle(item.title);
                                         local.setCover(item.cover);
@@ -643,11 +795,11 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                     }
                                 }
 
-                                // 记录用于发 RxBus 事件
-                                if (item.favorite != null) {
+                                // 记录用于发 RxBus 事件（根据合并后的实际本地状态）
+                                if (local.getFavorite() != null) {
                                     favoriteList.add(local);
                                 }
-                                if (item.history != null) {
+                                if (local.getHistory() != null) {
                                     historyList.add(local);
                                 }
                             }
@@ -761,18 +913,45 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                         mComicManager.insert(local);
                                     } else {
                                         boolean changed = false;
-                                        if (item.favorite != null && (local.getFavorite() == null || item.favorite > local.getFavorite())) {
-                                            local.setFavorite(item.favorite);
+
+                                        // 用服务器端收藏信息合并
+                                        boolean favoriteDeleted = DataSyncManager.isFavoriteDeleted(item.source, item.cid);
+                                        if (favoriteDeleted) {
+                                            // 本地已取消收藏 → 不恢复
+                                        } else if (item.favorite != null) {
+                                            // 服务端有收藏 → 取较新的
+                                            if (local.getFavorite() == null || item.favorite > local.getFavorite()) {
+                                                local.setFavorite(item.favorite);
+                                                changed = true;
+                                            }
+                                        } else if (local.getFavorite() != null) {
+                                            // 服务端收藏为 null（另一台设备取消了收藏）→ 同步清除本地
+                                            local.setFavorite(null);
                                             changed = true;
                                         }
+
+                                        // 用服务器端历史信息合并
                                         boolean historyDeleted = DataSyncManager.isHistoryDeleted(item.source, item.cid);
-                                        if (!historyDeleted && item.history != null && (local.getHistory() == null || item.history > local.getHistory())) {
-                                            local.setHistory(item.history);
-                                            local.setLast(item.last);
-                                            local.setPage(item.page);
-                                            local.setChapter(item.chapter);
+                                        if (historyDeleted) {
+                                            // 本地已删除历史 → 不恢复
+                                        } else if (item.history != null) {
+                                            // 服务端有历史 → 取较新的
+                                            if (local.getHistory() == null || item.history > local.getHistory()) {
+                                                local.setHistory(item.history);
+                                                local.setLast(item.last);
+                                                local.setPage(item.page);
+                                                local.setChapter(item.chapter);
+                                                changed = true;
+                                            }
+                                        } else if (local.getHistory() != null) {
+                                            // 服务端历史为 null（另一台设备清除了历史）→ 同步清除本地
+                                            local.setHistory(null);
+                                            local.setLast(null);
+                                            local.setPage(null);
+                                            local.setChapter(null);
                                             changed = true;
                                         }
+
                                         if ((local.getTitle() == null || local.getTitle().isEmpty()) && item.title != null) {
                                             local.setTitle(item.title);
                                             local.setCover(item.cover);
@@ -787,8 +966,8 @@ public class BackupPresenter extends BasePresenter<BackupView> {
                                             mComicManager.update(local);
                                         }
                                     }
-                                    if (item.favorite != null) favoriteList.add(local);
-                                    if (item.history != null) historyList.add(local);
+                                    if (local.getFavorite() != null) favoriteList.add(local);
+                                    if (local.getHistory() != null) historyList.add(local);
                                 }
                             });
                             if (!favoriteList.isEmpty()) {

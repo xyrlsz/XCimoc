@@ -211,38 +211,65 @@ public class DataSyncManager {
 
     private void doSyncComicsBidirectional() {
         Observable.fromCallable(() -> {
+            Log.d(TAG, "[Sync] Starting bidirectional comic sync...");
             String token = DataSyncClient.ensureValidToken();
-            if (token == null) return false;
-            if (!createClient()) return false;
+            if (token == null) {
+                Log.w(TAG, "[Sync] Token is null, aborting sync");
+                return false;
+            }
+            if (!createClient()) {
+                Log.w(TAG, "[Sync] Failed to create client, aborting sync");
+                return false;
+            }
 
             uploadComics(mClient, token);
             downloadAndMergeComics(mClient, token);
 
-            Log.d(TAG, "Bidirectional comic sync done");
+            Log.d(TAG, "[Sync] Bidirectional comic sync completed successfully");
             return true;
         }).subscribeOn(Schedulers.io()).subscribe(
                 r -> {
-                }, t -> Log.w(TAG, "Bidirectional comic sync failed", t));
+                    if (r == Boolean.TRUE) {
+                        Log.d(TAG, "[Sync] Sync finished successfully");
+                    }
+                }, t -> {
+                    Log.e(TAG, "[Sync] Bidirectional comic sync failed", t);
+                    // 发生错误时尝试显示通知（静默失败的隐患）
+                    android.util.Log.e(TAG, "[Sync] Error details: " + t.getMessage());
+                });
     }
 
     // ==================== 全量双向同步（漫画+设置，前台触发） ====================
 
     private void doSyncAllBidirectional() {
         Observable.fromCallable(() -> {
+            Log.d(TAG, "[Sync] Starting full bidirectional sync...");
             String token = DataSyncClient.ensureValidToken();
-            if (token == null) return false;
-            if (!createClient()) return false;
+            if (token == null) {
+                Log.w(TAG, "[Sync] Token is null, aborting full sync");
+                return false;
+            }
+            if (!createClient()) {
+                Log.w(TAG, "[Sync] Failed to create client, aborting full sync");
+                return false;
+            }
 
             uploadComics(mClient, token);
             uploadSettings(mClient, token);
             downloadAndMergeComics(mClient, token);
             downloadSettings(mClient, token);
 
-            Log.d(TAG, "Full bidirectional sync done");
+            Log.d(TAG, "[Sync] Full bidirectional sync completed successfully");
             return true;
         }).subscribeOn(Schedulers.io()).subscribe(
                 r -> {
-                }, t -> Log.w(TAG, "Full bidirectional sync failed", t));
+                    if (r == Boolean.TRUE) {
+                        Log.d(TAG, "[Sync] Full sync finished successfully");
+                    }
+                }, t -> {
+                    Log.e(TAG, "[Sync] Full bidirectional sync failed", t);
+                    android.util.Log.e(TAG, "[Sync] Full sync error details: " + t.getMessage());
+                });
     }
 
     // ==================== 共享的数据同步方法 ====================
@@ -260,9 +287,10 @@ public class DataSyncManager {
         return true;
     }
 
-    /** 上传本地漫画到服务端（包括历史删除标记） */
+    /** 上传本地漫画到服务端（包括历史/收藏删除标记） */
     private void uploadComics(DataSyncClient client, String token) throws Exception {
         List<Comic> comics = mComicManager.listFavoriteOrHistory();
+        Log.d(TAG, "[Sync] Upload: " + comics.size() + " comics from local");
         List<DataSyncModels.ComicSyncItem> items = new ArrayList<>(comics.size() + 8);
         // 记录已出现在常规上传中的漫画 key，避免与清除标记冲突
         Set<String> uploadedKeys = new HashSet<>();
@@ -274,6 +302,7 @@ public class DataSyncManager {
         // 附加标记了"历史已删除"的漫画，通知服务端清除历史
         Set<String> deletedKeys = getHistoryDeletedKeys();
         if (!deletedKeys.isEmpty()) {
+            Log.d(TAG, "[Sync] Upload: " + deletedKeys.size() + " history-deleted markers");
             for (String key : deletedKeys) {
                 String[] parts = key.split(":", 2);
                 if (parts.length != 2) continue;
@@ -293,6 +322,7 @@ public class DataSyncManager {
                     for (DataSyncModels.ComicSyncItem item : items) {
                         if (item.source == source && item.cid != null && item.cid.equals(cid)) {
                             item.clear_history = true;
+                            Log.d(TAG, "[Sync]   clear_history on existing comic " + key);
                             break;
                         }
                     }
@@ -302,6 +332,7 @@ public class DataSyncManager {
                     item.cid = cid;
                     item.clear_history = true;
                     items.add(item);
+                    Log.d(TAG, "[Sync]   standalone clear_history item for " + key);
                 }
             }
         }
@@ -309,6 +340,7 @@ public class DataSyncManager {
         // 附加标记了"收藏已取消"的漫画，通知服务端清除收藏
         Set<String> favoriteDeletedKeys = getFavoriteDeletedKeys();
         if (!favoriteDeletedKeys.isEmpty()) {
+            Log.d(TAG, "[Sync] Upload: " + favoriteDeletedKeys.size() + " favorite-deleted markers");
             for (String key : favoriteDeletedKeys) {
                 String[] parts = key.split(":", 2);
                 if (parts.length != 2) continue;
@@ -328,6 +360,7 @@ public class DataSyncManager {
                     for (DataSyncModels.ComicSyncItem item : items) {
                         if (item.source == source && item.cid != null && item.cid.equals(cid)) {
                             item.clear_favorite = true;
+                            Log.d(TAG, "[Sync]   clear_favorite on existing comic " + key);
                             break;
                         }
                     }
@@ -337,35 +370,50 @@ public class DataSyncManager {
                     item.cid = cid;
                     item.clear_favorite = true;
                     items.add(item);
+                    Log.d(TAG, "[Sync]   standalone clear_favorite item for " + key);
                 }
             }
         }
 
+        Log.d(TAG, "[Sync] Upload: sending " + items.size() + " items to server");
+        for (DataSyncModels.ComicSyncItem item : items) {
+            Log.d(TAG, "[Sync]   -> src=" + item.source + " cid=" + item.cid
+                    + " fav=" + item.favorite + " hist=" + item.history
+                    + " clrFav=" + item.clear_favorite + " clrHist=" + item.clear_history);
+        }
         client.syncComics(token, items);
 
         // 上传成功后清除所有删除标记
         if (!deletedKeys.isEmpty()) {
             clearHistoryDeletedKeys();
+            Log.d(TAG, "[Sync] Cleared " + deletedKeys.size() + " history-deleted markers");
         }
         if (!favoriteDeletedKeys.isEmpty()) {
             clearFavoriteDeletedKeys();
+            Log.d(TAG, "[Sync] Cleared " + favoriteDeletedKeys.size() + " favorite-deleted markers");
         }
     }
 
     /** 从服务端下载漫画并合并到本地，完成后发送 RxBus 事件通知 UI 刷新 */
     private void downloadAndMergeComics(DataSyncClient client, String token) throws Exception {
         List<DataSyncModels.ComicServerItem> serverComics = client.listComics(token);
-        if (serverComics == null) return;
+        if (serverComics == null) {
+            Log.d(TAG, "[Sync] Download: server returned null");
+            return;
+        }
+        Log.d(TAG, "[Sync] Download: " + serverComics.size() + " comics from server");
 
         // 仅追踪本次真正需要通知 UI 的漫画（新增或数据有变更的）
         final List<MiniComic> favoriteList = new LinkedList<>();
         final List<MiniComic> historyList = new LinkedList<>();
+        int insertedCount = 0, updatedCount = 0, clearedFavCount = 0, clearedHistCount = 0;
 
         for (DataSyncModels.ComicServerItem s : serverComics) {
             Comic local = mComicManager.load(s.source, s.cid);
             if (local == null) {
                 local = createComicFromServer(s);
                 mComicManager.insert(local);
+                insertedCount++;
                 // 新插入的漫画需要通知 UI
                 if (s.favorite != null) {
                     favoriteList.add(new MiniComic(local));
@@ -377,15 +425,22 @@ public class DataSyncManager {
                 boolean changed = mergeServerComic(local, s);
                 // 仅当合并后数据有实际变更时才通知 UI，避免重复
                 if (changed) {
-                    if (s.favorite != null) {
+                    updatedCount++;
+                    if (s.favorite == null && local.getFavorite() == null) clearedFavCount++;
+                    if (s.history == null && local.getHistory() == null) clearedHistCount++;
+                    // 合并后根据本地实际状态通知 UI（可能被清除了收藏/历史）
+                    if (local.getFavorite() != null) {
                         favoriteList.add(new MiniComic(local));
                     }
-                    if (s.history != null) {
+                    if (local.getHistory() != null) {
                         historyList.add(new MiniComic(local));
                     }
                 }
             }
         }
+
+        Log.d(TAG, "[Sync] Download: inserted=" + insertedCount + " updated=" + updatedCount
+                + " clearedFav=" + clearedFavCount + " clearedHist=" + clearedHistCount);
 
         // 发送 RxBus 事件通知 UI 刷新
         if (!favoriteList.isEmpty()) {
@@ -473,20 +528,48 @@ public class DataSyncManager {
     /** 将服务端漫画数据合并到本地（服务端数据优先） */
     private boolean mergeServerComic(Comic local, DataSyncModels.ComicServerItem s) {
         boolean changed = false;
+        String key = s.source + ":" + s.cid;
         // 如果本地明确标记了"收藏已取消"，则不从服务端恢复收藏
         boolean favoriteDeleted = isFavoriteDeleted(s.source, s.cid);
-        if (!favoriteDeleted && s.favorite != null && (local.getFavorite() == null || s.favorite > local.getFavorite())) {
-            local.setFavorite(s.favorite);
+        if (favoriteDeleted) {
+            // 本地已取消收藏 → 保持本地 null，不恢复
+            Log.d(TAG, "[Sync] Merge " + key + ": skip restore favorite (local deleted)");
+        } else if (s.favorite != null) {
+            // 服务端有收藏 → 取较新的
+            if (local.getFavorite() == null || s.favorite > local.getFavorite()) {
+                local.setFavorite(s.favorite);
+                changed = true;
+                Log.d(TAG, "[Sync] Merge " + key + ": update favorite to " + s.favorite);
+            }
+        } else if (local.getFavorite() != null) {
+            // 服务端收藏为 null（另一台设备取消了收藏）→ 同步清除本地
+            local.setFavorite(null);
             changed = true;
+            Log.d(TAG, "[Sync] Merge " + key + ": clear favorite (server has null)");
         }
         // 如果本地明确标记了"历史已删除"，则不从服务端恢复历史
         boolean historyDeleted = isHistoryDeleted(s.source, s.cid);
-        if (!historyDeleted && s.history != null && (local.getHistory() == null || s.history > local.getHistory())) {
-            local.setHistory(s.history);
-            local.setLast(s.last);
-            local.setPage(s.page);
-            local.setChapter(s.chapter);
+        if (historyDeleted) {
+            // 本地已删除历史 → 保持本地 null，不恢复
+            Log.d(TAG, "[Sync] Merge " + key + ": skip restore history (local deleted)");
+        } else if (s.history != null) {
+            // 服务端有历史 → 取较新的
+            if (local.getHistory() == null || s.history > local.getHistory()) {
+                local.setHistory(s.history);
+                local.setLast(s.last);
+                local.setPage(s.page);
+                local.setChapter(s.chapter);
+                changed = true;
+                Log.d(TAG, "[Sync] Merge " + key + ": update history to " + s.history);
+            }
+        } else if (local.getHistory() != null) {
+            // 服务端历史为 null（另一台设备清除了历史）→ 同步清除本地
+            local.setHistory(null);
+            local.setLast(null);
+            local.setPage(null);
+            local.setChapter(null);
             changed = true;
+            Log.d(TAG, "[Sync] Merge " + key + ": clear history (server has null)");
         }
         if ((local.getTitle() == null || local.getTitle().isEmpty()) && s.title != null) {
             local.setTitle(s.title);
@@ -496,7 +579,10 @@ public class DataSyncManager {
             if (s.chapter_count != null) local.setChapterCount(s.chapter_count);
             changed = true;
         }
-        if (changed) mComicManager.update(local);
+        if (changed) {
+            mComicManager.update(local);
+            Log.d(TAG, "[Sync] Merge " + key + ": saved changes to local DB");
+        }
         return changed;
     }
 
@@ -580,6 +666,20 @@ public class DataSyncManager {
      */
     public static void clearHistoryDeletedKeysAfterUpload() {
         clearHistoryDeletedKeys();
+    }
+
+    /**
+     * 获取所有"收藏已取消"标记（供 BackupPresenter 上传使用）
+     */
+    public static Set<String> getFavoriteDeletedKeysForUpload() {
+        return getFavoriteDeletedKeys();
+    }
+
+    /**
+     * 供 BackupPresenter 上传成功后调用的公开清除方法
+     */
+    public static void clearFavoriteDeletedKeysAfterUpload() {
+        clearFavoriteDeletedKeys();
     }
 
     // ==================== 收藏删除标记追踪 ====================
