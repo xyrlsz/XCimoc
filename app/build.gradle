@@ -46,7 +46,7 @@ android {
     }
     defaultConfig {
         applicationId "com.xyrlsz.xcimocob"
-        minSdkVersion 21
+        minSdkVersion 26
         targetSdkVersion 37
         versionCode buildVersion // 动态生成的版本号
         versionName version
@@ -146,16 +146,15 @@ dependencies {
     implementation 'androidx.legacy:legacy-support-v13:1.0.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'androidx.recyclerview:recyclerview:1.4.0'
-    //noinspection GradleDependency
-    implementation 'com.google.android.material:material:1.13.0'
-    // View Binding is used instead of ButterKnife
-    //noinspection GradleDependency uses-sdk:minSdkVersion 21 cannot be smaller than version 23 declared in library [androidx.activity:activity:1.12.0]
-    implementation 'androidx.activity:activity-ktx:1.11.0'
+
+    implementation 'com.google.android.material:material:1.14.0'
+
+    implementation 'androidx.activity:activity-ktx:1.13.0'
     implementation 'io.objectbox:objectbox-android:5.4.2'
     annotationProcessor 'io.objectbox:objectbox-processor:5.4.2'
     implementation 'com.squareup.okhttp3:okhttp:5.4.0'
-    //noinspection NewerVersionAvailable 1.9.0 minSdk 是 26
-    implementation 'org.mozilla:rhino:1.8.1'
+
+    implementation 'org.mozilla:rhino:1.9.1'
 
 
     implementation 'com.facebook.fresco:fresco:3.7.0'
@@ -169,35 +168,25 @@ dependencies {
 
     implementation 'org.jsoup:jsoup:1.22.2'
     implementation 'com.google.re2j:re2j:1.8'
-    // DiscreteSeekBar replaced with Material Slider (already included via material dependency)
+
     implementation 'io.reactivex.rxjava3:rxjava:3.1.12'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
 
     api 'com.google.guava:guava:33.6.0-android'
-//    implementation 'androidx.multidex:multidex:2.0.1'
+
 
     implementation 'com.google.code.gson:gson:2.14.0'
 
-    // noinspection GradleDependency
-    implementation "androidx.core:core-ktx:1.17.0"
+
+    implementation "androidx.core:core-ktx:1.19.0"
     implementation 'com.king.app:app-updater:1.0.8-androidx'
     implementation 'com.king.app:app-dialog:1.0.8-androidx'
 
-//    implementation 'com.github.houbb:opencc4j:1.14.0'
     implementation 'com.github.xyrlsz:android-opencc:1.4.2'
 
     implementation('com.github.thegrizzlylabs:sardine-android:0.9') {
         exclude group: 'xpp3', module: 'xpp3'
     }
-
-//    implementation 'org.apache.commons:commons-text:1.15.0'
-
-
-//    // protobuf 依赖
-//    // noinspection NewerVersionAvailable
-//    implementation 'com.google.protobuf:protobuf-javalite:4.33.1'
-//    // noinspection NewerVersionAvailable
-//    implementation 'com.google.protobuf:protobuf-kotlin-lite:4.33.1'
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
