@@ -36,7 +36,6 @@ forked from https://github.com/Haleydu/Cimoc
 # 感谢以下的开源项目及作者
 
 - [Android Open Source Project](http://source.android.com/)
-- [ButterKnife](https://github.com/JakeWharton/butterknife)
 - [ObjectBox](https://objectbox.io/)
 - [OkHttp](https://github.com/square/okhttp)
 - [Fresco](https://github.com/facebook/fresco)
