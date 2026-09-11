@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -10,10 +9,12 @@ import (
 	"xcimoc-data-server/database"
 	"xcimoc-data-server/models"
 	"xcimoc-data-server/query"
+	"xcimoc-data-server/utils"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gen/field"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // EventHandler 暴露事件同步接口（Pull / Push / Status）。
@@ -115,9 +116,11 @@ type pushResp struct {
 
 // PushEvents 接收客户端上报的一批事件（append-only 幂等写入）。
 //
-// 去重键采用 (user_id, client_id, type, payload)：对同一客户端重复推送的完全相同
-// 载荷视为幂等，不重复写入。整批写入放在事务中，事务内部通过 query.Use(tx)
-// 创建临时 query 句柄，避免并发请求污染全局 query.Q。
+// 去重键采用 (user_id, client_id, type, payload_hash)：同一客户端重复推送的完全相同
+// 载荷视为幂等，不重复写入。写入用唯一索引 + ON CONFLICT DO NOTHING 在单条 SQL 内
+// 原子完成「查重+插入」，并发重推不会产生双写（此前「先查后插」存在 TOCTOU 窗口）。
+// 整批写入放在事务中，事务内部通过 query.Use(tx) 创建临时 query 句柄，
+// 避免并发请求污染全局 query.Q。
 func (h *EventHandler) PushEvents(c *gin.Context) {
 	userID := c.GetUint("user_id")
 	if userID == 0 {
@@ -136,7 +139,6 @@ func (h *EventHandler) PushEvents(c *gin.Context) {
 
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
 		qTx := query.Use(tx)
-		seTx := qTx.SyncEvent
 
 		now := time.Now()
 		for _, raw := range req.Events {
@@ -144,43 +146,31 @@ func (h *EventHandler) PushEvents(c *gin.Context) {
 				// 跳过空骨架载荷，不影响其他事件落库
 				continue
 			}
-			// 幂等查找：同用户 + 同客户端 + 同类型 + 同 payload 视为重复。
-			// 用生成的多条件 Eq 组合代替字符串 WHERE。
-			_, findErr := seTx.Where(
-				seTx.UserID.Eq(userID),
-				seTx.ClientID.Eq(req.ClientID),
-				seTx.Type.Eq(raw.Type),
-				seTx.Payload.Eq(raw.Payload),
-			).Take()
-			if findErr == nil {
-				// 已存在 → 幂等命中，计入 accepted（客户端看到“收到/接受一致”）
-				accepted++
-				continue
-			}
-			if !errors.Is(findErr, gorm.ErrRecordNotFound) {
-				return findErr
-			}
 
 			createdAt := raw.CreatedAt
 			if createdAt.IsZero() {
 				createdAt = now
 			}
 			ev := &models.SyncEvent{
-				UserID:    userID,
-				Type:      raw.Type,
-				Payload:   raw.Payload,
-				ClientID:  req.ClientID,
-				CreatedAt: createdAt,
+				UserID:      userID,
+				Type:        raw.Type,
+				Payload:     raw.Payload,
+				PayloadHash: utils.SHA256Hex(raw.Payload),
+				ClientID:    req.ClientID,
+				CreatedAt:   createdAt,
 			}
-			if err := seTx.Create(ev); err != nil {
-				// 唯一约束冲突也按幂等接受
-				if isUniqueConstraint(err) {
-					accepted++
-					continue
-				}
-				return err
+			// 幂等写入：唯一索引 (user_id, client_id, type, payload_hash) +
+			// ON CONFLICT DO NOTHING，重复/并发重推时 RowsAffected=0。
+			// 用事务句柄 tx 直接执行（gen 的 Create 只返回 error，拿不到 RowsAffected）。
+			res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(ev)
+			if res.Error != nil {
+				return res.Error
 			}
 			accepted++
+			if res.RowsAffected == 0 {
+				// 幂等命中（此前已写入并已应用过）→ 无需重复 applyEvent
+				continue
+			}
 
 			// 事件写入日志后，同步应用到 comics/settings/tags 数据表。
 			// 若只写日志不应用，服务端 comics 表会保留过期数据且不产生墓碑，
@@ -263,46 +253,6 @@ func derefSyncEvents(rows []*models.SyncEvent) []models.SyncEvent {
 		}
 	}
 	return out
-}
-
-// isUniqueConstraint 辅助函数：判断错误是否为 DB 唯一约束冲突。
-// 用 gorm 提供的 sentinel 错误 + 数据库驱动常用字符串做兜底，避免依赖驱动细节。
-func isUniqueConstraint(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, gorm.ErrDuplicatedKey) {
-		return true
-	}
-	msg := err.Error()
-	// SQLite / MySQL / PostgreSQL 的唯一约束关键字。
-	for _, s := range []string{
-		"UNIQUE constraint", "unique constraint",
-		"Duplicate entry", "duplicate entry",
-		"violates unique", "duplicate key",
-		"23000", "23505", "SQLITE_CONSTRAINT_UNIQUE",
-	} {
-		if contains(msg, s) {
-			return true
-		}
-	}
-	return false
-}
-
-func contains(s, sub string) bool {
-	if len(sub) == 0 {
-		return false
-	}
-	n, m := len(s), len(sub)
-	if m > n {
-		return false
-	}
-	for i := 0; i+m <= n; i++ {
-		if s[i:i+m] == sub {
-			return true
-		}
-	}
-	return false
 }
 
 // ==================== 事件应用逻辑 ====================

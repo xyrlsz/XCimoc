@@ -100,13 +100,25 @@ type ComicListResponse struct {
 // SyncEvent 是同步的最小单位，记录用户在某个设备上执行的一个操作。
 // 所有客户端通过拉取事件日志来实现多端同步，无需比较完整状态。
 // 事件是不可变的（append-only），全局有序（自增ID），可幂等重放。
+//
+// 幂等去重：(user_id, client_id, type, payload_hash) 唯一索引 + 写入时
+// ON CONFLICT DO NOTHING（见 handlers/events.PushEvents）。Payload 为 text，
+// 无法直接进唯一索引（MySQL 需前缀长度），故冗余一列 payload_hash = SHA-256(payload)
+// 作为索引键。
+//
+// ⚠️ payload_hash 声明为 `-:migration`（gorm 迁移完全跳过该列）：
+// gorm 的 SQLite MigrateColumn 发现列定义差异时会触发 recreateTable 表重建，
+// 而重建的 INSERT 不拷贝「被修改的列」（该列数据被重置为默认值）——曾导致哈希
+// 被清空、唯一索引创建失败（UNIQUE constraint failed）。该列的补列/回填/去重/
+// 唯一索引统一由 database.ensureSyncEventDedupe() 手工管理，不让 gorm 介入。
 type SyncEvent struct {
-	ID        uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID    uint      `gorm:"index:idx_user_events;not null" json:"user_id"`
-	Type      string    `gorm:"size:32;not null;index:idx_user_events" json:"type"` // 事件类型
-	Payload   string    `gorm:"type:text;not null" json:"payload"`                  // JSON 格式
-	ClientID  string    `gorm:"size:64" json:"client_id,omitempty"`                 // 产生事件的设备
-	CreatedAt time.Time `gorm:"index:idx_user_events" json:"created_at"`
+	ID          uint      `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID      uint      `gorm:"index:idx_user_events;not null" json:"user_id"`
+	Type        string    `gorm:"size:32;not null;index:idx_user_events" json:"type"` // 事件类型
+	Payload     string    `gorm:"type:text;not null" json:"payload"`                  // JSON 格式
+	PayloadHash string    `gorm:"-:migration;size:64;not null;default:''" json:"-"`   // SHA-256(payload)，幂等去重键（迁移手工管理）
+	ClientID    string    `gorm:"size:64" json:"client_id,omitempty"`                 // 产生事件的设备
+	CreatedAt   time.Time `gorm:"index:idx_user_events" json:"created_at"`
 }
 
 // 事件类型常量

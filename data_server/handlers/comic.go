@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"sort"
@@ -503,10 +504,8 @@ func (h *ComicHandler) SyncStatus(c *gin.Context) {
 	})
 }
 
-// isNotFound helper：同时兼容 gorm.ErrRecordNotFound 以及 gen 的 Take/First 找不到的情形。
+// isNotFound：判断查询是否为「无记录」（gorm.ErrRecordNotFound），
+// 用 errors.Is 兼容被包装的错误；全项目统一经由此函数判断。
 func isNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	return err == gorm.ErrRecordNotFound || err.Error() == gorm.ErrRecordNotFound.Error()
+	return err != nil && errors.Is(err, gorm.ErrRecordNotFound)
 }

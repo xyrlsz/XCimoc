@@ -253,6 +253,8 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
                             : data.getLongExtra(Extra.EXTRA_CHAPTER_KEY, -1L);
                     List<Chapter> list = ChapterActivity.takeResultList(key);
                     if (list == null || list.isEmpty()) {
+                        // 列表为空时不会走 addTask 的回调，需手动关闭进度框
+                        hideProgressDialog();
                         showSnackbar(R.string.chapter_download_empty);
                         break;
                     }

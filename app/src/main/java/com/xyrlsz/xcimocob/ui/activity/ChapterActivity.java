@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 
 
+
+
 /**
  * Created by Hiroshi on 2016/11/14.
  */
@@ -56,6 +58,7 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     private ChapterAdapter mChapterAdapter;
     private boolean isAscendMode;
     private boolean isButtonMode;
+    private long mChapterKey = -1;
     private Handler mHandler = new Handler();
     private RecyclerView.OnItemTouchListener mListener = new CustomTouchListener();
     private RecyclerView.ItemDecoration mDecoration;
@@ -134,7 +137,10 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     private List<Switcher<Chapter>> getAdapterList() {
         isAscendMode = mPreference.getBoolean(PreferenceManager.PREF_CHAPTER_ASCEND_MODE, false);
         long key = getIntent().getLongExtra(Extra.EXTRA_CHAPTER_KEY, -1);
-        List<Chapter> list = key != -1 ? sChapterCache.remove(key) : null;
+        // 读取但不移除缓存：Activity 可能被系统重建（「不保留活动」/内存回收）后以同一 Intent
+        // 再次创建，此时仍需读到同一份列表；缓存改在 Activity 真正结束时（onDestroy）清理。
+        mChapterKey = key;
+        List<Chapter> list = key != -1 ? sChapterCache.get(key) : null;
         if (list == null) {
             long sourceComic = getIntent().getLongExtra(Extra.EXTRA_SOURCE_COMIC, -1L);
             if (sourceComic != -1L) {
@@ -228,6 +234,16 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     @Override
     protected int getLayoutRes() {
         return R.layout.activity_chapter;
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // 正常结束（isFinishing）才清理缓存；被系统重建销毁时（isFinishing=false）保留，
+        // 使重建后的实例仍能通过同一 key 取到章节列表。
+        if (isFinishing() && mChapterKey != -1) {
+            sChapterCache.remove(mChapterKey);
+        }
     }
 
     @Override

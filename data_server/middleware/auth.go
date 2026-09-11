@@ -41,7 +41,12 @@ func GenerateToken(user *models.User, cfg *config.Config) (string, error) {
 // 避免手写 `WHERE id = ?`。
 func parseToken(tokenStr string, cfg *config.Config, leeway time.Duration) (*Claims, error) {
 	claims := &Claims{}
-	opts := []jwt.ParserOption{jwt.WithLeeway(leeway)}
+	opts := []jwt.ParserOption{
+		jwt.WithLeeway(leeway),
+		// 仅接受 HS256：防御签名算法混淆类攻击（如伪造 alg=none / 改用其它算法
+		// 但复用同一密钥解析），生成端 GenerateToken 固定使用 HS256。
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+	}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(cfg.JWTSecret), nil
 	}, opts...)

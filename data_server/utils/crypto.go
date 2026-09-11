@@ -28,3 +28,10 @@ func HashPassword(password, salt string) string {
 func VerifyPassword(password, salt, hash string) bool {
 	return HashPassword(password, salt) == hash
 }
+
+// SHA256Hex 返回字符串的 SHA-256 十六进制摘要（小写）。
+// 用于 SyncEvent 幂等去重键（payload_hash）等需要稳定定长摘要的场景。
+func SHA256Hex(s string) string {
+	hash := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(hash[:])
+}

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -12,7 +13,6 @@ import (
 	"xcimoc-data-server/utils"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type AuthHandler struct {
@@ -31,17 +31,29 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	// 暴力破解防护：按「用户名 | 客户端IP」限流（窗口内失败 5 次锁定 5 分钟，成功即清零）
+	guardKey := req.Username + "|" + c.ClientIP()
+	if ok, wait := loginGuardAllow(guardKey); !ok {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error": fmt.Sprintf("登录失败次数过多，请 %d 分钟后再试", int(wait.Minutes())+1),
+		})
+		return
+	}
+
 	user, err := query.User.Where(query.User.Username.Eq(req.Username)).Take()
 	if err != nil || user == nil {
 		// 同时处理 not-found / 其它查询异常：统一返回 401，不泄露“用户名不存在”。
+		loginGuardFail(guardKey)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
 
 	if !utils.VerifyPassword(req.Password, user.Salt, user.Password) {
+		loginGuardFail(guardKey)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "用户名或密码错误"})
 		return
 	}
+	loginGuardSuccess(guardKey)
 
 	token, err := middleware.GenerateToken(user, h.Config)
 	if err != nil {
@@ -94,7 +106,7 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 	}
 
 	existing, err := query.User.Where(query.User.Username.Eq(req.Username)).Take()
-	if err != nil && !errorsIsNotFound(err) {
+	if err != nil && !isNotFound(err) {
 		log.Printf("查询用户名冲突失败: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "用户名冲突检查失败"})
 		return
@@ -137,7 +149,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 
 	user, err := query.User.Where(query.User.Username.Eq(req.Username)).Take()
 	if err != nil {
-		if errorsIsNotFound(err) {
+		if isNotFound(err) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "用户不存在"})
 			return
 		}
@@ -159,11 +171,4 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "密码修改成功"})
-}
-
-func errorsIsNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	return err == gorm.ErrRecordNotFound
 }

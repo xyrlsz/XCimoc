@@ -14,6 +14,7 @@ import com.xyrlsz.xcimocob.source.Null;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -105,7 +106,7 @@ public class UpdateHelper {
 
         for (List<Comic> group : groups.values()) {
             // 按 id 升序排序，保留第一条
-            group.sort((a, b) -> Long.compare(a.getId(), b.getId()));
+            group.sort(Comparator.comparingLong(Comic::getId));
             // 删除多余的重复记录
             for (int i = 1; i < group.size(); i++) {
                 toRemove.add(group.get(i));

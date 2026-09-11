@@ -31,6 +31,7 @@ func newSyncEvent(db *gorm.DB, opts ...gen.DOOption) syncEvent {
 	_syncEvent.UserID = field.NewUint(tableName, "user_id")
 	_syncEvent.Type = field.NewString(tableName, "type")
 	_syncEvent.Payload = field.NewString(tableName, "payload")
+	_syncEvent.PayloadHash = field.NewString(tableName, "payload_hash")
 	_syncEvent.ClientID = field.NewString(tableName, "client_id")
 	_syncEvent.CreatedAt = field.NewTime(tableName, "created_at")
 
@@ -42,13 +43,14 @@ func newSyncEvent(db *gorm.DB, opts ...gen.DOOption) syncEvent {
 type syncEvent struct {
 	syncEventDo
 
-	ALL       field.Asterisk
-	ID        field.Uint
-	UserID    field.Uint
-	Type      field.String
-	Payload   field.String
-	ClientID  field.String
-	CreatedAt field.Time
+	ALL         field.Asterisk
+	ID          field.Uint
+	UserID      field.Uint
+	Type        field.String
+	Payload     field.String
+	PayloadHash field.String
+	ClientID    field.String
+	CreatedAt   field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -69,6 +71,7 @@ func (s *syncEvent) updateTableName(table string) *syncEvent {
 	s.UserID = field.NewUint(table, "user_id")
 	s.Type = field.NewString(table, "type")
 	s.Payload = field.NewString(table, "payload")
+	s.PayloadHash = field.NewString(table, "payload_hash")
 	s.ClientID = field.NewString(table, "client_id")
 	s.CreatedAt = field.NewTime(table, "created_at")
 
@@ -87,11 +90,12 @@ func (s *syncEvent) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (s *syncEvent) fillFieldMap() {
-	s.fieldMap = make(map[string]field.Expr, 6)
+	s.fieldMap = make(map[string]field.Expr, 7)
 	s.fieldMap["id"] = s.ID
 	s.fieldMap["user_id"] = s.UserID
 	s.fieldMap["type"] = s.Type
 	s.fieldMap["payload"] = s.Payload
+	s.fieldMap["payload_hash"] = s.PayloadHash
 	s.fieldMap["client_id"] = s.ClientID
 	s.fieldMap["created_at"] = s.CreatedAt
 }

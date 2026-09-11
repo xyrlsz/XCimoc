@@ -108,8 +108,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
      * 若直接通过 Intent 的 ParcelableArrayList 传递，会触发 Binder 事务过大
      * （Large outgoing transaction of ~600KB），导致系统杀死进程并重启。
      * 改为：调用方将列表放入此缓存，Intent 仅传递一个 long 型 key，
-     * ReaderActivity 在 initData 中取出并移除。若缓存缺失（如进程被回收），
-     * 则回退到从数据库按漫画 ID 加载章节列表。
+     * ReaderActivity 在 initData 中取出（缓存保留到 Activity 真正结束，兼容系统重建）。
+     * 若缓存缺失（如进程被回收），则回退到从数据库按漫画 ID 加载章节列表。
      */
     private static final ConcurrentHashMap<Long, List<Chapter>> sChapterCache = new ConcurrentHashMap<>();
     private static final AtomicLong sChapterKeyGenerator = new AtomicLong(0);
@@ -173,6 +173,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     private float mControllerTrigThreshold = 0.3f;
     private BottomSheetDialog mSettingsSheet;
     private float mSwipeDownY = 0f;
+    private long mChapterKey = -1;
 
     public static Intent createIntent(Context context, long id, List<Chapter> list, int mode) {
         Intent intent = getIntent(context, mode);
@@ -438,7 +439,10 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                     ClickEvents.getPageLongClickEventChoice(mPreference) : ClickEvents.getStreamLongClickEventChoice(mPreference);
             long id = getIntent().getLongExtra(Extra.EXTRA_ID, -1);
             long key = getIntent().getLongExtra(Extra.EXTRA_CHAPTER_KEY, -1);
-            List<Chapter> list = key != -1 ? sChapterCache.remove(key) : null;
+            // 读取但不移除缓存：Activity 被系统重建（「不保留活动」/内存回收）后仍能读到同一列表；
+            // 缓存改在 Activity 真正结束时（onDestroy）清理。
+            mChapterKey = key;
+            List<Chapter> list = key != -1 ? sChapterCache.get(key) : null;
             Chapter[] array = (list != null && !list.isEmpty())
                     ? list.toArray(new Chapter[0]) : null;
             mPresenter.loadInit(id, array);
@@ -486,6 +490,11 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         }
         if (mLargeImagePipelineFactory != null) {
             mLargeImagePipelineFactory.getImagePipeline().clearMemoryCaches();
+        }
+        // 正常结束（isFinishing）才清理章节列表缓存；被系统重建销毁时（isFinishing=false）保留，
+        // 使重建后的实例仍能通过同一 key 取到章节列表。
+        if (isFinishing() && mChapterKey != -1) {
+            sChapterCache.remove(mChapterKey);
         }
     }
 
