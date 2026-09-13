@@ -21,9 +21,11 @@ public class ChapterButton extends AppCompatTextView {
 
     private static final int[] NORMAL_STATE = new int[]{-android.R.attr.state_selected};
     private static final int[] SELECTED_STATE = new int[]{android.R.attr.state_selected};
+    private static final int[] FOCUSED_STATE = new int[]{android.R.attr.state_focused, -android.R.attr.state_selected};
 
     private int normalColor;
     private int accentColor;
+    private int focusedColor;
     private boolean download;
 
     public ChapterButton(Context context) {
@@ -49,16 +51,19 @@ public class ChapterButton extends AppCompatTextView {
         normalColor = typedArray2.getColor(R.styleable.ThemeAttributes_colorAutoG_GW, defaultColor);
         typedArray.recycle();
         typedArray2.recycle();
+        focusedColor = (accentColor & 0x00FFFFFF) | 0x33000000;
 
         setClickable(true);
+        setFocusable(true);
+        setFocusableInTouchMode(false);
         download = false;
         initColorDrawableState();
         initDrawableState();
     }
 
     private void initColorDrawableState() {
-        ColorStateList colorStateList = new ColorStateList(new int[][]{NORMAL_STATE, SELECTED_STATE},
-                new int[]{normalColor, Color.WHITE});
+        ColorStateList colorStateList = new ColorStateList(new int[][]{FOCUSED_STATE, SELECTED_STATE, NORMAL_STATE},
+                new int[]{Color.WHITE, Color.WHITE, normalColor});
         setTextColor(colorStateList);
     }
 
@@ -73,9 +78,15 @@ public class ChapterButton extends AppCompatTextView {
         selectedDrawable.setCornerRadius(ViewUtils.dpToPixel(18, getContext()));
         selectedDrawable.setColor(accentColor);
 
+        GradientDrawable focusedDrawable = new GradientDrawable();
+        focusedDrawable.setStroke((int) ViewUtils.dpToPixel(1, getContext()), accentColor);
+        focusedDrawable.setCornerRadius(ViewUtils.dpToPixel(18, getContext()));
+        focusedDrawable.setColor(focusedColor);
+
         StateListDrawable stateList = new StateListDrawable();
-        stateList.addState(NORMAL_STATE, normalDrawable);
+        stateList.addState(FOCUSED_STATE, focusedDrawable);
         stateList.addState(SELECTED_STATE, selectedDrawable);
+        stateList.addState(NORMAL_STATE, normalDrawable);
         setBackgroundDrawable(stateList);
     }
 
