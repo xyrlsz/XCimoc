@@ -22,9 +22,17 @@ def main():
     else:
         # 保底：直接用完整文件
         version_content = content
+    version_content = """
+> [!TIP]
+> `v1.10.9及以下的版本更新到v1.11.0以及以上的版本`
+>
+> 1. 由于更新了数据库框架，原有的数据需要迁移。
+> 2. 请使用软件的备份恢复功能进行数据迁移。
+> 3. 已下载漫画可以在设置里找到扫描选项
+""" + "\n" + version_content
 
     with open(output_path, 'w', encoding='utf-8') as out:
-        out.write(version_content)
+        out.write(version_content.strip())
 
     print('Extracted release body:')
     print(version_content)
