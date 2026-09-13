@@ -117,6 +117,15 @@ public class JsMangaParser extends MangaParser {
         }
     }
 
+    /**
+     * 判断 JS 返回的 JSON 字符串是否为 null/undefined/空。
+     * 用于在 new JSONObject(callJs(...)) 前拦截，避免
+     * "Value null of type org.json.JSONObject$1 cannot be converted to JSONObject"。
+     */
+    private static boolean isNullJson(String json) {
+        return json == null || json.isEmpty() || "null".equals(json);
+    }
+
     /* ---------------- 引擎 ---------------- */
 
     /**
@@ -395,16 +404,22 @@ public class JsMangaParser extends MangaParser {
     @Override
     public Request getSearchRequest(String keyword, int page) {
         return withEngine(e -> {
+            if (!e.hasFunction("getSearchRequest")) return null;
             JSONArray args = new JSONArray().put(keyword).put(page);
-            return buildRequest(new JSONObject(callJs(e, "getSearchRequest", args.toString())));
+            String s = callJs(e, "getSearchRequest", args.toString());
+            if (isNullJson(s)) return null;
+            return buildRequest(new JSONObject(s));
         });
     }
 
     @Override
     public SearchIterator getSearchIterator(String html, int page) {
         return withEngine(e -> {
+            if (!e.hasFunction("parseSearch")) return null;
             JSONArray args = new JSONArray().put(html).put(page);
-            JSONArray arr = new JSONArray(callJs(e, "parseSearch", args.toString()));
+            String s = callJs(e, "parseSearch", args.toString());
+            if (isNullJson(s)) return null;
+            JSONArray arr = new JSONArray(s);
             return new JsSearchIterator(arr, page, mSource.getType());
         });
     }
@@ -412,16 +427,22 @@ public class JsMangaParser extends MangaParser {
     @Override
     public Request getInfoRequest(String cid) {
         return withEngine(e -> {
+            if (!e.hasFunction("getInfoRequest")) return null;
             JSONArray args = new JSONArray().put(cid);
-            return buildRequest(new JSONObject(callJs(e, "getInfoRequest", args.toString())));
+            String s = callJs(e, "getInfoRequest", args.toString());
+            if (isNullJson(s)) return null;
+            return buildRequest(new JSONObject(s));
         });
     }
 
     @Override
     public Comic parseInfo(String html, Comic comic) {
         return withEngine(e -> {
+            if (!e.hasFunction("parseInfo")) return comic;
             JSONArray args = new JSONArray().put(html).put(comic.getCid());
-            JSONObject o = new JSONObject(callJs(e, "parseInfo", args.toString()));
+            String s = callJs(e, "parseInfo", args.toString());
+            if (isNullJson(s)) return comic;
+            JSONObject o = new JSONObject(s);
             String title = o.optString("title");
             String cover = o.optString("cover");
             String update = o.optString("update");
@@ -449,7 +470,9 @@ public class JsMangaParser extends MangaParser {
         return withEngine(e -> {
             if (!e.hasFunction("getChapterRequest")) return null;
             JSONArray args = new JSONArray().put(html).put(cid);
-            return buildRequest(new JSONObject(callJs(e, "getChapterRequest", args.toString())));
+            String s = callJs(e, "getChapterRequest", args.toString());
+            if (isNullJson(s)) return null;
+            return buildRequest(new JSONObject(s));
         });
     }
 
@@ -466,6 +489,7 @@ public class JsMangaParser extends MangaParser {
             return toChapters(cached, sourceComic);
         }
         return withEngine(e -> {
+            if (!e.hasFunction("parseChapter")) return new LinkedList<>();
             JSONArray args;
             if (comic != null) {
                 JSONObject comicJson = new JSONObject();
@@ -476,7 +500,9 @@ public class JsMangaParser extends MangaParser {
                 args = new JSONArray().put(html);
             }
             String fn = "parseChapter";
-            JSONArray arr = new JSONArray(callJs(e, fn, args.toString()));
+            String s = callJs(e, fn, args.toString());
+            if (isNullJson(s)) return new LinkedList<>();
+            JSONArray arr = new JSONArray(s);
             return toChapters(arr, sourceComic);
         });
     }
@@ -510,12 +536,17 @@ public class JsMangaParser extends MangaParser {
     @Override
     public Request getImagesRequest(String cid, String path) {
         return withEngine(e -> {
+            if (!e.hasFunction("getImagesRequest")) return null;
             JSONArray args = new JSONArray().put(cid).put(path);
-            Request req = buildRequest(new JSONObject(callJs(e, "getImagesRequest", args.toString())));
+            String s = callJs(e, "getImagesRequest", args.toString());
+            if (isNullJson(s)) return null;
+            Request req = buildRequest(new JSONObject(s));
             // 同一引擎内捕获 getImagesRequest 之后的 getHeader（referer 已更新）
             if (e.hasFunction("getHeader")) {
                 try {
-                    JSONObject ho = new JSONObject(callJs(e, "getHeader", "[]"));
+                    String hs = callJs(e, "getHeader", "[]");
+                    if (isNullJson(hs)) return req;
+                    JSONObject ho = new JSONObject(hs);
                     Headers h = headersFromJson(ho);
                     if (h != null) mCachedHeader = h;
                 } catch (Exception ignore) {
@@ -535,6 +566,7 @@ public class JsMangaParser extends MangaParser {
     @Override
     public List<ImageUrl> parseImages(String html, Chapter chapter) {
         return withEngine(e -> {
+            if (!e.hasFunction("parseImages")) return new ArrayList<>();
             JSONArray args;
             if (chapter != null) {
                 JSONObject ch = new JSONObject();
@@ -545,7 +577,9 @@ public class JsMangaParser extends MangaParser {
             } else {
                 args = new JSONArray().put(html);
             }
-            JSONArray arr = new JSONArray(callJs(e, "parseImages", args.toString()));
+            String s = callJs(e, "parseImages", args.toString());
+            if (isNullJson(s)) return new ArrayList<>();
+            JSONArray arr = new JSONArray(s);
             List<ImageUrl> list = new ArrayList<>();
             Headers defaultHeader = getHeader();
             long cc = chapter != null ? chapter.getId() : 0L;
@@ -583,7 +617,9 @@ public class JsMangaParser extends MangaParser {
         return withEngine(e -> {
             if (!e.hasFunction("getLazyRequest")) return null;
             JSONArray args = new JSONArray().put(url);
-            return buildRequest(new JSONObject(callJs(e, "getLazyRequest", args.toString())));
+            String s = callJs(e, "getLazyRequest", args.toString());
+            if (isNullJson(s)) return null;
+            return buildRequest(new JSONObject(s));
         });
     }
 
@@ -601,7 +637,9 @@ public class JsMangaParser extends MangaParser {
         return withEngine(e -> {
             if (!e.hasFunction("getCheckRequest")) return getInfoRequest(cid);
             JSONArray args = new JSONArray().put(cid);
-            return buildRequest(new JSONObject(callJs(e, "getCheckRequest", args.toString())));
+            String s = callJs(e, "getCheckRequest", args.toString());
+            if (isNullJson(s)) return getInfoRequest(cid);
+            return buildRequest(new JSONObject(s));
         });
     }
 
@@ -664,7 +702,9 @@ public class JsMangaParser extends MangaParser {
         Request r = withEngine(e -> {
             if (!e.hasFunction("getCategoryRequest")) return null;
             JSONArray args = new JSONArray().put(rendered).put(page);
-            return buildRequest(new JSONObject(callJs(e, "getCategoryRequest", args.toString())));
+            String s = callJs(e, "getCategoryRequest", args.toString());
+            if (isNullJson(s)) return null;
+            return buildRequest(new JSONObject(s));
         });
         if (r != null) return r;
         // 未实现 getCategoryRequest 的模板型源：直接用渲染后的 URL 发 GET。
@@ -678,7 +718,9 @@ public class JsMangaParser extends MangaParser {
         return withEngine(e -> {
             if (!e.hasFunction("parseCategory")) return null;
             JSONArray args = new JSONArray().put(html).put(page);
-            JSONArray arr = new JSONArray(callJs(e, "parseCategory", args.toString()));
+            String s = callJs(e, "parseCategory", args.toString());
+            if (isNullJson(s)) return null;
+            JSONArray arr = new JSONArray(s);
             List<Comic> list = new ArrayList<>();
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject o = arr.optJSONObject(i);
