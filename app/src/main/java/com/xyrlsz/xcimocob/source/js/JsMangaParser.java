@@ -80,6 +80,13 @@ public class JsMangaParser extends MangaParser {
      */
     private volatile Headers mCachedHeader;
     /**
+     * JS 源 init() 后台调度去重标记：保证每个解析器实例只调度一次。
+     * 用于拷贝漫画等需要在脚本加载时探测域名/分类的源——init() 内部调用 fetch()，
+     * 必须在后台线程执行（主线程会被 JsHost.handleFetch 拒绝）。
+     */
+    private final java.util.concurrent.atomic.AtomicBoolean mInited =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
+    /**
      * 分类（懒加载缓存）。
      */
     private volatile Category mCategory;
@@ -94,6 +101,7 @@ public class JsMangaParser extends MangaParser {
         mTitle = source.getTitle();
         applyConfigSourceTitle(mTitle);
         buildFilters();
+        initInBackground();
     }
 
     /**
@@ -207,6 +215,31 @@ public class JsMangaParser extends MangaParser {
 
     private String callJs(QuickJSEngine engine, String name, String argsJson) {
         return engine.callFunction(name, argsJson);
+    }
+
+    /**
+     * 后台调度 JS 源的 {@code init()}（如拷贝漫画的域名/分类探测）。
+     * <p>
+     * init() 内部可能调用 fetch()，主线程会被 {@link JsHost#handleFetch(String)} 拒绝并报
+     * "Network request not allowed on main thread"。这里用独立线程执行，并通过
+     * {@link #mInited} 保证每个解析器实例只调度一次。
+     * <p>
+     * 失败不影响后续解析：{@code withEngine} 会捕获 Throwable，且 init 仅用于更新持久化设置，
+     * 不改变解析器自身状态；探测完成后的设置会在下次引擎创建时被读取。
+     */
+    public void initInBackground() {
+        if (!mInited.compareAndSet(false, true)) return;
+        new Thread(() -> {
+            try {
+                withEngine(e -> {
+                    if (e.hasFunction("init")) {
+                        callJs(e, "init", "[]");
+                    }
+                    return null;
+                });
+            } catch (Throwable ignore) {
+            }
+        }, "JsSource-init-" + mSource.getType()).start();
     }
 
     /* ---------------- 过滤器 / 元数据 ---------------- */
