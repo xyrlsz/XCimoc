@@ -43,6 +43,7 @@ target_compile_options(quickjs PRIVATE
 # ============================================================
 add_library(quickjs_jni SHARED
         quickjs_jni.c
+        codec_native.c
         utf8to16.c
 )
 

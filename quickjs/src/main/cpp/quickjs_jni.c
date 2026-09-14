@@ -19,6 +19,7 @@
 
 #include "quickjs.h"
 #include "utf8to16.h"
+#include "codec_native.h"
 
 #define LOG_TAG "QuickJS"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -169,6 +170,7 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
     jmethodID mid = NULL;
     const char *name_str = NULL, *args_str = NULL;
     const char *r = NULL;
+    char *native_result = NULL;
     JSValue ret = JS_NULL;
 
     if (g_vm == NULL ||
@@ -182,6 +184,13 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
     if (!name_str)
         goto done;
 
+    if (args_str && qjs_native_codec(name_str, args_str, &native_result)) {
+        ret = JS_NewString(ctx, native_result);
+        free(native_result);
+        native_result = NULL;
+        goto done;
+    }
+
     jname = (*env)->NewStringUTF(env, name_str);
     jargs = (*env)->NewStringUTF(env, args_str ? args_str : "[]");
 
@@ -189,7 +198,7 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
     if (!clazz)
         goto done;
     mid = (*env)->GetStaticMethodID(env, clazz, "onHostCall",
-            "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;");
+                                    "(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;");
     if (!mid)
         goto done;
     jresult = (jstring) (*env)->CallStaticObjectMethod(env, clazz, mid, jname, jargs);
@@ -204,7 +213,7 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
     if ((*env)->ExceptionCheck(env))
         (*env)->ExceptionClear(env);
 
-done:
+    done:
     if (name_str)
         JS_FreeCString(ctx, name_str);
     if (args_str)
