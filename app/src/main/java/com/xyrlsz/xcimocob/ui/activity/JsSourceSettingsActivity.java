@@ -21,6 +21,7 @@ import com.xyrlsz.xcimocob.source.js.JsMangaParser;
 import com.xyrlsz.xcimocob.ui.widget.LoginDialog;
 import com.xyrlsz.xcimocob.ui.widget.MaterialOptionRow;
 import com.xyrlsz.xcimocob.utils.HintUtils;
+import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -172,7 +173,7 @@ public class JsSourceSettingsActivity extends BackActivity {
     }
 
     private void doLogin(JSONObject params) {
-        new Thread(() -> {
+        ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
             JSONObject result = mParser.login(params);
             android.util.Log.i("JsSource", "[login] type=" + mParser.getType()
                     + " result=" + (result != null ? result.toString() : "null"));
@@ -184,7 +185,7 @@ public class JsSourceSettingsActivity extends BackActivity {
                 HintUtils.showToast(this, msg);
                 buildAll();
             });
-        }).start();
+        });
     }
 
     /* ---------------- 通用 option 行 ---------------- */
@@ -307,7 +308,7 @@ public class JsSourceSettingsActivity extends BackActivity {
                     btn.setTextColor(getResources().getColor(R.color.white));
                     btn.setOnClickListener(v -> {
                         btn.setEnabled(false);
-                        new Thread(() -> {
+                        ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
                             JSONObject r = mParser.settingsCallback(actionKey);
                             runOnUiThread(() -> {
                                 btn.setEnabled(true);
@@ -319,7 +320,7 @@ public class JsSourceSettingsActivity extends BackActivity {
                                            ? "操作成功" : "操作失败");
                                 HintUtils.showToast(this, msg);
                             });
-                        }).start();
+                        });
                     });
                     addOptionRow(box, label, btn);
                     break;

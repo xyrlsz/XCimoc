@@ -7,6 +7,7 @@ import android.widget.TextView;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.manager.JsSourceManager;
 import com.xyrlsz.xcimocob.model.JsSource;
+import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
 import org.json.JSONObject;
 
@@ -72,7 +73,7 @@ public class JsSourceListActivity extends BackActivity {
 
         // 对少数 metaReady=false 的存量源在后台回填（App 启动时 backfillMeta 通常已处理完）
         if (!needBackfill.isEmpty()) {
-            new Thread(() -> {
+            ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
                 for (JsSource s : needBackfill) {
                     try {
                         JSONObject meta = manager.validateScript(s.getScript());
@@ -97,7 +98,7 @@ public class JsSourceListActivity extends BackActivity {
                     }
                     bindList(refreshed);
                 });
-            }).start();
+            });
         }
     }
 

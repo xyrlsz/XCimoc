@@ -24,6 +24,7 @@ import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.parser.MangaParser;
 import com.xyrlsz.xcimocob.source.js.JsMangaParser;
 import com.xyrlsz.xcimocob.utils.HintUtils;
+import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -143,7 +144,7 @@ public class JsSourceSettingsDialogFragment extends DialogFragment {
             } catch (Exception ignore) {
             }
             loginBtn.setEnabled(false);
-            new Thread(() -> {
+            ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
                 JSONObject result = parser.login(params);
                 requireActivity().runOnUiThread(() -> {
                     loginBtn.setEnabled(true);
@@ -154,7 +155,7 @@ public class JsSourceSettingsDialogFragment extends DialogFragment {
                             ? getString(R.string.comic_source_js_logged_in)
                             : getString(R.string.comic_source_js_not_logged_in));
                 });
-            }).start();
+            });
         });
 
         Button logoutBtn = new Button(requireContext());

@@ -63,6 +63,7 @@ import com.xyrlsz.xcimocob.ui.view.MainView;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.PermissionUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
+import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -403,7 +404,7 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                 }
             } else if (__id == R.id.drawer_comicUpdate) {
 //                    update.startUpdate(versionName, content, mUrl, versionCode, md5);
-                new Thread(() -> {
+                ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
 //                        boolean checkGithubOk = false;
 //                        try {
 //                            Request request = new Request.Builder().url(GITHUB_RELEASE_URL).build();
@@ -424,7 +425,7 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                     Intent intent = new Intent(Intent.ACTION_VIEW);
                     intent.setData(Uri.parse(releaseUrl));
                     startActivity(intent);
-                }).start();
+                });
             } else if (__id == R.id.drawer_night) {
                 onNightSwitch();
                 mPreference.putBoolean(PreferenceManager.PREF_NIGHT, night);

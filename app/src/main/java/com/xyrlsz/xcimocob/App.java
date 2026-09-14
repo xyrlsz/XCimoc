@@ -43,6 +43,7 @@ import com.xyrlsz.xcimocob.utils.DocumentUtils;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
+import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 import com.xyrlsz.xcimocob.utils.TrustAllSslUtils;
 
 import java.io.File;
@@ -284,7 +285,7 @@ public class App extends Application implements AppGetter, Thread.UncaughtExcept
 
         // 首次启动播种内置 JS 源（幂等，仅当 JsSource 表为空时写入）。
         // 播种和解析器初始化必须保持顺序，避免解析器先缓存 Null 实现。
-        new Thread(() -> {
+        ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
             try {
                 JsSourceManager.getInstance(this).seedFromAssets();
             } catch (Throwable ignore) {
@@ -298,16 +299,16 @@ public class App extends Application implements AppGetter, Thread.UncaughtExcept
                 JsSourceManager.getInstance(this).autoUpdateIfNeeded();
             } catch (Throwable ignore) {
             }
-        }).start();
+        });
 
         // 为存量 JS 源回填登录/设置元信息（metaReady=false 的源），供漫画源设置列表直接读取，
         // 避免列表加载时逐源跑 JS。在后台线程执行，不阻塞启动。
-        new Thread(() -> {
+        ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
             try {
                 JsSourceManager.getInstance(this).backfillMeta();
             } catch (Throwable ignore) {
             }
-        }).start();
+        });
 
         // 初始化自动数据同步管理器
         DataSyncManager dataSyncManager = DataSyncManager.getInstance();

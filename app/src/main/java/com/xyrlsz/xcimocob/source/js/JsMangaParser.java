@@ -20,6 +20,7 @@ import com.xyrlsz.xcimocob.parser.WebParserConfig;
 import com.xyrlsz.xcimocob.utils.BinStreamUtils;
 import com.xyrlsz.xcimocob.utils.IdCreator;
 import com.xyrlsz.xcimocob.utils.StringUtils;
+import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -35,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.Headers;
 import okhttp3.MediaType;
@@ -76,16 +78,16 @@ public class JsMangaParser extends MangaParser {
      */
     private final ThreadLocal<QuickJSEngine> mSessionEngine = new ThreadLocal<>();
     /**
-     * 最近一次图片请求后缓存的请求头（用于"referer 随图片页变化"的源）。
-     */
-    private volatile Headers mCachedHeader;
-    /**
      * JS 源 init() 后台调度去重标记：保证每个解析器实例只调度一次。
      * 用于拷贝漫画等需要在脚本加载时探测域名/分类的源——init() 内部调用 fetch()，
      * 必须在后台线程执行（主线程会被 JsHost.handleFetch 拒绝）。
      */
-    private final java.util.concurrent.atomic.AtomicBoolean mInited =
-            new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final AtomicBoolean mInited =
+            new AtomicBoolean(false);
+    /**
+     * 最近一次图片请求后缓存的请求头（用于"referer 随图片页变化"的源）。
+     */
+    private volatile Headers mCachedHeader;
     /**
      * 分类（懒加载缓存）。
      */
@@ -229,7 +231,6 @@ public class JsMangaParser extends MangaParser {
     /**
      * 后台调度 JS 源的 {@code init()}（如拷贝漫画的域名/分类探测）。
      * <p>
-     * init() 内部可能调用 fetch()，主线程会被 {@link JsHost#handleFetch(String)} 拒绝并报
      * "Network request not allowed on main thread"。这里用独立线程执行，并通过
      * {@link #mInited} 保证每个解析器实例只调度一次。
      * <p>
@@ -238,7 +239,7 @@ public class JsMangaParser extends MangaParser {
      */
     public void initInBackground() {
         if (!mInited.compareAndSet(false, true)) return;
-        new Thread(() -> {
+        ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
             try {
                 withEngine(e -> {
                     if (e.hasFunction("init")) {
@@ -248,7 +249,7 @@ public class JsMangaParser extends MangaParser {
                 });
             } catch (Throwable ignore) {
             }
-        }, "JsSource-init-" + mSource.getType()).start();
+        });
     }
 
     /* ---------------- 过滤器 / 元数据 ---------------- */
