@@ -58,9 +58,9 @@ public class JsMangaParser extends MangaParser {
     private static final String SDK;
     private static final int HEADER_CACHE_CAP = 64;
     /**
-     * JS 源 initWhenAppStart() 的 app 启动级去重：按 source type 维度，整个 app 生命周期只执行一次。
+     * JS 源 init() 的 app 启动级去重：按 source type 维度，整个 app 生命周期只执行一次。
      */
-    private static final ConcurrentHashMap<Integer, AtomicBoolean> sInitWhenAppStartGate =
+    private static final ConcurrentHashMap<Integer, AtomicBoolean> sInitGate =
             new ConcurrentHashMap<>();
 
     static {
@@ -84,9 +84,8 @@ public class JsMangaParser extends MangaParser {
      */
     private final ThreadLocal<QuickJSEngine> mSessionEngine = new ThreadLocal<>();
     /**
-     * JS 源 init() 后台调度去重标记：每个 parser 实例只调度一次。
-     * 用于拷贝漫画等需要在脚本加载时探测域名/分类的源——init() 内部调用 fetch()，
-     * 必须在后台线程执行（主线程会被 JsHost.handleFetch 拒绝）。
+     * JS 源 initWhenParserCreate() 的实例级去重：每次 parser 创建时只调度一次。
+     * 用于需要在每次构建源时重跑的探测逻辑，内部可执行 fetch()，必须在后台线程进行。
      */
     private final AtomicBoolean mInited =
             new AtomicBoolean(false);
@@ -236,8 +235,8 @@ public class JsMangaParser extends MangaParser {
 
     /**
      * 后台调度 JS 源初始化：
-     * - initWhenAppStart()：app 启动时只走一次（按 source type 去重）
-     * - init()：每次新建 parser / 重建源时执行一次（实例级去重）
+     * - init()：app 启动时只走一次（按 source type 去重）
+     * - initWhenParserCreate()：每次新建 parser / 重建源时执行一次（实例级去重）
      * <p>
      * "Network request not allowed on main thread"。这里用独立线程执行，且不能在主线程调用 fetch。
      */
@@ -245,15 +244,15 @@ public class JsMangaParser extends MangaParser {
         ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
             try {
                 withEngine(e -> {
-                    if (e.hasFunction("initWhenAppStart")) {
-                        AtomicBoolean gate = sInitWhenAppStartGate.computeIfAbsent(mSource.getType(), k -> new AtomicBoolean(false));
+                    if (e.hasFunction("init")) {
+                        AtomicBoolean gate = sInitGate.computeIfAbsent(mSource.getType(), k -> new AtomicBoolean(false));
                         if (gate.compareAndSet(false, true)) {
-                            callJs(e, "initWhenAppStart", "[]");
+                            callJs(e, "init", "[]");
                         }
                     }
-                    if (e.hasFunction("init")) {
+                    if (e.hasFunction("initWhenParserCreate")) {
                         if (mInited.compareAndSet(false, true)) {
-                            callJs(e, "init", "[]");
+                            callJs(e, "initWhenParserCreate", "[]");
                         }
                     }
                     return null;
