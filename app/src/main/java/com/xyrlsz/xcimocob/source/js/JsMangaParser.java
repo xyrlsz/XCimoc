@@ -36,6 +36,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import okhttp3.Headers;
@@ -56,6 +57,11 @@ public class JsMangaParser extends MangaParser {
 
     private static final String SDK;
     private static final int HEADER_CACHE_CAP = 64;
+    /**
+     * JS 源 initWhenAppStart() 的 app 启动级去重：按 source type 维度，整个 app 生命周期只执行一次。
+     */
+    private static final ConcurrentHashMap<Integer, AtomicBoolean> sInitWhenAppStartGate =
+            new ConcurrentHashMap<>();
 
     static {
         QuickJSEngine.setHostBridge(JsHost.INSTANCE);
@@ -78,7 +84,7 @@ public class JsMangaParser extends MangaParser {
      */
     private final ThreadLocal<QuickJSEngine> mSessionEngine = new ThreadLocal<>();
     /**
-     * JS 源 init() 后台调度去重标记：保证每个解析器实例只调度一次。
+     * JS 源 init() 后台调度去重标记：每个 parser 实例只调度一次。
      * 用于拷贝漫画等需要在脚本加载时探测域名/分类的源——init() 内部调用 fetch()，
      * 必须在后台线程执行（主线程会被 JsHost.handleFetch 拒绝）。
      */
@@ -229,21 +235,26 @@ public class JsMangaParser extends MangaParser {
     }
 
     /**
-     * 后台调度 JS 源的 {@code init()}（如拷贝漫画的域名/分类探测）。
+     * 后台调度 JS 源初始化：
+     * - initWhenAppStart()：app 启动时只走一次（按 source type 去重）
+     * - init()：每次新建 parser / 重建源时执行一次（实例级去重）
      * <p>
-     * "Network request not allowed on main thread"。这里用独立线程执行，并通过
-     * {@link #mInited} 保证每个解析器实例只调度一次。
-     * <p>
-     * 失败不影响后续解析：{@code withEngine} 会捕获 Throwable，且 init 仅用于更新持久化设置，
-     * 不改变解析器自身状态；探测完成后的设置会在下次引擎创建时被读取。
+     * "Network request not allowed on main thread"。这里用独立线程执行，且不能在主线程调用 fetch。
      */
     public void initInBackground() {
-        if (!mInited.compareAndSet(false, true)) return;
         ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
             try {
                 withEngine(e -> {
+                    if (e.hasFunction("initWhenAppStart")) {
+                        AtomicBoolean gate = sInitWhenAppStartGate.computeIfAbsent(mSource.getType(), k -> new AtomicBoolean(false));
+                        if (gate.compareAndSet(false, true)) {
+                            callJs(e, "initWhenAppStart", "[]");
+                        }
+                    }
                     if (e.hasFunction("init")) {
-                        callJs(e, "init", "[]");
+                        if (mInited.compareAndSet(false, true)) {
+                            callJs(e, "init", "[]");
+                        }
                     }
                     return null;
                 });
