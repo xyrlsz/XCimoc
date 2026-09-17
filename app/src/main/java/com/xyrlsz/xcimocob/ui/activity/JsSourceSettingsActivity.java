@@ -33,7 +33,7 @@ import java.util.List;
  * 按「JS 配置」自动生成登录与设置界面的页面（替代硬编码的逐源固定页面）。
  * <p>
  * 登录区：脚本声明 {@code getLoginState()/login(params)/logout()} 时渲染账号/密码框与登录/登出按钮；
- * 设置区：脚本声明 {@code getSettings()} 返回字段描述数组时，按类型（text/select/bool）动态渲染并持久化。
+ * 设置区：脚本声明 {@code getSettings()} 返回字段描述数组时，按类型（text/EditText/select/bool）动态渲染并持久化。
  */
 public class JsSourceSettingsActivity extends BackActivity {
 
@@ -302,14 +302,13 @@ public class JsSourceSettingsActivity extends BackActivity {
                 case "callback":
                 case "button": {
                     // 按钮型 option：点击调用脚本 onSettingsAction(key)（如签到）
-                    String actionKey = key;
                     MaterialButton btn = new MaterialButton(this);
                     btn.setText(o.optString("buttonText", label));
                     btn.setTextColor(getResources().getColor(R.color.white));
                     btn.setOnClickListener(v -> {
                         btn.setEnabled(false);
                         ThreadPoolManager.getInstance().getIoExecutor().execute(() -> {
-                            JSONObject r = mParser.settingsCallback(actionKey);
+                            JSONObject r = mParser.settingsCallback(key);
                             runOnUiThread(() -> {
                                 btn.setEnabled(true);
                                 // 优先显示回调返回的真实 message（如"已登录剩余可看 N 页"），
@@ -325,7 +324,9 @@ public class JsSourceSettingsActivity extends BackActivity {
                     addOptionRow(box, label, btn);
                     break;
                 }
-                default: {
+                case "EditText":
+                case "edit_text":
+                case "edittext": {
                     // 文本型 option：右侧 Material 输入框，失去焦点时保存
                     com.google.android.material.textfield.TextInputLayout inputLayout =
                             new com.google.android.material.textfield.TextInputLayout(this);
@@ -350,6 +351,9 @@ public class JsSourceSettingsActivity extends BackActivity {
                     });
                     inputLayout.addView(row.edit);
                     addOptionRow(box, label, inputLayout);
+                    break;
+                }
+                default: {
                     break;
                 }
             }

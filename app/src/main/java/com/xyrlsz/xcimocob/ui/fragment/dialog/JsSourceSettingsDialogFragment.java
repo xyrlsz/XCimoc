@@ -236,6 +236,9 @@ public class JsSourceSettingsDialogFragment extends DialogFragment {
                     box.addView(row.spinner);
                     break;
                 }
+                case "EditText":
+                case "edit_text":
+                case "edittext":
                 default: {
                     row.edit = new EditText(requireContext());
                     row.edit.setText(current);
