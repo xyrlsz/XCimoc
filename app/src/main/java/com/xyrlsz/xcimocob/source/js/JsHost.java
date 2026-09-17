@@ -1,10 +1,13 @@
 package com.xyrlsz.xcimocob.source.js;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Looper;
 import android.util.Log;
 import android.webkit.WebSettings;
+
+import androidx.appcompat.app.AlertDialog;
 
 import com.xyrlsz.quickjs.QuickJSEngine;
 import com.xyrlsz.quickjs.SourceCodec;
@@ -76,6 +79,10 @@ public final class JsHost implements QuickJSEngine.HostBridge {
                     HintUtils.showToast(arg(argsJson, "data"));
                     yield "null";
                 }
+                case "dialog" -> {
+                    handleDialog(argsJson);
+                    yield "null";
+                }
                 case "urlencode" -> quoteStr(SourceCodec.urlEncode(arg(argsJson, "data")));
                 case "urldecode" -> quoteStr(SourceCodec.urlDecode(arg(argsJson, "data")));
                 default -> "null";
@@ -84,6 +91,23 @@ public final class JsHost implements QuickJSEngine.HostBridge {
             Log.e(TAG, "onHostCall(" + name + ") error", e);
             return "null";
         }
+    }
+
+    private void handleDialog(String argsJson) throws JSONException {
+        Activity activity = App.getCurrentActivity();
+        if (activity == null || activity.isFinishing()) {
+            return;
+        }
+        String message = arg(argsJson, "data");
+        activity.runOnUiThread(() -> {
+            if (activity.isFinishing()) {
+                return;
+            }
+            new AlertDialog.Builder(activity)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show();
+        });
     }
 
     private String handleDom(String argsJson) throws JSONException {
