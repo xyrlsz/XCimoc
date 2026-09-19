@@ -47,6 +47,7 @@ def _keyPassword = System.getenv("KEY_PASSWORD")
 android {
     compileSdk 37
     namespace = "com.xyrlsz.xcimocob"
+    ndkVersion = "29.0.14206865"
     kotlin {
         compilerOptions {
             jvmTarget = JvmTarget.JVM_17
