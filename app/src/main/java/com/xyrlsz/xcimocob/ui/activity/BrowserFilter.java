@@ -9,6 +9,7 @@ import com.xyrlsz.xcimocob.manager.JsSourceManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.model.JsSource;
 import com.xyrlsz.xcimocob.utils.HintUtils;
+import com.xyrlsz.xcimocob.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +46,11 @@ public class BrowserFilter extends BaseActivity {
         // 网络漫画源统一由 JS 源提供，按已安装的 JS 源注册 URL 监听
         List<Integer> list = new ArrayList<>();
         for (JsSource js : JsSourceManager.getInstance(this).listEnabled()) {
-            list.add(js.getType());
+            if (!StringUtils.isEmpty(js.getHosts())
+                    && !js.getHosts().equals("null")
+                    && !js.getHosts().replaceAll("\\s+", "").equals("[]")) {
+                list.add(js.getType());
+            }
         }
         return list;
     }
