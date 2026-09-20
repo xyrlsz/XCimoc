@@ -238,13 +238,15 @@ public class JsSourceSettingsDialogFragment extends DialogFragment {
                 }
                 case "EditText":
                 case "edit_text":
-                case "edittext":
-                default: {
+                case "edittext": {
                     row.edit = new EditText(requireContext());
                     row.edit.setText(current);
                     row.edit.setSingleLine(true);
                     box.addView(lbl);
                     box.addView(row.edit);
+                    break;
+                }
+                default: {
                     break;
                 }
             }
