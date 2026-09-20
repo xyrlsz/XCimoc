@@ -5,6 +5,22 @@
 > 2. 请使用软件的备份恢复功能进行数据迁移。
 > 3. 已下载漫画可以在设置里找到扫描选项
 
+## v1.15.2
+
+### fix
+
+- 更新依赖（QuickJs 0.17.0，android-opencc 1.4.2.6），修复android-opencc导致的闪退问题
+- 更新 BrowserFilter 中的 JS 源过滤逻辑，确保有效的 hosts 被添加
+- 添加 codec_native 模块以处理热编码，支持 JSON 编解码，加速js编解码运行
+- 使用线程池管理器替换新线程创建，优化后台任务执行
+
+### feat
+
+- 新增函数showDialogMessage给js漫画源
+- 漫画源新增initWhenParserCreate()函数，init()函数改为App启动时只运行一次
+
+---
+
 ## v1.15.1
 
 ### fix
