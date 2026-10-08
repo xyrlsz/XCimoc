@@ -206,28 +206,28 @@ dependencies {
     annotationProcessor 'io.objectbox:objectbox-processor:5.4.2'
     implementation 'com.squareup.okhttp3:okhttp:5.5.0'
     implementation 'org.apache.commons:commons-text:1.15.0'
-    implementation 'com.facebook.fresco:fresco:3.7.0'
-    implementation 'com.facebook.fresco:middleware:3.7.0'
-    implementation 'com.facebook.fresco:imagepipeline:3.7.0'
-    implementation 'com.facebook.fresco:imagepipeline-okhttp3:3.7.0'
-    implementation "com.facebook.fresco:webpsupport:3.7.0"
-    implementation "com.facebook.fresco:animated-webp:3.7.0"
+    implementation 'com.facebook.fresco:fresco:3.9.0'
+    implementation 'com.facebook.fresco:middleware:3.9.0'
+    implementation 'com.facebook.fresco:imagepipeline:3.9.0'
+    implementation 'com.facebook.fresco:imagepipeline-okhttp3:3.9.0'
+    implementation "com.facebook.fresco:webpsupport:3.9.0"
+    implementation "com.facebook.fresco:animated-webp:3.9.0"
     implementation 'com.facebook.infer.annotation:infer-annotation:0.18.0'
 
     implementation 'org.jsoup:jsoup:1.23.2'
     implementation 'com.google.re2j:re2j:1.8'
     implementation 'io.reactivex.rxjava3:rxjava:3.1.12'
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.2'
-    api 'com.google.guava:guava:33.7.1-android'
+    api 'com.google.guava:guava:33.7.2-android'
     implementation 'com.google.code.gson:gson:2.14.0'
 
     implementation 'com.github.xyrlsz:android-opencc:1.4.2.6'
     implementation('com.github.bitfireAT:dav4jvm:4.0.0') {
         exclude group: 'org.ogce', module: 'xpp3'
     }
-    implementation 'io.ktor:ktor-client-okhttp:3.5.2'
-    implementation 'io.ktor:ktor-client-auth:3.5.2'
-    implementation 'io.ktor:ktor-client-encoding:3.5.2'
+    implementation 'io.ktor:ktor-client-okhttp:3.6.0'
+    implementation 'io.ktor:ktor-client-auth:3.6.0'
+    implementation 'io.ktor:ktor-client-encoding:3.6.0'
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
     // AndroidX Test libraries
     testImplementation 'junit:junit:4.13.2'
