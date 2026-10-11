@@ -4,6 +4,9 @@
 
 # 应用简介
 
+[![release](https://img.shields.io/github/downloads/xyrlsz/XCimoc/total.svg?style=for-the-badge&logo=github)](https://github.com/xyrlsz/XCimoc/releases) [![](https://img.shields.io/badge/platform-Android-blue?style=for-the-badge)]() [![](https://img.shields.io/badge/Android_Version-5.0+-red?style=for-the-badge)]()
+
+
 Android 平台在线漫画阅读器\
 Online manga reader based on Android
 
@@ -48,9 +51,9 @@ forked from https://github.com/Haleydu/Cimoc
 
 # 应用截图
 
-| 收藏页 |  
-| :---: | 
-| <img src="./screenshot/03.png" width="260">  |
+|                   收藏页                    |
+| :-----------------------------------------: |
+| <img src="./screenshot/03.png" width="260"> |
 
 # 增加图源
 
