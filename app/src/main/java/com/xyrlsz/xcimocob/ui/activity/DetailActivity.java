@@ -17,7 +17,6 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -33,6 +32,7 @@ import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.model.Comic;
 import com.xyrlsz.xcimocob.model.Task;
+import com.xyrlsz.xcimocob.parser.MangaParser;
 import com.xyrlsz.xcimocob.presenter.BasePresenter;
 import com.xyrlsz.xcimocob.presenter.DetailPresenter;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
@@ -40,8 +40,8 @@ import com.xyrlsz.xcimocob.service.DownloadService;
 import com.xyrlsz.xcimocob.ui.adapter.BaseAdapter;
 import com.xyrlsz.xcimocob.ui.adapter.DetailAdapter;
 import com.xyrlsz.xcimocob.ui.view.DetailView;
-import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import com.xyrlsz.xcimocob.utils.IdCreator;
+import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
@@ -49,7 +49,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 
 import okhttp3.Headers;
 
@@ -102,10 +101,12 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     }
 
     void onTagClick(String tag) {
-        if (mPresenter.getComic() == null || StringUtils.isEmpty(tag)) {
+        int sourceType = mPresenter.getComic().getSource();
+        MangaParser parser = SourceManager.getInstance(this).getParser(sourceType);
+        if (mPresenter.getComic() == null || StringUtils.isEmpty(tag) || parser.getCategory() == null) {
             return;
         }
-        Intent intent = CategoryActivity.createIntent(this, mPresenter.getComic().getSource(), tag);
+        Intent intent = CategoryActivity.createIntent(this, sourceType, tag);
         startActivity(intent);
     }
 
@@ -185,12 +186,12 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                    }
 //                    break;
             if (__id == R.id.detail_download) {
-                    if (!mDetailAdapter.getDateSet().isEmpty()) {
-                        Intent intent1 = ChapterActivity.createIntent(this,
+                if (!mDetailAdapter.getDateSet().isEmpty()) {
+                    Intent intent1 = ChapterActivity.createIntent(this,
                             new ArrayList<>(mDetailAdapter.getDateSet()),
                             IdCreator.createSourceComic(mPresenter.getComic()));
-                        startActivityForResult(intent1, REQUEST_CODE_DOWNLOAD);
-                    }
+                    startActivityForResult(intent1, REQUEST_CODE_DOWNLOAD);
+                }
 //                case R.id.detail_tag:
 //                    if (mPresenter.getComic().getFavorite() != null) {
 //                        intent = TagEditorActivity.createIntent(this, mPresenter.getComic().getId());
@@ -200,7 +201,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                    }
 //                    break;
             } else if (__id == R.id.detail_search_title) {
-                    if (!StringUtils.isEmpty(mPresenter.getComic().getTitle())) {
+                if (!StringUtils.isEmpty(mPresenter.getComic().getTitle())) {
 //                        if(App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_FIREBASE_EVENT, true)) {
 //                            Bundle bundle = new Bundle();
 //                            bundle.putString(FirebaseAnalytics.Param.CONTENT, mPresenter.getComic().getTitle());
@@ -209,26 +210,26 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                            FirebaseAnalytics mFirebaseAnalytics = FirebaseAnalytics.getInstance(this);
 //                            mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SEARCH, bundle);
 //                        }
-                        Intent intent2 = ResultActivity.createIntent(this, mPresenter.getComic().getTitle(), null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_TITLE);
-                        startActivity(intent2);
-                    } else {
-                        showSnackbar(R.string.common_keyword_empty);
-                    }
+                    Intent intent2 = ResultActivity.createIntent(this, mPresenter.getComic().getTitle(), null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_TITLE);
+                    startActivity(intent2);
+                } else {
+                    showSnackbar(R.string.common_keyword_empty);
+                }
             } else if (__id == R.id.detail_search_author) {
-                    if (!StringUtils.isEmpty(mPresenter.getComic().getAuthor())) {
-                        Intent intent3 = ResultActivity.createIntent(this, mPresenter.getComic().getAuthor(), null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_AUTHOR);
-                        startActivity(intent3);
-                    } else {
-                        showSnackbar(R.string.common_keyword_empty);
-                    }
+                if (!StringUtils.isEmpty(mPresenter.getComic().getAuthor())) {
+                    Intent intent3 = ResultActivity.createIntent(this, mPresenter.getComic().getAuthor(), null, ResultActivity.LAUNCH_MODE_SEARCH, SEARCH_AUTHOR);
+                    startActivity(intent3);
+                } else {
+                    showSnackbar(R.string.common_keyword_empty);
+                }
             } else if (__id == R.id.detail_share_url) {
-                    String url = mPresenter.getComic().getUrl();
-                    Intent intent4 = new Intent(Intent.ACTION_SEND);
-                    intent4.setType("text/plain");
-                    intent4.putExtra(Intent.EXTRA_TEXT, url);
-                    intent4.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(Intent.createChooser(intent4, url));
-                    // firebase analytics
+                String url = mPresenter.getComic().getUrl();
+                Intent intent4 = new Intent(Intent.ACTION_SEND);
+                intent4.setType("text/plain");
+                intent4.putExtra(Intent.EXTRA_TEXT, url);
+                intent4.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(Intent.createChooser(intent4, url));
+                // firebase analytics
 //                    if(App.getPreferenceManager().getBoolean(PreferenceManager.PREF_OTHER_FIREBASE_EVENT, true)) {
 //                        Bundle bundle = new Bundle();
 //                        bundle.putString(FirebaseAnalytics.Param.CONTENT, url);
@@ -237,7 +238,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                        mFirebaseAnalytics.logEvent(FirebaseAnalytics.Event.SHARE, bundle);
 //                    }
             } else if (__id == R.id.detail_reverse_list) {
-                    mDetailAdapter.reverse();
+                mDetailAdapter.reverse();
 //                case R.id.detail_disqus:
 //                    intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_cimqus_url) + "/cimoc/" + mPresenter.getComic().getTitle()));
 //                    try {
@@ -335,7 +336,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
                 textViewTitle.setTextColor(Color.BLACK);
                 textViewMessage.setTextColor(Color.BLACK);
             }
-           
+
             builder.setView(dialogView)
                     .setPositiveButton(R.string.dialog_close, null)
                     .show();
