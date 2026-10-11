@@ -490,9 +490,8 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
     }
 
     /**
-     * 详情页点击标签跳转后，按标签自动选中「主题」分类并立即检索。
-     * 匹配规则：主题选项的显示名与标签做简繁转换后精确相等；
-     * 当前源不支持分类/主题或无匹配项时不自动检索。
+     * 详情页点击标签跳转后，遍历当前图源的所有分类维度，找到匹配项并立即检索。
+     * 先按显示名称匹配，也兼容标签直接传入分类值。
      */
     private void applyPendingTag() {
         final String tag = mPendingTag;
@@ -500,34 +499,49 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
             return;
         }
         mPendingTag = null;
-        if (mCategory == null || !mCategory.hasAttribute(Category.CATEGORY_SUBJECT)) {
-            showTagUnsupported();
-            return;
-        }
-        List<Pair<String, String>> attrList = mCategory.getAttrList(Category.CATEGORY_SUBJECT);
-        if (attrList == null) {
+        if (mCategory == null) {
             showTagUnsupported();
             return;
         }
         String target = STConvertUtils.convert(tag).trim();
-        int position = -1;
-        for (int i = 0; i < attrList.size(); i++) {
-            String name = STConvertUtils.convert(attrList.get(i).first);
-            if (name != null && name.trim().equals(target)) {
-                position = i;
-                break;
+        int matchedAttribute = -1;
+        int matchedPosition = -1;
+        Pair<String, String> matchedOption = null;
+        for (int attribute = Category.CATEGORY_SUBJECT;
+             attribute <= Category.CATEGORY_ORDER && matchedOption == null;
+             attribute++) {
+            if (!mCategory.hasAttribute(attribute)) {
+                continue;
+            }
+            List<Pair<String, String>> attrList = mCategory.getAttrList(attribute);
+            if (attrList == null) {
+                continue;
+            }
+            for (int position = 0; position < attrList.size(); position++) {
+                Pair<String, String> option = attrList.get(position);
+                if (option == null) {
+                    continue;
+                }
+                String name = option.first == null ? null : STConvertUtils.convert(option.first).trim();
+                String value = option.second == null ? null : STConvertUtils.convert(option.second).trim();
+                if (target.equals(name) || target.equals(value)) {
+                    matchedAttribute = attribute;
+                    matchedPosition = position;
+                    matchedOption = option;
+                    break;
+                }
             }
         }
-        if (position < 0) {
+        if (matchedOption == null) {
             showTagUnsupported();
             return;
         }
-        mSpinnerList.get(0).setSelection(position, false);
+        mSpinnerList.get(matchedAttribute).setSelection(matchedPosition, false);
         String[] args = new String[mSpinnerList.size()];
         for (int i = 0; i < args.length; i++) {
             args[i] = getSpinnerValue(mSpinnerList.get(i));
         }
-        args[Category.CATEGORY_SUBJECT] = attrList.get(position).second;
+        args[matchedAttribute] = matchedOption.second;
         searchCategory(args);
     }
 
