@@ -95,9 +95,18 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     @Override
     protected BaseAdapter initAdapter() {
         mDetailAdapter = new DetailAdapter(this, new ArrayList<Chapter>());
+        mDetailAdapter.setOnTagClickListener(this::onTagClick);
         mRecyclerView.setHasFixedSize(false);
         mRecyclerView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         return mDetailAdapter;
+    }
+
+    void onTagClick(String tag) {
+        if (mPresenter.getComic() == null || StringUtils.isEmpty(tag)) {
+            return;
+        }
+        Intent intent = CategoryActivity.createIntent(this, mPresenter.getComic().getSource(), tag);
+        startActivity(intent);
     }
 
     @Override
@@ -398,6 +407,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     public void onComicLoadSuccess(Comic comic) {
         mDetailAdapter.setInfo(comic.getCover(), comic.getTitle(), comic.getAuthor(),
                 comic.getIntro(), comic.getFinish(), comic.getUpdate(), comic.getLast(), SourceManager.getInstance(getAppInstance()).getParser(comic.getSource()).getTitle());
+        mDetailAdapter.setTags(comic.getTags());
 
         if (comic.getTitle() != null && comic.getCover() != null) {
             Headers headers = SourceManager.getInstance(this).getParser(comic.getSource()).getHeader();
@@ -437,6 +447,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
         // 先用缓存章节展示，提升加载速度（不隐藏进度条，网络完成后会替换）
         mDetailAdapter.setInfo(comic.getCover(), comic.getTitle(), comic.getAuthor(),
                 comic.getIntro(), comic.getFinish(), comic.getUpdate(), comic.getLast(), SourceManager.getInstance(getAppInstance()).getParser(comic.getSource()).getTitle());
+        mDetailAdapter.setTags(comic.getTags());
 
         if (comic.getTitle() != null && comic.getCover() != null) {
             mDetailAdapter.setData(list);

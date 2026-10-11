@@ -25,9 +25,10 @@ public class CategoryActivity extends BackActivity {
     @Override
     protected void initView() {
         super.initView();
-        String title = getIntent().getStringExtra(Extra.EXTRA_KEYWORD);
+//        String title = getIntent().getStringExtra(Extra.EXTRA_KEYWORD);
         if (mToolbarTitle != null) {
-            mToolbarTitle.setText(title != null ? title : getString(R.string.category));
+//            mToolbarTitle.setText(title != null ? title : getString(R.string.category));
+            mToolbarTitle.setText(getString(R.string.category));
         }
         addCategoryFragment();
     }

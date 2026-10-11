@@ -2,12 +2,15 @@ package com.xyrlsz.xcimocob.ui.adapter;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.text.TextPaint;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -24,6 +27,7 @@ import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.ui.widget.ChapterButton;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,6 +50,13 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     //用户手动调整顺序
     private Boolean Reversed = false;
     private String last;
+    private List<String> tags;
+    private OnTagClickListener mTagClickListener;
+
+    private static final int TAG_MAX_COUNT = 20;
+    public interface OnTagClickListener {
+        void onTagClick(String tag);
+    }
 
     public DetailAdapter(Context context, List<Chapter> list) {
         super(context, list);
@@ -170,6 +181,15 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         this.source = source;
     }
 
+    public void setTags(List<String> tags) {
+        this.tags = tags == null ? null : new ArrayList<>(tags);
+        notifyItemChanged(0);
+    }
+
+    public void setOnTagClickListener(OnTagClickListener listener) {
+        mTagClickListener = listener;
+    }
+
 
     public boolean isReversed() {
         return Reversed;
@@ -202,6 +222,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
                     }
                     headerHolder.mComicAuthor.setText(author);
                     headerHolder.mComicSource.setText(STConvertUtils.convert(source));
+                    bindTags(headerHolder);
                 }
             } else {
                 Chapter chapter = mDataSet.get(position - 1);
@@ -265,6 +286,50 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         }
     }
 
+    private int dp(float value) {
+        return Math.round(value * mContext.getResources().getDisplayMetrics().density);
+    }
+
+    /**
+     * 动态构建标签芯片。标签来自图源解析，点击后跳转分类页按标签检索；
+     * 直接 new TextView + setOnClickListener，避免字符串拼接 onclick 的注入与引号问题。
+     */
+    private void bindTags(HeaderHolder holder) {
+        holder.mComicTags.removeAllViews();
+        if (tags == null || tags.isEmpty()) {
+            holder.mComicTagsScroll.setVisibility(View.GONE);
+            return;
+        }
+        holder.mComicTagsScroll.setVisibility(View.VISIBLE);
+        Context tagContext = holder.mComicTags.getContext();
+        int count = Math.min(tags.size(), TAG_MAX_COUNT);
+        for (int i = 0; i < count; i++) {
+            final String tag = tags.get(i);
+            if (tag == null || tag.trim().isEmpty()) {
+                continue;
+            }
+            TextView tagView = new TextView(tagContext);
+            tagView.setText(STConvertUtils.convert(tag));
+            tagView.setTextColor(Color.WHITE);
+            tagView.setTextSize(12);
+            tagView.setSingleLine(true);
+            tagView.setBackgroundResource(R.drawable.bg_detail_tag);
+            int padH = dp(10);
+            int padV = dp(4);
+            tagView.setPadding(padH, padV, padH, padV);
+            tagView.setClickable(true);
+            tagView.setFocusable(true);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.setMarginEnd(dp(6));
+            tagView.setLayoutParams(params);
+            if (mTagClickListener != null) {
+                tagView.setOnClickListener(v -> mTagClickListener.onTagClick(tag));
+            }
+            holder.mComicTags.addView(tagView);
+        }
+    }
+
     class HeaderHolder extends BaseViewHolder {
         SimpleDraweeView mComicImage;
         TextView mComicTitle;
@@ -273,6 +338,8 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         TextView mComicUpdate;
         TextView mComicAuthor;
         TextView mComicSource;
+        HorizontalScrollView mComicTagsScroll;
+        LinearLayout mComicTags;
 
         HeaderHolder(View view) {
             super(view);
@@ -283,6 +350,8 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
             mComicUpdate = view.findViewById(R.id.item_header_comic_update);
             mComicAuthor = view.findViewById(R.id.item_header_comic_author);
             mComicSource = view.findViewById(R.id.item_header_comic_source);
+            mComicTagsScroll = view.findViewById(R.id.item_header_comic_tags_scroll);
+            mComicTags = view.findViewById(R.id.item_header_comic_tags);
         }
     }
 

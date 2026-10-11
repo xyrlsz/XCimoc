@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  详情页标签 chip 背景（浅色模式）。描边用于避免浅色主题色与页面背景融在一起；
+  深色模式另由 drawable-night/bg_detail_tag.xml 使用亮色描边。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorPrimaryDark" />
+            <stroke
+                android:width="0dp"
+                android:color="#80000000" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorPrimary" />
+            <stroke
+                android:width="0dp"
+                android:color="#80000000" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</selector>

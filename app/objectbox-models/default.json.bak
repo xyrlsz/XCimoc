@@ -245,7 +245,7 @@
     },
     {
       "id": "4:3318869604120158611",
-      "lastPropertyId": "5:6560473775568513821",
+      "lastPropertyId": "6:1958969779330635245",
       "name": "Source",
       "properties": [
         {
@@ -275,6 +275,11 @@
           "id": "5:6560473775568513821",
           "name": "baseUrl",
           "type": 9
+        },
+        {
+          "id": "6:1958969779330635245",
+          "name": "hasCategory",
+          "type": 1
         }
       ],
       "relations": []
@@ -395,7 +400,7 @@
     },
     {
       "id": "9:3996711962368286713",
-      "lastPropertyId": "15:2428302643025624111",
+      "lastPropertyId": "16:507268877788900666",
       "name": "JsSource",
       "properties": [
         {
@@ -474,6 +479,11 @@
         {
           "id": "15:2428302643025624111",
           "name": "metaReady",
+          "type": 1
+        },
+        {
+          "id": "16:507268877788900666",
+          "name": "hasCategory",
           "type": 1
         }
       ],

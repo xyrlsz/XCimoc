@@ -466,6 +466,25 @@ public class JsMangaParser extends MangaParser {
             if (StringUtils.isEmpty(intro) || "null".equals(intro)) intro = null;
             if (StringUtils.isEmpty(author) || "null".equals(author)) author = null;
             comic.setInfo(title, cover, update, intro, author, finish);
+            // JS 源可通过 tags 字段（字符串数组）返回漫画标签，用于详情页展示与分类跳转
+            JSONArray tagArray = o.optJSONArray("tags");
+            if (tagArray != null) {
+                List<String> tagList = new ArrayList<>();
+                HashSet<String> tagSet = new HashSet<>();
+                for (int i = 0; i < tagArray.length(); i++) {
+                    String tag = tagArray.optString(i);
+                    if (StringUtils.isEmpty(tag) || "null".equals(tag)) {
+                        continue;
+                    }
+                    tag = tag.trim();
+                    if (!tag.isEmpty() && tagSet.add(tag)) {
+                        tagList.add(tag);
+                    }
+                }
+                if (!tagList.isEmpty()) {
+                    comic.setTags(tagList);
+                }
+            }
             // 若 parseInfo 一并返回了章节列表，缓存到 comic.note 供 parseChapter 消费
             if (o.has("chapters") && !o.isNull("chapters")) {
                 comic.note = o.optJSONArray("chapters");

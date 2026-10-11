@@ -53,6 +53,16 @@ public interface Parser {
      */
     Comic parseInfo(String html, Comic comic) throws UnsupportedEncodingException, JSONException;
 
+    /**
+     * 解析漫画标签（题材/分类等），默认不支持。
+     * 解析结果用于详情页展示，点击后跳转分类页按标签检索。
+     *
+     * @param html 详情页面源代码，与 {@link #parseInfo} 中的第一个参数相同
+     */
+    default List<String> parseTags(String html) {
+        return null;
+    }
+
 
     /**
      * 章节列表的 HTTP 请求，若在 {@link #parseInfo} 中可以解析出章节列表，返回 null，代表不用再次解析

@@ -4,6 +4,9 @@ import android.util.Pair;
 
 import com.xyrlsz.xcimocob.model.converter.SourceCidConverter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import io.objectbox.annotation.Convert;
 import io.objectbox.annotation.Entity;
 import io.objectbox.annotation.Id;
@@ -42,6 +45,7 @@ public class Comic {
     private Integer chapterCount;
     private String intro;
     private String author;
+    private List<String> tags;
 
     public Comic(int source, String cid, String title, String cover, String update, String author) {
         this(0, source, cid, title, cover == null ? "" : cover, false, false, update, null, null,
@@ -101,6 +105,7 @@ public class Comic {
         this.setInfo(comic.getTitle(), comic.getCover(), comic.getUpdate(), comic.getIntro(),
                 comic.getAuthor(), comic.getFinish());
         this.setUrl(comic.getUrl());
+        this.setTags(comic.getTags() == null ? null : new ArrayList<>(comic.getTags()));
     }
 
     @Override
@@ -143,6 +148,14 @@ public class Comic {
 
     public void setAuthor(String author) {
         this.author = author;
+    }
+
+    public List<String> getTags() {
+        return this.tags;
+    }
+
+    public void setTags(List<String> tags) {
+        this.tags = tags;
     }
 
     public Integer getPage() {

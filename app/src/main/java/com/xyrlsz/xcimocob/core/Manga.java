@@ -236,6 +236,11 @@ public class Manga {
                         if (newComic == null) {
                             return Observable.error(new Exception("Parse info returned null"));
                         }
+                        // 解析漫画标签（题材），与详情同源 HTML，仅在解析器支持且非空时覆盖
+                        List<String> tags = parser.parseTags(html);
+                        if (tags != null && !tags.isEmpty()) {
+                            newComic.setTags(tags);
+                        }
                         RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_UPDATE_INFO, newComic));
                         Request chapterReq = parser.getChapterRequest(html, comic.getCid());
                         if (chapterReq != null) {

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  详情页标签 chip 背景（深色模式）。
+  深色模式页面底色很暗，若只填充主题色，偏暗的主题色会和背景糊在一起；
+  因此使用高对比度白描边，保证 chip 的轮廓清楚可见。
+  填充色仍取自主题属性（values-night 下有对应夜间色值），会跟随所选主题色。
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorPrimaryDark" />
+            <stroke
+                android:width="0dp"
+                android:color="#BFFFFFFF" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="?attr/colorPrimary" />
+            <stroke
+                android:width="0dp"
+                android:color="#BFFFFFFF" />
+            <corners android:radius="14dp" />
+        </shape>
+    </item>
+</selector>

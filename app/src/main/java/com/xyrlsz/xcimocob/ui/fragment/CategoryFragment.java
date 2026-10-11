@@ -21,6 +21,7 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.core.Manga;
+import com.xyrlsz.xcimocob.global.Extra;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.model.CategoryMiniComic;
 import com.xyrlsz.xcimocob.model.Comic;
@@ -32,6 +33,8 @@ import com.xyrlsz.xcimocob.ui.activity.DetailActivity;
 import com.xyrlsz.xcimocob.ui.adapter.CategoryAdapter;
 import com.xyrlsz.xcimocob.ui.adapter.CategoryGridAdapter;
 import com.xyrlsz.xcimocob.ui.view.CategoryView;
+import com.xyrlsz.xcimocob.utils.HintUtils;
+import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
 import com.xyrlsz.xcimocob.utils.ThreadRunUtils;
 
@@ -80,6 +83,9 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
     private CompositeDisposable mCompositeSubscription;
     private State mCurrentState;
     private String mCurrentFormat;
+    private String mPendingTag;
+    private int mPendingSource = -1;
+    private int mInitializedCategorySource = -1;
     private boolean isHeadCollapsed = false;
     private int headOriginalHeight = 0;
 
@@ -165,11 +171,30 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
                     if (list.isEmpty()) {
                         mSource = -1;
                         mCategorySourceSpinner.setAdapter(new CategoryAdapter(getContext(), mSourceList));
-                        mCategorySourceSpinner.setSelection(0);
+                        mPendingSource = -1;
+                        if (mPendingTag != null) {
+                            mPendingTag = null;
+                            showTagUnsupported();
+                        }
                     } else {
-                        mSource = Integer.parseInt(list.get(0).second);
+                        int selectedPosition = 0;
+                        if (mPendingSource != -1) {
+                            for (int i = 0; i < list.size(); i++) {
+                                if (Integer.parseInt(list.get(i).second) == mPendingSource) {
+                                    selectedPosition = i;
+                                    break;
+                                }
+                            }
+                            if (Integer.parseInt(list.get(selectedPosition).second) != mPendingSource
+                                    && mPendingTag != null) {
+                                mPendingTag = null;
+                                showTagUnsupported();
+                            }
+                        }
+                        mPendingSource = -1;
+                        mSource = Integer.parseInt(list.get(selectedPosition).second);
                         mCategorySourceSpinner.setAdapter(new CategoryAdapter(getContext(), mSourceList));
-                        mCategorySourceSpinner.setSelection(0);
+                        mCategorySourceSpinner.setSelection(selectedPosition);
                         // setSelection 会触发 onItemSelected → initSpinner，这里显式调用一次保证初始化
                         initSpinner(mSource);
                         if (mCurrentState != null) {
@@ -226,6 +251,10 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
         mSource = -1;
         mCompositeSubscription = new CompositeDisposable();
 
+        // 详情页标签跳转携带的待选标签：自动选中主题分类并触发加载
+        mPendingTag = requireActivity().getIntent().getStringExtra(Extra.EXTRA_KEYWORD);
+        mPendingSource = requireActivity().getIntent().getIntExtra(Extra.EXTRA_SOURCE, -1);
+
         mCurrentState = new State();
         mCurrentState.source = mSource;
         mCurrentState.page = 0;
@@ -234,12 +263,18 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
         mCategorySourceSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if (position < 0 || position >= mSourceList.size()) {
+                    return;
+                }
                 mSource = Integer.parseInt(mSourceList.get(position).second);
                 initSpinner(mSourceList.get(position).second);
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
+                if (mSourceList.isEmpty()) {
+                    return;
+                }
                 mSource = Integer.parseInt(mSourceList.get(0).second);
                 initSpinner(mSourceList.get(0).second);
             }
@@ -408,8 +443,12 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
     }
 
     private void initSpinner(int source) {
-//        mComicList.clear();
-//        categoryGridAdapter.notifyDataSetChanged();
+        if (mInitializedCategorySource == source) {
+            return;
+        }
+        mInitializedCategorySource = source;
+//      mComicList.clear();
+//      categoryGridAdapter.notifyDataSetChanged();
 
         mCategory = mSourceManager.getParser(source).getCategory();
         mCurrentState.source = source;
@@ -447,6 +486,55 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
                 headView.requestLayout();
             }
         });
+        applyPendingTag();
+    }
+
+    /**
+     * 详情页点击标签跳转后，按标签自动选中「主题」分类并立即检索。
+     * 匹配规则：主题选项的显示名与标签做简繁转换后精确相等；
+     * 当前源不支持分类/主题或无匹配项时不自动检索。
+     */
+    private void applyPendingTag() {
+        final String tag = mPendingTag;
+        if (tag == null || tag.trim().isEmpty()) {
+            return;
+        }
+        mPendingTag = null;
+        if (mCategory == null || !mCategory.hasAttribute(Category.CATEGORY_SUBJECT)) {
+            showTagUnsupported();
+            return;
+        }
+        List<Pair<String, String>> attrList = mCategory.getAttrList(Category.CATEGORY_SUBJECT);
+        if (attrList == null) {
+            showTagUnsupported();
+            return;
+        }
+        String target = STConvertUtils.convert(tag).trim();
+        int position = -1;
+        for (int i = 0; i < attrList.size(); i++) {
+            String name = STConvertUtils.convert(attrList.get(i).first);
+            if (name != null && name.trim().equals(target)) {
+                position = i;
+                break;
+            }
+        }
+        if (position < 0) {
+            showTagUnsupported();
+            return;
+        }
+        mSpinnerList.get(0).setSelection(position, false);
+        String[] args = new String[mSpinnerList.size()];
+        for (int i = 0; i < args.length; i++) {
+            args[i] = getSpinnerValue(mSpinnerList.get(i));
+        }
+        args[Category.CATEGORY_SUBJECT] = attrList.get(position).second;
+        searchCategory(args);
+    }
+
+    private void showTagUnsupported() {
+        if (mRootView != null) {
+            HintUtils.showSnackbar(mRootView, getString(R.string.category_tag_unsupported));
+        }
     }
 
     @Override
@@ -478,7 +566,10 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
         for (int i = 0; i != args.length; ++i) {
             args[i] = getSpinnerValue(mSpinnerList.get(i));
         }
+        searchCategory(args);
+    }
 
+    private void searchCategory(String[] args) {
         mCurrentFormat = mCategory.getFormat(args);
 
         mCurrentState.state = STATE_NULL;
@@ -561,6 +652,7 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
                 if (mProgressOverlay != null) {
                     mProgressOverlay.setVisibility(View.VISIBLE);
                 }
+                mInitializedCategorySource = -1;
                 loadSourceListAsync();
                 // mComicList.clear();
                 // categoryGridAdapter.notifyDataSetChanged();
@@ -569,10 +661,18 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
     }
 
     private String getSpinnerValue(AppCompatSpinner spinner) {
-        if (!spinner.isShown()) {
+        int index = mSpinnerList.indexOf(spinner);
+        if (index < 0 || mCategoryView.get(index).getVisibility() != View.VISIBLE) {
             return null;
         }
-        return ((CategoryAdapter) spinner.getAdapter()).getValue(spinner.getSelectedItemPosition());
+        if (!(spinner.getAdapter() instanceof CategoryAdapter adapter)) {
+            return null;
+        }
+        int position = spinner.getSelectedItemPosition();
+        if (position < 0 || position >= adapter.getCount()) {
+            return null;
+        }
+        return adapter.getValue(position);
     }
 
     @Override

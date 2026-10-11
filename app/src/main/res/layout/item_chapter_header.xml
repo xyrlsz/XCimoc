@@ -97,4 +97,22 @@
             android:layout_alignParentEnd="true"
             android:textSize="12sp" />
     </RelativeLayout>
+
+    <HorizontalScrollView
+        android:id="@+id/item_header_comic_tags_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingBottom="8dp"
+        android:scrollbars="none"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:id="@+id/item_header_comic_tags"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
 </LinearLayout>
