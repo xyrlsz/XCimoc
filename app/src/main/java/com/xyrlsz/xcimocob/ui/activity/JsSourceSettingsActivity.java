@@ -295,7 +295,8 @@ public class JsSourceSettingsActivity extends BackActivity {
                     });
                     selectLayout.addView(row.select);
                     selectLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                            dp(165), ViewGroup.LayoutParams.WRAP_CONTENT));
+                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    row.select.setMaxWidth(maxContentWidth());
                     addOptionRow(box, label, selectLayout);
                     break;
                 }
@@ -333,12 +334,14 @@ public class JsSourceSettingsActivity extends BackActivity {
                     inputLayout.setBoxBackgroundMode(
                             com.google.android.material.textfield.TextInputLayout.BOX_BACKGROUND_OUTLINE);
                     inputLayout.setLayoutParams(new LinearLayout.LayoutParams(
-                            dp(150), ViewGroup.LayoutParams.WRAP_CONTENT));
+                            ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+                    inputLayout.setMinimumWidth(dp(100));
                     row.inputLayout = inputLayout;
                     row.edit = new TextInputEditText(this);
                     row.edit.setText(current);
                     row.edit.setSingleLine(true);
                     row.edit.setGravity(android.view.Gravity.END);
+                    row.edit.setMaxWidth(maxContentWidth());
                     row.edit.setOnFocusChangeListener((v, hasFocus) -> {
                         if (!hasFocus) {
                             Editable textEt = row.edit.getText();
@@ -373,6 +376,11 @@ public class JsSourceSettingsActivity extends BackActivity {
 
     private int dp(int v) {
         return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    /** 右侧控件自适应时的最大宽度（约 55% 屏宽），防止长内容把左侧标签挤没。 */
+    private int maxContentWidth() {
+        return Math.round(getResources().getDisplayMetrics().widthPixels * 0.55f);
     }
 
     private static class SettingRow {
