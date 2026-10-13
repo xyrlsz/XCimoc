@@ -3,8 +3,8 @@ package com.xyrlsz.quickjs;
 /**
  * QuickJS 引擎的 JNI 封装（独立 Android 库）。
  * <p>
- * 底层引擎为 {@code https://github.com/bellard/quickjs}（MIT License），
- * 通过 git 子模块固定在 2026-06-04 发布版提交。
+ * 底层引擎为 {@code https://github.com/quickjs-ng/quickjs}（MIT License）。
+ * 通过 git 子模块固定提交。
  * 每个实例拥有独立的 JSRuntime + JSContext（堆、全局对象互相隔离）。
  * QuickJS 的 Runtime 非线程安全：同一个实例不要跨线程使用；
  * 需要并发时请为每个线程创建独立实例。
@@ -12,32 +12,130 @@ package com.xyrlsz.quickjs;
  * 安全特性（由 C 层保证）：
  * <ul>
  *     <li>未注册 std/os 模块，脚本无法访问文件系统、进程等宿主资源</li>
- *     <li>内存上限 32MB、JS 调用栈上限 512KB、单次执行超时 10s</li>
+ *     <li>内存上限 {@link #DEFAULT_MEMORY_LIMIT} 字节、
+ *         JS 调用栈上限 {@link #DEFAULT_STACK_SIZE} 字节、
+ *         单次执行超时 {@link #DEFAULT_TIMEOUT_MS} 毫秒</li>
  * </ul>
+ * 上述三个限制可以在创建实例前通过 {@link #setLimits(long, long, long)} 调整，
+ * 也可以直接使用带参数的构造函数为单个实例指定。
  */
 public final class QuickJSEngine {
+
+    /* ---------------- 资源限制默认值 ---------------- */
+
+    /**
+     * 单次脚本执行超时（毫秒）。
+     */
+    public static final long DEFAULT_TIMEOUT_MS = 30_000L;
+
+    /**
+     * 运行时内存上限：128MB。
+     */
+    public static final long DEFAULT_MEMORY_LIMIT = 128L * 1024 * 1024;
+
+    /**
+     * JS 调用栈上限：2MB。
+     */
+    public static final long DEFAULT_STACK_SIZE = 2L * 1024 * 1024;
+
+    /* ---------------- 资源限制当前生效值 ---------------- */
+
+    private static volatile long sTimeoutMs = DEFAULT_TIMEOUT_MS;
+    private static volatile long sMemoryLimit = DEFAULT_MEMORY_LIMIT;
+    private static volatile long sStackSize = DEFAULT_STACK_SIZE;
+
+    /* ---------------- 宿主回调桥 ---------------- */
+
+    private static volatile HostBridge sHostBridge;
 
     static {
         System.loadLibrary("quickjs_jni");
     }
 
+    /* ---------------- 实例字段 ---------------- */
+
+    private long runtimePtr;
+    private long contextPtr;
+
+    /* ---------------- 构造 ---------------- */
+
     /**
-     * JS→Java 宿主回调桥。由 {@link #setHostBridge(HostBridge)} 注册一个全局处理器，
-     * C 层 JS 脚本调用 {@code hostCall(name, argsJson)} 时会经
-     * {@link #onHostCall(String, String)} 分发到该处理器。
+     * 使用显式资源限制创建引擎。
+     * 任一参数 {@code <= 0} 时由 C 层回退到编译期默认值
+     * （{@link #DEFAULT_TIMEOUT_MS} / {@link #DEFAULT_MEMORY_LIMIT} / {@link #DEFAULT_STACK_SIZE}）。
+     *
+     * @param timeoutMs   单次脚本执行超时（毫秒）
+     * @param memoryLimit 运行时内存上限（字节）
+     * @param stackSize   JS 调用栈上限（字节）
      */
-    public interface HostBridge {
-        /**
-         * 处理一次宿主调用。
-         *
-         * @param name     调用名（如 "dom"、"md5"、"aes_cbc"、"state"、"login" 等）
-         * @param argsJson 参数 JSON 字符串
-         * @return 结果 JSON 字符串；无法处理时返回 {@code "null"}
-         */
-        String onHostCall(String name, String argsJson);
+    public QuickJSEngine(long timeoutMs, long memoryLimit, long stackSize) {
+        runtimePtr = nativeCreateRuntime(timeoutMs, memoryLimit, stackSize);
+        if (runtimePtr == 0) {
+            throw new RuntimeException("Failed to create QuickJS runtime");
+        }
+        contextPtr = nativeCreateContext(runtimePtr);
+        if (contextPtr == 0) {
+            nativeFreeRuntime(runtimePtr);
+            runtimePtr = 0;
+            throw new RuntimeException("Failed to create QuickJS context");
+        }
     }
 
-    private static volatile HostBridge sHostBridge;
+    /**
+     * 使用当前生效的全局默认值创建引擎。
+     * 全局默认值可通过 {@link #setLimits(long, long, long)} 修改，
+     * 构造时对三个值做一次快照，避免构造期间被其他线程改掉。
+     */
+    public QuickJSEngine() {
+        this(sTimeoutMs, sMemoryLimit, sStackSize);
+    }
+
+    /* ---------------- 资源限制配置 ---------------- */
+
+    /**
+     * 设置后续创建实例时使用的资源限制。对已创建实例不生效。
+     *
+     * @param timeoutMs   单次脚本执行超时（毫秒）；{@code <= 0} 时使用默认值
+     * @param memoryLimit 运行时内存上限（字节）；{@code <= 0} 时使用默认值
+     * @param stackSize   JS 调用栈上限（字节）；{@code <= 0} 时使用默认值
+     */
+    public static void setLimits(long timeoutMs, long memoryLimit, long stackSize) {
+        sTimeoutMs = timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS;
+        sMemoryLimit = memoryLimit > 0 ? memoryLimit : DEFAULT_MEMORY_LIMIT;
+        sStackSize = stackSize > 0 ? stackSize : DEFAULT_STACK_SIZE;
+    }
+
+    /**
+     * 恢复为默认资源限制。
+     */
+    public static void resetLimits() {
+        sTimeoutMs = DEFAULT_TIMEOUT_MS;
+        sMemoryLimit = DEFAULT_MEMORY_LIMIT;
+        sStackSize = DEFAULT_STACK_SIZE;
+    }
+
+    /**
+     * @return 当前配置的超时（毫秒）。
+     */
+    public static long getTimeoutMs() {
+        return sTimeoutMs;
+    }
+
+    /**
+     * @return 当前配置的内存上限（字节）。
+     */
+    public static long getMemoryLimit() {
+        return sMemoryLimit;
+    }
+
+    /**
+     * @return 当前配置的栈上限（字节）。
+     */
+    public static long getStackSize() {
+        return sStackSize;
+    }
+
+    /* ---------------- 宿主回调桥 ---------------- */
 
     /**
      * 注册全局宿主回调桥（通常只设置一次）。需要在任何脚本执行前完成。
@@ -63,7 +161,11 @@ public final class QuickJSEngine {
         }
     }
 
-    private static native long nativeCreateRuntime();
+    /* ---------------- native 声明 ---------------- */
+
+    private static native long nativeCreateRuntime(long timeoutMs,
+                                                   long memoryLimit,
+                                                   long stackSize);
 
     private static native long nativeCreateContext(long runtimePtr);
 
@@ -89,21 +191,7 @@ public final class QuickJSEngine {
 
     private static native void nativeFreeRuntime(long runtimePtr);
 
-    private long runtimePtr;
-    private long contextPtr;
-
-    public QuickJSEngine() {
-        runtimePtr = nativeCreateRuntime();
-        if (runtimePtr == 0) {
-            throw new RuntimeException("Failed to create QuickJS runtime");
-        }
-        contextPtr = nativeCreateContext(runtimePtr);
-        if (contextPtr == 0) {
-            nativeFreeRuntime(runtimePtr);
-            runtimePtr = 0;
-            throw new RuntimeException("Failed to create QuickJS context");
-        }
-    }
+    /* ---------------- 脚本执行 ---------------- */
 
     /**
      * 执行一段 JS 脚本，返回表达式结果转成的字符串。
@@ -139,6 +227,8 @@ public final class QuickJSEngine {
         checkOpen();
         return nativeEvaluateJson(contextPtr, script, "<eval>");
     }
+
+    /* ---------------- 全局对象访问 ---------------- */
 
     /**
      * 判断全局对象上是否存在指定函数。
@@ -201,6 +291,8 @@ public final class QuickJSEngine {
         return nativeSetGlobal(contextPtr, name, valueJson);
     }
 
+    /* ---------------- 生命周期 ---------------- */
+
     private void checkOpen() {
         if (contextPtr == 0) {
             throw new IllegalStateException("QuickJSEngine already closed");
@@ -227,5 +319,23 @@ public final class QuickJSEngine {
             nativeFreeRuntime(runtimePtr);
             runtimePtr = 0;
         }
+    }
+
+    /* ---------------- 内部接口 ---------------- */
+
+    /**
+     * JS→Java 宿主回调桥。由 {@link #setHostBridge(HostBridge)} 注册一个全局处理器，
+     * C 层 JS 脚本调用 {@code hostCall(name, argsJson)} 时会经
+     * {@link #onHostCall(String, String)} 分发到该处理器。
+     */
+    public interface HostBridge {
+        /**
+         * 处理一次宿主调用。
+         *
+         * @param name     调用名（如 "dom"、"md5"、"aes_cbc"、"state"、"login" 等）
+         * @param argsJson 参数 JSON 字符串
+         * @return 结果 JSON 字符串；无法处理时返回 {@code "null"}
+         */
+        String onHostCall(String name, String argsJson);
     }
 }

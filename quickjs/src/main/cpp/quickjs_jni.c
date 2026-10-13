@@ -6,6 +6,7 @@
  * 特性：
  *  - 每个 JSRuntime 相互隔离（独立堆、单线程模型）
  *  - 内存上限 / JS 调用栈上限 / 单次执行超时三重保护
+ *    （默认值可被 Java 侧 setLimits 覆盖，见下）
  *  - 未注册 std/os 模块，脚本无法访问文件系统、进程等宿主资源
  *  - 兼容层：atob/btoa（基于内置 Uint8Array.fromBase64/toBase64）、console.log/print
  */
@@ -25,12 +26,14 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-#define QJS_TIMEOUT_MS    (30 * 1000)         /* 单次脚本执行超时（加大，重 DOM 解析/大页面更从容） */
+/* Java 侧未传值（<= 0）时使用的编译期兜底默认值 */
+#define QJS_TIMEOUT_MS    (30 * 1000)         /* 单次脚本执行超时（毫秒） */
 #define QJS_MEMORY_LIMIT  (128 * 1024 * 1024) /* 运行时内存上限 128MB */
 #define QJS_STACK_SIZE    (2 * 1024 * 1024)   /* JS 调用栈上限 2MB */
 
 typedef struct {
     int64_t deadline_ms; /* 单调时钟截止时间 */
+    int64_t timeout_ms;  /* 本 runtime 的单次执行超时（由 Java 侧传入） */
 } QJSRuntimeData;
 
 /* 保存 JavaVM*，供 hostCall 回调回到 Java 侧（JNI_OnLoad 时填充） */
@@ -260,12 +263,15 @@ static void qjs_register_helpers(JSContext *ctx) {
 
 /* ---------------- JSON 桥接工具 ---------------- */
 
-/* 重置本次执行的超时截止时间（每次 JNI 调用都重新计时） */
+/* 重置本次执行的超时截止时间（每次 JNI 调用都重新计时）。
+ * 超时时长取自 runtime opaque 中由 Java 侧传入的值。 */
 static void qjs_reset_deadline(JSContext *ctx) {
     JSRuntime *rt = JS_GetRuntime(ctx);
     QJSRuntimeData *data = (QJSRuntimeData *) JS_GetRuntimeOpaque(rt);
-    if (data)
-        data->deadline_ms = now_ms() + QJS_TIMEOUT_MS;
+    if (data) {
+        int64_t t = data->timeout_ms > 0 ? data->timeout_ms : QJS_TIMEOUT_MS;
+        data->deadline_ms = now_ms() + t;
+    }
 }
 
 /* 将 JSValue 序列化为 JSON 字符串（js_malloc 分配，调用方 js_free 释放）。
@@ -370,7 +376,12 @@ static int qjs_parse_json_args(JSContext *ctx, const char *str, size_t len,
 
 /* ---------------- JNI 方法 ---------------- */
 
-static jlong native_create_runtime(JNIEnv *env, jclass clazz) {
+/* 创建 JSRuntime，限制由 Java 侧传入。
+ * 任一参数 <= 0 时回退到编译期默认宏，保证始终有保护。 */
+static jlong native_create_runtime(JNIEnv *env, jclass clazz,
+                                   jlong timeout_ms,
+                                   jlong memory_limit,
+                                   jlong stack_size) {
     JSRuntime *rt = JS_NewRuntime();
     QJSRuntimeData *data;
 
@@ -381,10 +392,13 @@ static jlong native_create_runtime(JNIEnv *env, jclass clazz) {
         JS_FreeRuntime(rt);
         return 0;
     }
-    data->deadline_ms = now_ms() + QJS_TIMEOUT_MS;
+
+    data->timeout_ms = (timeout_ms > 0) ? (int64_t) timeout_ms : QJS_TIMEOUT_MS;
+    data->deadline_ms = now_ms() + data->timeout_ms;
+
     JS_SetRuntimeOpaque(rt, data);
-    JS_SetMemoryLimit(rt, QJS_MEMORY_LIMIT);
-    JS_SetMaxStackSize(rt, QJS_STACK_SIZE);
+    JS_SetMemoryLimit(rt, (size_t) (memory_limit > 0 ? memory_limit : QJS_MEMORY_LIMIT));
+    JS_SetMaxStackSize(rt, (size_t) (stack_size > 0 ? stack_size : QJS_STACK_SIZE));
     JS_SetInterruptHandler(rt, qjs_interrupt_handler, data);
     return (jlong) (intptr_t) rt;
 }
@@ -774,7 +788,7 @@ static void native_free_runtime(JNIEnv *env, jclass clazz, jlong rt_ptr) {
 /* ---------------- 注册 ---------------- */
 
 static const JNINativeMethod g_methods[] = {
-        {"nativeCreateRuntime",     "()J",
+        {"nativeCreateRuntime",     "(JJJ)J",
                 (void *) native_create_runtime},
         {"nativeCreateContext",     "(J)J",
                 (void *) native_create_context},
