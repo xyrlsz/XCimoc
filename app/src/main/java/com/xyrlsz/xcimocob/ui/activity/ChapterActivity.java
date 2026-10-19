@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.xyrlsz.xcimocob.R;
+import com.xyrlsz.xcimocob.component.DialogCaller;
 import com.xyrlsz.xcimocob.global.Extra;
 import com.xyrlsz.xcimocob.manager.ChapterManager;
 import com.xyrlsz.xcimocob.manager.ChapterBookmarkStore;
@@ -27,6 +28,7 @@ import com.xyrlsz.xcimocob.misc.Switcher;
 import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.ui.adapter.BaseAdapter;
 import com.xyrlsz.xcimocob.ui.adapter.ChapterAdapter;
+import com.xyrlsz.xcimocob.ui.fragment.dialog.EditorDialogFragment;
 import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.utils.PermissionUtils;
 
@@ -47,7 +49,9 @@ import java.util.concurrent.atomic.AtomicLong;
  * Created by Hiroshi on 2016/11/14.
  */
 
-public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemClickListener {
+public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemClickListener, DialogCaller {
+
+    private static final int REQUEST_CODE_BOOKMARK_NOTE = 1;
 
     /**
      * 章节列表内存缓存，避免通过 Intent 传递大列表导致 Binder 事务过大。
@@ -65,6 +69,7 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     private long mBookmarkComicId = -1L;
     private List<Switcher<Chapter>> mAllChapters;
     private Set<String> mBookmarkPaths = new HashSet<>();
+    private Chapter mPendingBookmarkNote;
     private Handler mHandler = new Handler();
     private RecyclerView.OnItemTouchListener mListener = new CustomTouchListener();
     private RecyclerView.ItemDecoration mDecoration;
@@ -116,6 +121,13 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
         mChapterAdapter = new ChapterAdapter(this, new ArrayList<>(mAllChapters));
         mChapterAdapter.setBookmarks(mBookmarkPaths);
         mChapterAdapter.setOnBookmarkClickListener(this::toggleBookmark);
+        mChapterAdapter.setOnBookmarkNoteListener(chapter -> {
+            mPendingBookmarkNote = chapter;
+            String note = ChapterBookmarkStore.getNote(this, mBookmarkComicId, chapter.getPath());
+            EditorDialogFragment.newInstance(R.string.chapter_bookmark_note, note,
+                    REQUEST_CODE_BOOKMARK_NOTE, true).show(getSupportFragmentManager(), null);
+            return true;
+        });
         mDecoration = mChapterAdapter.getItemDecoration();
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
@@ -194,6 +206,19 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
         mBookmarkPaths = ChapterBookmarkStore.getBookmarks(this, mBookmarkComicId);
         mChapterAdapter.setBookmarks(mBookmarkPaths);
         mChapterAdapter.notifyDataSetChanged();
+    }
+
+    @Override
+    public void onDialogResult(int requestCode, android.os.Bundle bundle) {
+        if (requestCode == REQUEST_CODE_BOOKMARK_NOTE && mPendingBookmarkNote != null) {
+            String note = bundle.getString(DialogCaller.EXTRA_DIALOG_RESULT_VALUE, "");
+            ChapterBookmarkStore.saveNote(this, mBookmarkComicId,
+                    mPendingBookmarkNote.getPath(), note);
+            mPendingBookmarkNote = null;
+            mBookmarkPaths = ChapterBookmarkStore.getBookmarks(this, mBookmarkComicId);
+            mChapterAdapter.setBookmarks(mBookmarkPaths);
+            mChapterAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override

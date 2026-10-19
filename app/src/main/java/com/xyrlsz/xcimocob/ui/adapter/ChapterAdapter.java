@@ -31,6 +31,7 @@ public class ChapterAdapter extends BaseAdapter<Switcher<Chapter>> {
     private boolean isButtonMode = false;
     private Set<String> bookmarks;
     private OnBookmarkClickListener bookmarkClickListener;
+    private OnBookmarkNoteListener bookmarkNoteListener;
 
     public ChapterAdapter(Context context, List<Switcher<Chapter>> list) {
         super(context, list);
@@ -89,6 +90,8 @@ public class ChapterAdapter extends BaseAdapter<Switcher<Chapter>> {
         bookmark.setContentDescription(mContext.getString(
                 marked ? R.string.chapter_bookmark_remove : R.string.chapter_bookmark_add));
         bookmark.setOnClickListener(v -> bookmarkClickListener.onBookmarkClick(chapter));
+        bookmark.setOnLongClickListener(v -> bookmarkNoteListener != null
+                && bookmarkNoteListener.onBookmarkNoteClick(chapter));
     }
 
     public void setButtonMode(boolean enable) {
@@ -101,6 +104,10 @@ public class ChapterAdapter extends BaseAdapter<Switcher<Chapter>> {
 
     public void setOnBookmarkClickListener(OnBookmarkClickListener listener) {
         bookmarkClickListener = listener;
+    }
+
+    public void setOnBookmarkNoteListener(OnBookmarkNoteListener listener) {
+        bookmarkNoteListener = listener;
     }
 
     @Override
@@ -145,6 +152,10 @@ public class ChapterAdapter extends BaseAdapter<Switcher<Chapter>> {
 
     public interface OnBookmarkClickListener {
         void onBookmarkClick(Chapter chapter);
+    }
+
+    public interface OnBookmarkNoteListener {
+        boolean onBookmarkNoteClick(Chapter chapter);
     }
 
 }

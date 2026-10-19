@@ -27,6 +27,8 @@ import com.xyrlsz.xcimocob.core.WebDavConf;
 import com.xyrlsz.xcimocob.fresco.ControllerBuilderSupplierFactory;
 import com.xyrlsz.xcimocob.fresco.ImagePipelineFactoryBuilder;
 import com.xyrlsz.xcimocob.global.Extra;
+import com.xyrlsz.xcimocob.component.DialogCaller;
+import com.xyrlsz.xcimocob.manager.ChapterBookmarkStore;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.model.Chapter;
@@ -39,6 +41,7 @@ import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.service.DownloadService;
 import com.xyrlsz.xcimocob.ui.adapter.BaseAdapter;
 import com.xyrlsz.xcimocob.ui.adapter.DetailAdapter;
+import com.xyrlsz.xcimocob.ui.fragment.dialog.EditorDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.DetailView;
 import com.xyrlsz.xcimocob.utils.IdCreator;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
@@ -55,9 +58,10 @@ import okhttp3.Headers;
 /**
  * Created by Hiroshi on 2016/7/2.
  */
-public class DetailActivity extends CoordinatorActivity implements DetailView {
+public class DetailActivity extends CoordinatorActivity implements DetailView, DialogCaller {
 
     public static final int REQUEST_CODE_DOWNLOAD = 0;
+    private static final int REQUEST_CODE_BOOKMARK_NOTE = 1;
 
     private static final String SAVED_STATE_BACKUP_COUNT = "saved_state_backup_count";
 
@@ -68,6 +72,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     private boolean mAutoBackup;
     private boolean mAutoBackupCloud;
     private int mBackupCount;
+    private Chapter mPendingBookmarkNote;
 
     public static Intent createIntent(Context context, Long id, int source, String cid) {
         Intent intent = new Intent(context, DetailActivity.class);
@@ -95,6 +100,13 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     protected BaseAdapter initAdapter() {
         mDetailAdapter = new DetailAdapter(this, new ArrayList<Chapter>());
         mDetailAdapter.setOnTagClickListener(this::onTagClick);
+        mDetailAdapter.setOnBookmarkNoteListener(chapter -> {
+            mPendingBookmarkNote = chapter;
+            String note = ChapterBookmarkStore.getNote(this,
+                    IdCreator.createSourceComic(mPresenter.getComic()), chapter.getPath());
+            EditorDialogFragment.newInstance(R.string.chapter_bookmark_note, note,
+                    REQUEST_CODE_BOOKMARK_NOTE, true).show(getSupportFragmentManager(), null);
+        });
         mRecyclerView.setHasFixedSize(false);
         mRecyclerView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         return mDetailAdapter;
@@ -169,6 +181,18 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_detail, menu);
         return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public void onDialogResult(int requestCode, Bundle bundle) {
+        if (requestCode == REQUEST_CODE_BOOKMARK_NOTE && mPendingBookmarkNote != null) {
+            String note = bundle.getString(DialogCaller.EXTRA_DIALOG_RESULT_VALUE, "");
+            long sourceComic = IdCreator.createSourceComic(mPresenter.getComic());
+            ChapterBookmarkStore.saveNote(this, sourceComic,
+                    mPendingBookmarkNote.getPath(), note);
+            mPendingBookmarkNote = null;
+            mDetailAdapter.refreshBookmarks();
+        }
     }
 
     @Override

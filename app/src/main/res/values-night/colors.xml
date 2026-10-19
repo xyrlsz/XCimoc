@@ -36,4 +36,8 @@
     <!-- 阅读器快捷设置面板描边按钮的边框色（深色模式下用半透明白，保证边框清晰可见） -->
     <color name="reader_outline">#80FFFFFF</color>
 
+    <!-- 对话框卡片描边与输入框底色（深色模式） -->
+    <color name="dialog_outline">#33FFFFFF</color>
+    <color name="dialog_input_background">#1FFFFFFF</color>
+
 </resources>

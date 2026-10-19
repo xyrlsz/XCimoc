@@ -1,9 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:elevation="8dp"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/title"
@@ -13,98 +13,78 @@
         android:layout_marginBottom="16dp"
         android:text="@string/webdav"
         android:textColor="?attr/colorAccent"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold" />
-    <RelativeLayout
+
+    <EditText
+        android:id="@+id/webdav_url"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/dialog_input_background"
+        android:hint="@string/webdav_url"
+        android:importantForAutofill="no"
+        android:inputType="textUri"
+        android:minHeight="48dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textColorHint="?android:attr/textColorHint" />
+
+    <EditText
+        android:id="@+id/username"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:background="@drawable/dialog_input_background"
+        android:hint="@string/username_item"
+        android:importantForAutofill="no"
+        android:inputType="text"
+        android:minHeight="48dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textColorHint="?android:attr/textColorHint" />
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:padding="12dp">
-
-        <EditText
-            android:id="@+id/webdav_url"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:background="@color/transparent"
-            android:hint="@string/webdav_url" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_below="@id/webdav_url"
-            android:background="?attr/colorAccent" />
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:padding="12dp">
-
-        <EditText
-            android:id="@+id/username"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:background="@color/transparent"
-            android:hint="@string/username_item" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_below="@id/username"
-            android:background="?attr/colorAccent" />
-    </RelativeLayout>
-
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:padding="12dp">
+        android:background="@drawable/dialog_input_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
 
         <EditText
             android:id="@+id/password"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:autofillHints="password"
-            android:background="@color/transparent"
-            android:layout_toStartOf="@id/ib_is_show_passwd"
+            android:layout_weight="1"
+            android:background="@null"
             android:hint="@string/password"
-            android:inputType="textPassword" />
+            android:importantForAutofill="no"
+            android:inputType="textPassword"
+            android:minHeight="48dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="4dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textColorHint="?android:attr/textColorHint" />
 
         <ImageButton
             android:id="@+id/ib_is_show_passwd"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_alignParentEnd="true"
-            android:layout_marginBottom="6dp"
-            android:background="?attr/selectableItemBackground"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/show_passwd"
             android:src="@drawable/eye_close" />
+    </LinearLayout>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_below="@id/password"
-            android:background="?attr/colorAccent" />
-
-
-    </RelativeLayout>
-
-    <Button
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/commit_button"
+        style="?attr/materialButtonStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:background="?attr/colorAccent"
-        android:padding="12dp"
-        android:stateListAnimator="@null"
         android:text="@string/commit"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
-
+        android:textColor="@color/white" />
 
 </LinearLayout>

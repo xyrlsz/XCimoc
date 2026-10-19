@@ -40,4 +40,7 @@
     <color name="reader_outline">#FF79747E</color>
     <color name="trans_black">#B0000000</color>
     <color name="trans_light_black">#4F000000</color>
+    <!-- 对话框卡片描边与输入框底色（浅色模式） -->
+    <color name="dialog_outline">#1F000000</color>
+    <color name="dialog_input_background">#0F000000</color>
 </resources>

@@ -60,6 +60,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     private Set<String> mBookmarkedPaths = new java.util.HashSet<>();
     private final List<Chapter> mAllChapters = new ArrayList<>();
     private boolean mShowBookmarkedOnly;
+    private OnBookmarkNoteListener mBookmarkNoteListener;
 
     private static final int TAG_MAX_COUNT = 20;
     public interface OnTagClickListener {
@@ -210,6 +211,17 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         return mShowBookmarkedOnly;
     }
 
+    public void setOnBookmarkNoteListener(OnBookmarkNoteListener listener) {
+        mBookmarkNoteListener = listener;
+    }
+
+    public void refreshBookmarks() {
+        if (mBookmarkComicId != -1L) {
+            mBookmarkedPaths = ChapterBookmarkStore.getBookmarks(mContext, mBookmarkComicId);
+            refreshChapterData();
+        }
+    }
+
     @Override
     public void setData(Collection<Chapter> chapters) {
         mAllChapters.clear();
@@ -299,6 +311,13 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
             ChapterBookmarkStore.setBookmarked(mContext, mBookmarkComicId, chapter.getPath(), !marked);
             mBookmarkedPaths = ChapterBookmarkStore.getBookmarks(mContext, mBookmarkComicId);
             refreshChapterData();
+        });
+        bookmark.setOnLongClickListener(v -> {
+            if (mBookmarkNoteListener != null) {
+                mBookmarkNoteListener.onEditBookmarkNote(chapter);
+                return true;
+            }
+            return false;
         });
     }
 
@@ -416,6 +435,10 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
             mComicTagsScroll = view.findViewById(R.id.item_header_comic_tags_scroll);
             mComicTags = view.findViewById(R.id.item_header_comic_tags);
         }
+    }
+
+    public interface OnBookmarkNoteListener {
+        void onEditBookmarkNote(Chapter chapter);
     }
 
 }

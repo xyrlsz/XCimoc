@@ -7,71 +7,56 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:elevation="8dp"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:text="@string/data_server_login_title"
-        android:textColor="?attr/colorAccent"
-        android:textSize="20sp"
-        android:textStyle="bold" />
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:padding="12dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:text="@string/data_server_login_title"
+            android:textColor="?attr/colorAccent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
         <EditText
             android:id="@+id/input_username"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:background="@color/transparent"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/dialog_input_background"
             android:hint="@string/data_server_username_hint"
-            android:inputType="text" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_below="@id/input_username"
-            android:background="?attr/colorAccent" />
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:padding="12dp">
+            android:importantForAutofill="no"
+            android:inputType="text"
+            android:minHeight="48dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textColorHint="?android:attr/textColorHint" />
 
         <EditText
             android:id="@+id/input_password"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="48dp"
-            android:background="@color/transparent"
+            android:layout_marginBottom="16dp"
+            android:background="@drawable/dialog_input_background"
             android:hint="@string/data_server_password_hint"
-            android:inputType="textPassword" />
+            android:importantForAutofill="no"
+            android:inputType="textPassword"
+            android:minHeight="48dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:textColor="?android:attr/textColorPrimary"
+            android:textColorHint="?android:attr/textColorHint" />
 
-        <View
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_action"
+            style="?attr/materialButtonStyle"
             android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_below="@id/input_password"
-            android:background="?attr/colorAccent" />
-    </RelativeLayout>
-
-    <Button
-        android:id="@+id/btn_action"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?attr/colorAccent"
-        android:textColor="@color/white"
-        android:text="@string/data_server_btn_login" />
+            android:layout_height="wrap_content"
+            android:text="@string/data_server_btn_login"
+            android:textColor="@color/white" />
 
     </LinearLayout>
 </ScrollView>

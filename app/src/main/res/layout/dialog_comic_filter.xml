@@ -1,9 +1,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:elevation="8dp"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="16dp">
 
     <TextView
         android:id="@+id/title"
@@ -13,33 +12,24 @@
         android:layout_marginBottom="16dp"
         android:text="@string/comic_filter"
         android:textColor="?attr/colorAccent"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold" />
 
-    <RelativeLayout
+    <EditText
+        android:id="@+id/et_keyword"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
-        android:padding="12dp">
-
-        <EditText
-            android:id="@+id/et_keyword"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:autofillHints="keyword"
-            android:background="@color/transparent"
-            android:hint="输入关键词"
-            android:inputType="text|textFilter"
-            android:minHeight="48dp" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="2dp"
-            android:layout_below="@id/et_keyword"
-            android:background="?attr/colorAccent" />
-
-
-    </RelativeLayout>
+        android:layout_marginBottom="12dp"
+        android:autofillHints="keyword"
+        android:background="@drawable/dialog_input_background"
+        android:hint="@string/comic_filter_keyword_hint"
+        android:inputType="text|textFilter"
+        android:minHeight="48dp"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:textColor="?android:attr/textColorPrimary"
+        android:textColorHint="?android:attr/textColorHint"
+        android:textSize="15sp" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -48,53 +38,54 @@
 
         <CheckBox
             android:id="@+id/cb_is_completed"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginBottom="6dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
             android:background="?attr/selectableItemBackground"
-            android:contentDescription="完结"
-            android:text="完结" />
+            android:text="@string/comic_status_finish" />
 
         <CheckBox
             android:id="@+id/cb_is_not_completed"
-            android:layout_width="wrap_content"
-            android:layout_height="48dp"
-            android:layout_marginBottom="6dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="48dp"
             android:background="?attr/selectableItemBackground"
-            android:contentDescription="连载"
-            android:text="连载" />
+            android:text="@string/comic_status_continue" />
 
     </LinearLayout>
 
     <CheckBox
         android:id="@+id/cb_has_update"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
         android:background="?attr/selectableItemBackground"
         android:text="@string/comic_filter_has_update" />
 
-    <Button
-        android:id="@+id/btn_commit"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:background="?attr/colorAccent"
-        android:padding="12dp"
-        android:stateListAnimator="@null"
-        android:text="确定"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal">
 
-    <Button
-        android:id="@+id/btn_cancel"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:background="?attr/colorAccent"
-        android:padding="12dp"
-        android:stateListAnimator="@null"
-        android:text="取消"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_cancel"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/dialog_negative" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_commit"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="@string/dialog_positive" />
+
+    </LinearLayout>
 
 </LinearLayout>

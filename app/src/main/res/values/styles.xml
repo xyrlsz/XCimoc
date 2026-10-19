@@ -67,11 +67,17 @@
         <item name="alertDialogTheme">@style/DialogThemeBlue</item>
     </style>
 
-    <style name="DialogThemeBlue" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="BaseDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <!-- 统一对话框外观：圆角卡片、留白与最小宽度 -->
+        <item name="android:windowBackground">@drawable/dialog_background</item>
+        <item name="android:windowMinWidthMajor">86%</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
+
+    <style name="DialogThemeBlue" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryBlue</item>
         <item name="colorAccent">@color/colorPrimaryBlueDark</item>
         <item name="colorSecondary">@color/colorPrimaryBlueDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
 
     <style name="AppThemeGrey" parent="AppTheme">
@@ -82,11 +88,10 @@
         <item name="alertDialogTheme">@style/DialogThemeGrey</item>
     </style>
 
-    <style name="DialogThemeGrey" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="DialogThemeGrey" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryGrey</item>
         <item name="colorAccent">@color/colorPrimaryGreyDark</item>
         <item name="colorSecondary">@color/colorPrimaryGreyDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
 
     <style name="AppThemeTeal" parent="AppTheme">
@@ -97,11 +102,10 @@
         <item name="alertDialogTheme">@style/DialogThemeTeal</item>
     </style>
 
-    <style name="DialogThemeTeal" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="DialogThemeTeal" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryTeal</item>
         <item name="colorAccent">@color/colorPrimaryTealDark</item>
         <item name="colorSecondary">@color/colorPrimaryTealDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
 
     <style name="AppThemePurple" parent="AppTheme">
@@ -112,11 +116,10 @@
         <item name="alertDialogTheme">@style/DialogThemePurple</item>
     </style>
 
-    <style name="DialogThemePurple" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="DialogThemePurple" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryPurple</item>
         <item name="colorAccent">@color/colorPrimaryPurpleDark</item>
         <item name="colorSecondary">@color/colorPrimaryPurpleDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
 
     <style name="AppThemePink" parent="AppTheme">
@@ -127,11 +130,10 @@
         <item name="alertDialogTheme">@style/DialogThemePink</item>
     </style>
 
-    <style name="DialogThemePink" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="DialogThemePink" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryPink</item>
         <item name="colorAccent">@color/colorPrimaryPinkDark</item>
         <item name="colorSecondary">@color/colorPrimaryPinkDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
 
     <style name="AppThemeBrown" parent="AppTheme">
@@ -142,11 +144,10 @@
         <item name="alertDialogTheme">@style/DialogThemeBrown</item>
     </style>
 
-    <style name="DialogThemeBrown" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="DialogThemeBrown" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryBrown</item>
         <item name="colorAccent">@color/colorPrimaryBrownDark</item>
         <item name="colorSecondary">@color/colorPrimaryBrownDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
 
     <style name="AppThemeOrange" parent="AppTheme">
@@ -157,11 +158,10 @@
         <item name="alertDialogTheme">@style/DialogThemeOrange</item>
     </style>
 
-    <style name="DialogThemeOrange" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+    <style name="DialogThemeOrange" parent="BaseDialogTheme">
         <item name="colorPrimary">@color/colorPrimaryOrange</item>
         <item name="colorAccent">@color/colorPrimaryOrangeDark</item>
         <item name="colorSecondary">@color/colorPrimaryOrangeDark</item>
-        <item name="android:windowBackground">@color/colorBackground</item>
     </style>
     <style name="SliderTooltip" parent="Widget.MaterialComponents.Tooltip">
         <item name="backgroundTint">?attr/colorPrimary</item>

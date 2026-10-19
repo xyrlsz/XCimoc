@@ -66,6 +66,7 @@
     <string name="chapter_switch_view">切换视图</string>
     <string name="chapter_bookmark_add">添加章节书签</string>
     <string name="chapter_bookmark_remove">移除章节书签</string>
+    <string name="chapter_bookmark_note">章节书签备注</string>
     <string name="chapter_download_perm_fail">获取权限失败</string>
     <string name="chapter_download_empty">未选择章节</string>
 
@@ -77,6 +78,7 @@
     <string name="comic_tab_local">本地</string>
     <string name="comic_filter">过滤</string>
     <string name="comic_filter_has_update">仅显示有更新</string>
+    <string name="comic_filter_keyword_hint">输入关键词</string>
     <string name="comic_bbs">讨论圈</string>
     <string name="comic_search">搜索</string>
     <string name="comic_cancel_highlight">全部标记已读</string>

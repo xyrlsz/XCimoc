@@ -61,6 +61,16 @@ public class ProgressDialogFragment extends DialogFragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        // 进度框内容很少，覆盖主题里的对话框最小宽度，保持紧凑
+        if (getDialog() != null && getDialog().getWindow() != null) {
+            getDialog().getWindow().setLayout(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+    }
+
+    @Override
     public void onDestroyView() {
         if (mCompositeSubscription != null) {
             mCompositeSubscription.dispose();
