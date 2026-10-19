@@ -73,6 +73,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
     private boolean mAutoBackupCloud;
     private int mBackupCount;
     private Chapter mPendingBookmarkNote;
+    private boolean mBookmarkEnabled;
 
     public static Intent createIntent(Context context, Long id, int source, String cid) {
         Intent intent = new Intent(context, DetailActivity.class);
@@ -199,7 +200,9 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
     public boolean onPrepareOptionsMenu(Menu menu) {
         MenuItem bookmarksItem = menu.findItem(R.id.detail_bookmarks);
         if (bookmarksItem != null) {
-            boolean showingBookmarks = mDetailAdapter != null && mDetailAdapter.isBookmarkedOnly();
+            boolean enabled = ChapterBookmarkStore.isEnabled();
+            bookmarksItem.setVisible(enabled);
+            boolean showingBookmarks = enabled && mDetailAdapter != null && mDetailAdapter.isBookmarkedOnly();
             bookmarksItem.setChecked(showingBookmarks);
             bookmarksItem.setTitle(showingBookmarks
                     ? R.string.detail_all_chapters : R.string.detail_bookmarks_only);
@@ -276,8 +279,10 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
             } else if (__id == R.id.detail_reverse_list) {
                 mDetailAdapter.reverse();
             } else if (__id == R.id.detail_bookmarks) {
-                mDetailAdapter.setBookmarkedOnly(!mDetailAdapter.isBookmarkedOnly());
-                invalidateOptionsMenu();
+                if (ChapterBookmarkStore.isEnabled()) {
+                    mDetailAdapter.setBookmarkedOnly(!mDetailAdapter.isBookmarkedOnly());
+                    invalidateOptionsMenu();
+                }
 //                case R.id.detail_disqus:
 //                    intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_cimqus_url) + "/cimoc/" + mPresenter.getComic().getTitle()));
 //                    try {
@@ -332,6 +337,20 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
         super.onResume();
         // 每次回到详情页，强制同步一次数据库状态
         mPresenter.checkDatabaseStatus();
+        refreshBookmarkState();
+    }
+
+    private void refreshBookmarkState() {
+        boolean enabled = ChapterBookmarkStore.isEnabled();
+        if (enabled == mBookmarkEnabled) {
+            return;
+        }
+        mBookmarkEnabled = enabled;
+        if (!enabled && mDetailAdapter.isBookmarkedOnly()) {
+            mDetailAdapter.setBookmarkedOnly(false);
+        }
+        mDetailAdapter.notifyDataSetChanged();
+        invalidateOptionsMenu();
     }
 
     void onActionButton2Click() {

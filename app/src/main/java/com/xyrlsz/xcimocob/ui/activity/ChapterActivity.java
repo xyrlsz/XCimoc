@@ -120,14 +120,16 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
         loadBookmarks();
         mChapterAdapter = new ChapterAdapter(this, new ArrayList<>(mAllChapters));
         mChapterAdapter.setBookmarks(mBookmarkPaths);
-        mChapterAdapter.setOnBookmarkClickListener(this::toggleBookmark);
-        mChapterAdapter.setOnBookmarkNoteListener(chapter -> {
-            mPendingBookmarkNote = chapter;
-            String note = ChapterBookmarkStore.getNote(this, mBookmarkComicId, chapter.getPath());
-            EditorDialogFragment.newInstance(R.string.chapter_bookmark_note, note,
-                    REQUEST_CODE_BOOKMARK_NOTE, true).show(getSupportFragmentManager(), null);
-            return true;
-        });
+        if (ChapterBookmarkStore.isEnabled()) {
+            mChapterAdapter.setOnBookmarkClickListener(this::toggleBookmark);
+            mChapterAdapter.setOnBookmarkNoteListener(chapter -> {
+                mPendingBookmarkNote = chapter;
+                String note = ChapterBookmarkStore.getNote(this, mBookmarkComicId, chapter.getPath());
+                EditorDialogFragment.newInstance(R.string.chapter_bookmark_note, note,
+                        REQUEST_CODE_BOOKMARK_NOTE, true).show(getSupportFragmentManager(), null);
+                return true;
+            });
+        }
         mDecoration = mChapterAdapter.getItemDecoration();
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);

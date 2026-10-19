@@ -156,6 +156,7 @@ public class PreferenceManager {
 
     public static final String PREF_CHAPTER_BUTTON_MODE = "pref_chapter_button_mode";
     public static final String PREF_CHAPTER_ASCEND_MODE = "pref_chapter_ascend_mode";
+    public static final String PREF_CHAPTER_BOOKMARK = "pref_chapter_bookmark";
     public static final String PREFERENCES_USER_TOCKEN = "user_tocken";
     public static final String PREFERENCES_USER_NAME = "user_name";
     public static final String PREFERENCES_USER_PASSWORD = "user_password";
@@ -273,6 +274,7 @@ public class PreferenceManager {
             PREF_SEARCH_AUTO_COMPLETE,
             PREF_CHAPTER_BUTTON_MODE,
             PREF_CHAPTER_ASCEND_MODE,
+            PREF_CHAPTER_BOOKMARK,
             PREF_DETAIL_TEXT_ST,
             PREF_ST_ENGINE,
             PREF_BACKUP_SAVE_COMIC,

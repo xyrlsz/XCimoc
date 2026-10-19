@@ -240,6 +240,8 @@
 
     <string name="settings_detail_text_st">漫畫詳情字體</string>
     <string name="settings_st_engine">繁簡轉換引擎</string>
+    <string name="settings_chapter_bookmark">章節書籤</string>
+    <string name="settings_chapter_bookmark_summary">在章節列表顯示書籤星標，長按可新增備註；關閉後隱藏相關入口</string>
     <!-- ========== 本地備份到檔案 ========== -->
     <string name="backup_save">本地備份到檔案</string>
     <string name="backup_save_comic_auto">自動備份到本地檔案</string>

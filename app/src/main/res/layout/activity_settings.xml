@@ -232,6 +232,13 @@
                     android:layout_height="wrap_content"
                     app:title="@string/settings_st_engine" />
 
+                <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
+                    android:id="@+id/settings_chapter_bookmark"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    app:summary="@string/settings_chapter_bookmark_summary"
+                    app:title="@string/settings_chapter_bookmark" />
+
 
                 <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
                     android:id="@+id/settings_other_connect_only_wifi"

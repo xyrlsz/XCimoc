@@ -97,6 +97,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     ChoicePreference mStEngine;
 
     CheckBoxPreference mReaderPagingStreamOff;
+    CheckBoxPreference mChapterBookmark;
 
     private SettingsPresenter mPresenter;
     private String mStoragePath;
@@ -139,6 +140,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         mOtherDarkMod = findViewById(R.id.settings_other_dark_mod);
         mStEngine = findViewById(R.id.settings_st_engine);
         mReaderPagingStreamOff = findViewById(R.id.settings_reader_paging_stream_off);
+        mChapterBookmark = findViewById(R.id.settings_chapter_bookmark);
     }
 
     @Override
@@ -202,6 +204,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
                 PreferenceManager.ST_JCC, R.array.st_engine_items, DIALOG_REQUEST_ST_ENGINE);
 
         mReaderPagingStreamOff.bindPreference(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, false);
+        mChapterBookmark.bindPreference(PreferenceManager.PREF_CHAPTER_BOOKMARK, false);
         findViewById(R.id.settings_reader_config).setOnClickListener(v -> onReaderConfigBtnClick());
         findViewById(R.id.settings_other_storage).setOnClickListener(v -> onOtherStorageClick());
         findViewById(R.id.settings_download_scan).setOnClickListener(v -> onDownloadScanClick());

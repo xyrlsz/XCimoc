@@ -32,6 +32,15 @@ public final class ChapterBookmarkStore {
     private ChapterBookmarkStore() {
     }
 
+    /**
+     * 书签功能开关，默认关闭。
+     */
+    public static boolean isEnabled() {
+        PreferenceManager preferenceManager = App.getPreferenceManager();
+        return preferenceManager != null
+                && preferenceManager.getBoolean(PreferenceManager.PREF_CHAPTER_BOOKMARK, false);
+    }
+
     public static Set<String> getBookmarks(Context context, long sourceComic) {
         migrateLegacyData(context);
         Set<String> result = new HashSet<>();

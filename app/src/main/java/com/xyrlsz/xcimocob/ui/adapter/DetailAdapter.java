@@ -297,7 +297,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
 
     private void bindBookmark(ChapterHolder holder, Chapter chapter) {
         TextView bookmark = holder.bookmark;
-        if (mBookmarkComicId == -1L) {
+        if (mBookmarkComicId == -1L || !ChapterBookmarkStore.isEnabled()) {
             bookmark.setVisibility(View.GONE);
             return;
         }
