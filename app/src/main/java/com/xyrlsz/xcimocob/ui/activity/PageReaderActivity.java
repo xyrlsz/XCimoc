@@ -50,10 +50,10 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
             mPendingBoundary = BOUNDARY_NONE;
             mBoundaryWaitCount = 0;
             if (boundary == BOUNDARY_PREV) {
-                if (mLoadPrev && getCurPosition() == 0) {
+                if (isLoadPrevEnabled() && getCurPosition() == 0) {
                     mPresenter.loadPrev();
                 }
-            } else if (mLoadNext && getCurPosition() == mReaderAdapter.getItemCount() - 1) {
+            } else if (isLoadNextEnabled() && getCurPosition() == mReaderAdapter.getItemCount() - 1) {
                 mPresenter.loadNext();
             }
         }
@@ -62,8 +62,6 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
     @Override
     protected void initView() {
         super.initView();
-        mLoadPrev = mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_LOAD_PREV, true);
-        mLoadNext = mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_LOAD_NEXT, true);
         int offset = mPreference.getNumber(PreferenceManager.PREF_READER_PAGE_TRIGGER, 10).intValue();
         mReaderAdapter.setReaderMode(ReaderAdapter.READER_PAGE);
         if (mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_QUICK_TURN, false)) {
@@ -98,10 +96,10 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
         // oldPosition 合法（非初始 -1，mCurView 非空）时才进行预加载与章节切换检测；
         // 初始回调（oldPosition = -1）只更新进度，避免自动加载上一章/下一章
         if (oldPosition >= 0) {
-            if (mLoadPrev && newPosition == 0) {
+            if (newPosition == 0 && isLoadPrevEnabled()) {
                 mPresenter.loadPrev();
             }
-            if (mLoadNext && newPosition == mReaderAdapter.getItemCount() - 1) {
+            if (newPosition == mReaderAdapter.getItemCount() - 1 && isLoadNextEnabled()) {
                 mPresenter.loadNext();
             }
 
@@ -152,7 +150,9 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
         hideControl();
         int position = getCurPosition();
         if (position == 0) {
-            mPresenter.loadPrev();
+            if (isLoadPrevEnabled()) {
+                mPresenter.loadPrev();
+            }
         } else {
             mRecyclerView.smoothScrollToPosition(position - 1);
         }
@@ -163,7 +163,9 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
         hideControl();
         int position = getCurPosition();
         if (position == mReaderAdapter.getItemCount() - 1) {
-            mPresenter.loadNext();
+            if (isLoadNextEnabled()) {
+                mPresenter.loadNext();
+            }
         } else {
             mRecyclerView.smoothScrollToPosition(position + 1);
         }

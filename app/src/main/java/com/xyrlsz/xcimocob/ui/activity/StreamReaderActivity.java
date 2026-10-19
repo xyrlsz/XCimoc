@@ -28,8 +28,6 @@ public class StreamReaderActivity extends ReaderActivity {
     @Override
     protected void initView() {
         super.initView();
-        mLoadPrev = mPreference.getBoolean(PreferenceManager.PREF_READER_STREAM_LOAD_PREV, false);
-        mLoadNext = mPreference.getBoolean(PreferenceManager.PREF_READER_STREAM_LOAD_NEXT, true);
         mReaderAdapter.setReaderMode(ReaderAdapter.READER_STREAM);
         if (App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, false)) {
             mReaderAdapter.setPaging(false);
@@ -55,13 +53,13 @@ public class StreamReaderActivity extends ReaderActivity {
                         // 快速滑动结束时再次同步进度，避免最后一次 onScrolled 因布局
                         // 未完成（findFirstVisibleItemPosition 滞后）导致进度信息不更新
                         syncStreamProgress(mLayoutManager.findFirstVisibleItemPosition(), 0, 0);
-                        if (mLoadPrev) {
+                        if (isLoadPrevEnabled()) {
                             int item = mLayoutManager.findFirstVisibleItemPosition();
                             if (item == 0) {
                                 mPresenter.loadPrev();
                             }
                         }
-                        if (mLoadNext) {
+                        if (isLoadNextEnabled()) {
                             int item = mLayoutManager.findLastVisibleItemPosition();
                             if (item == mReaderAdapter.getItemCount() - 1) {
                                 mPresenter.loadNext();
@@ -69,13 +67,13 @@ public class StreamReaderActivity extends ReaderActivity {
                         }
                         break;
                     case RecyclerView.SCROLL_STATE_SETTLING:
-                        if (mLoadPrev) {
+                        if (isLoadPrevEnabled()) {
                             int item = mLayoutManager.findFirstVisibleItemPosition();
                             if (item == 0) {
                                 mPresenter.loadPrev();
                             }
                         }
-                        if (mLoadNext) {
+                        if (isLoadNextEnabled()) {
                             int item = mLayoutManager.findLastVisibleItemPosition();
                             if (item == mReaderAdapter.getItemCount() - 1) {
                                 mPresenter.loadNext();
@@ -152,7 +150,7 @@ public class StreamReaderActivity extends ReaderActivity {
         } else {
             mRecyclerView.smoothScrollBy(-point.x, 0);
         }
-        if (mLayoutManager.findFirstVisibleItemPosition() == 0) {
+        if (mLayoutManager.findFirstVisibleItemPosition() == 0 && isLoadPrevEnabled()) {
             loadPrev();
         }
     }
@@ -173,7 +171,8 @@ public class StreamReaderActivity extends ReaderActivity {
         } else {
             mRecyclerView.smoothScrollBy(point.x, 0);
         }
-        if (mLayoutManager.findLastVisibleItemPosition() == mReaderAdapter.getItemCount() - 1) {
+        if (mLayoutManager.findLastVisibleItemPosition() == mReaderAdapter.getItemCount() - 1
+                && isLoadNextEnabled()) {
             loadNext();
         }
     }

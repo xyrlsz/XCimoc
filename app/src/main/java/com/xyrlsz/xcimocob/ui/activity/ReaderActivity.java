@@ -128,8 +128,6 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     protected int turn;
     protected int orientation;
     protected int mode;
-    protected boolean mLoadPrev;
-    protected boolean mLoadNext;
     TextView mChapterTitle;
     TextView mChapterPage;
     TextView mBatteryText;
@@ -972,6 +970,24 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
             e.printStackTrace();
         }
         onPictureSaveFail();
+    }
+
+    /**
+     * 阅读设置中「自动加载上一章/下一章」是否开启。
+     * 每次使用时读取，保证在阅读器内修改设置后立即生效（无需重新打开阅读器）。
+     */
+    protected boolean isLoadPrevEnabled() {
+        boolean pageMode = mode == PreferenceManager.READER_MODE_PAGE;
+        return mPreference.getBoolean(pageMode ?
+                PreferenceManager.PREF_READER_PAGE_LOAD_PREV :
+                PreferenceManager.PREF_READER_STREAM_LOAD_PREV, pageMode);
+    }
+
+    protected boolean isLoadNextEnabled() {
+        boolean pageMode = mode == PreferenceManager.READER_MODE_PAGE;
+        return mPreference.getBoolean(pageMode ?
+                PreferenceManager.PREF_READER_PAGE_LOAD_NEXT :
+                PreferenceManager.PREF_READER_STREAM_LOAD_NEXT, true);
     }
 
     protected void loadPrev() {
