@@ -86,6 +86,15 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
     }
 
     @Override
+    public void OnPageChangeAttempted(int position, boolean previous) {
+        if (previous && mLoadPrev && position == 0) {
+            mPresenter.loadPrev();
+        } else if (!previous && mLoadNext && position == mReaderAdapter.getItemCount() - 1) {
+            mPresenter.loadNext();
+        }
+    }
+
+    @Override
     public void onPrevLoadSuccess(List<ImageUrl> list) {
         mReaderAdapter.addAll(0, list);
         ((RecyclerViewPager) mRecyclerView).refreshPosition();

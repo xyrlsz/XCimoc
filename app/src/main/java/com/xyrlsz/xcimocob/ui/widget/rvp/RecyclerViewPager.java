@@ -205,7 +205,9 @@ public class RecyclerViewPager extends RecyclerView {
             int curPosition = RecyclerViewUtils.getCenterXChildPosition(this);
             int childWidth = getWidth() - getPaddingLeft() - getPaddingRight();
             int flingCount = Math.max(-1, Math.min(1, getFlingCount(velocityX, childWidth)));
-            int targetPosition = flingCount == 0 ? curPosition : mPositionOnTouchDown + flingCount;
+            int flingTargetPosition = flingCount == 0 ? curPosition : mPositionOnTouchDown + flingCount;
+            notifyPageChangeAttempt(curPosition, flingTargetPosition);
+            int targetPosition = flingTargetPosition;
             targetPosition = Math.max(targetPosition, 0);
             targetPosition = Math.min(targetPosition, getItemCount() - 1);
             if (targetPosition == curPosition && mPositionOnTouchDown == curPosition) {
@@ -235,7 +237,9 @@ public class RecyclerViewPager extends RecyclerView {
             int curPosition = RecyclerViewUtils.getCenterYChildPosition(this);
             int childHeight = getHeight() - getPaddingTop() - getPaddingBottom();
             int flingCount = Math.max(-1, Math.min(1, getFlingCount(velocityY, childHeight)));
-            int targetPosition = flingCount == 0 ? curPosition : mPositionOnTouchDown + flingCount;
+            int flingTargetPosition = flingCount == 0 ? curPosition : mPositionOnTouchDown + flingCount;
+            notifyPageChangeAttempt(curPosition, flingTargetPosition);
+            int targetPosition = flingTargetPosition;
             targetPosition = Math.max(targetPosition, 0);
             targetPosition = Math.min(targetPosition, getItemCount() - 1);
             if (targetPosition == curPosition && mPositionOnTouchDown == curPosition) {
@@ -342,29 +346,28 @@ public class RecyclerViewPager extends RecyclerView {
             if (mNeedAdjust) {
                 int targetPosition = Objects.requireNonNull(getLayoutManager()).canScrollHorizontally() ? RecyclerViewUtils.getCenterXChildPosition(this) :
                         RecyclerViewUtils.getCenterYChildPosition(this);
+                int currentPosition = targetPosition;
                 if (mCurView != null) {
                     targetPosition = getChildAdapterPosition(mCurView);
+                    currentPosition = targetPosition;
                     if (getLayoutManager().canScrollHorizontally()) {
                         int spanX = mCurView.getLeft() - mFirstLeftWhenDragging;
                         // if user is tending to cancel paging action, don't perform position changing
                         if (spanX > mCurView.getWidth() * mTriggerOffset && mCurView.getLeft() >= mMaxLeftWhenDragging) {
-                            if (!reverseLayout) targetPosition--;
-                            else targetPosition++;
+                            targetPosition += reverseLayout ? 1 : -1;
                         } else if (spanX < mCurView.getWidth() * -mTriggerOffset && mCurView.getLeft() <= mMinLeftWhenDragging) {
-                            if (!reverseLayout) targetPosition++;
-                            else targetPosition--;
+                            targetPosition += reverseLayout ? -1 : 1;
                         }
                     } else {
                         int spanY = mCurView.getTop() - mFirstTopWhenDragging;
                         if (spanY > mCurView.getHeight() * mTriggerOffset && mCurView.getTop() >= mMaxTopWhenDragging) {
-                            if (!reverseLayout) targetPosition--;
-                            else targetPosition++;
+                            targetPosition += reverseLayout ? 1 : -1;
                         } else if (spanY < mCurView.getHeight() * -mTriggerOffset && mCurView.getTop() <= mMinTopWhenDragging) {
-                            if (!reverseLayout) targetPosition++;
-                            else targetPosition--;
+                            targetPosition += reverseLayout ? -1 : 1;
                         }
                     }
                 }
+                notifyPageChangeAttempt(currentPosition, targetPosition);
                 startSmoothScroll(safeTargetPosition(targetPosition, getItemCount()));
                 mCurView = null;
             } else if (mSmoothScrollTargetPosition != mPositionBeforeScroll) {
@@ -399,6 +402,22 @@ public class RecyclerViewPager extends RecyclerView {
                 - mTriggerOffset));
     }
 
+    private void notifyPageChangeAttempt(int currentPosition, int targetPosition) {
+        int itemCount = getItemCount();
+        if (currentPosition < 0 || currentPosition >= itemCount) {
+            return;
+        }
+        if (targetPosition < 0) {
+            if (mOnPageChangedListener != null) {
+                mOnPageChangedListener.OnPageChangeAttempted(currentPosition, true);
+            }
+        } else if (targetPosition >= itemCount) {
+            if (mOnPageChangedListener != null) {
+                mOnPageChangedListener.OnPageChangeAttempted(currentPosition, false);
+            }
+        }
+    }
+
     private int safeTargetPosition(int position, int count) {
         if (position < 0) {
             return 0;
@@ -411,6 +430,8 @@ public class RecyclerViewPager extends RecyclerView {
 
     public interface OnPageChangedListener {
         void OnPageChanged(int oldPosition, int newPosition);
+
+        void OnPageChangeAttempted(int position, boolean previous);
     }
 
     private class GlobalLayoutListener implements ViewTreeObserver.OnGlobalLayoutListener {
