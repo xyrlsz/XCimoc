@@ -50,10 +50,10 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
             mPendingBoundary = BOUNDARY_NONE;
             mBoundaryWaitCount = 0;
             if (boundary == BOUNDARY_PREV) {
-                if (isLoadPrevEnabled() && getCurPosition() == 0) {
+                if (getCurPosition() == 0) {
                     mPresenter.loadPrev();
                 }
-            } else if (isLoadNextEnabled() && getCurPosition() == mReaderAdapter.getItemCount() - 1) {
+            } else if (getCurPosition() == mReaderAdapter.getItemCount() - 1) {
                 mPresenter.loadNext();
             }
         }
@@ -150,9 +150,7 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
         hideControl();
         int position = getCurPosition();
         if (position == 0) {
-            if (isLoadPrevEnabled()) {
-                mPresenter.loadPrev();
-            }
+            mPresenter.loadPrev();
         } else {
             mRecyclerView.smoothScrollToPosition(position - 1);
         }
@@ -163,9 +161,7 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
         hideControl();
         int position = getCurPosition();
         if (position == mReaderAdapter.getItemCount() - 1) {
-            if (isLoadNextEnabled()) {
-                mPresenter.loadNext();
-            }
+            mPresenter.loadNext();
         } else {
             mRecyclerView.smoothScrollToPosition(position + 1);
         }

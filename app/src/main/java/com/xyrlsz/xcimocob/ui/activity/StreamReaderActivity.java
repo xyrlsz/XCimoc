@@ -150,7 +150,7 @@ public class StreamReaderActivity extends ReaderActivity {
         } else {
             mRecyclerView.smoothScrollBy(-point.x, 0);
         }
-        if (mLayoutManager.findFirstVisibleItemPosition() == 0 && isLoadPrevEnabled()) {
+        if (mLayoutManager.findFirstVisibleItemPosition() == 0) {
             loadPrev();
         }
     }
@@ -171,8 +171,7 @@ public class StreamReaderActivity extends ReaderActivity {
         } else {
             mRecyclerView.smoothScrollBy(point.x, 0);
         }
-        if (mLayoutManager.findLastVisibleItemPosition() == mReaderAdapter.getItemCount() - 1
-                && isLoadNextEnabled()) {
+        if (mLayoutManager.findLastVisibleItemPosition() == mReaderAdapter.getItemCount() - 1) {
             loadNext();
         }
     }
