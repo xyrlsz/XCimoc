@@ -493,10 +493,56 @@
         }
       ],
       "relations": []
+    },
+    {
+      "id": "10:5786513574960880349",
+      "lastPropertyId": "7:8791304695714887582",
+      "name": "ChapterBookmark",
+      "properties": [
+        {
+          "id": "1:1621850481349793138",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:7102741008617836840",
+          "name": "sourceComic",
+          "indexId": "13:1756405037328154346",
+          "type": 6,
+          "flags": 8
+        },
+        {
+          "id": "3:7556514666220161933",
+          "name": "path",
+          "type": 9
+        },
+        {
+          "id": "4:6508570394388732359",
+          "name": "bookmarked",
+          "type": 1
+        },
+        {
+          "id": "5:2240025048845865923",
+          "name": "note",
+          "type": 9
+        },
+        {
+          "id": "6:602067802399297689",
+          "name": "createdAt",
+          "type": 6
+        },
+        {
+          "id": "7:8791304695714887582",
+          "name": "updatedAt",
+          "type": 6
+        }
+      ],
+      "relations": []
     }
   ],
-  "lastEntityId": "9:3996711962368286713",
-  "lastIndexId": "12:1727025280579945022",
+  "lastEntityId": "10:5786513574960880349",
+  "lastIndexId": "13:1756405037328154346",
   "lastRelationId": "0:0",
   "lastSequenceId": "0:0",
   "modelVersion": 5,
