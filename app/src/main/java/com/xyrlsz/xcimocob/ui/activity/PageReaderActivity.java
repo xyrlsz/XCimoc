@@ -22,6 +22,43 @@ import java.util.List;
  */
 public class PageReaderActivity extends ReaderActivity implements OnPageChangedListener {
 
+    private static final int BOUNDARY_NONE = 0;
+    private static final int BOUNDARY_PREV = -1;
+    private static final int BOUNDARY_NEXT = 1;
+    private static final int BOUNDARY_MAX_WAIT_COUNT = 20;
+    private static final long BOUNDARY_WAIT_INTERVAL = 30L;
+
+    private int mPendingBoundary = BOUNDARY_NONE;
+    private int mBoundaryWaitCount;
+
+    /**
+     * 首/末页继续向外滑动后加载相邻章节。
+     * 等到 pager 停止滚动再执行，避免在翻页动画过程中修改数据导致位置错乱。
+     */
+    private final Runnable mBoundaryLoadRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (mPendingBoundary == BOUNDARY_NONE) {
+                return;
+            }
+            if (mRecyclerView.getScrollState() != RecyclerView.SCROLL_STATE_IDLE
+                    && mBoundaryWaitCount++ < BOUNDARY_MAX_WAIT_COUNT) {
+                mRecyclerView.postDelayed(this, BOUNDARY_WAIT_INTERVAL);
+                return;
+            }
+            int boundary = mPendingBoundary;
+            mPendingBoundary = BOUNDARY_NONE;
+            mBoundaryWaitCount = 0;
+            if (boundary == BOUNDARY_PREV) {
+                if (mLoadPrev && getCurPosition() == 0) {
+                    mPresenter.loadPrev();
+                }
+            } else if (mLoadNext && getCurPosition() == mReaderAdapter.getItemCount() - 1) {
+                mPresenter.loadNext();
+            }
+        }
+    };
+
     @Override
     protected void initView() {
         super.initView();
@@ -87,11 +124,10 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
 
     @Override
     public void OnPageChangeAttempted(int position, boolean previous) {
-        if (previous && mLoadPrev && position == 0) {
-            mPresenter.loadPrev();
-        } else if (!previous && mLoadNext && position == mReaderAdapter.getItemCount() - 1) {
-            mPresenter.loadNext();
-        }
+        mPendingBoundary = previous ? BOUNDARY_PREV : BOUNDARY_NEXT;
+        mBoundaryWaitCount = 0;
+        mRecyclerView.removeCallbacks(mBoundaryLoadRunnable);
+        mRecyclerView.post(mBoundaryLoadRunnable);
     }
 
     @Override
