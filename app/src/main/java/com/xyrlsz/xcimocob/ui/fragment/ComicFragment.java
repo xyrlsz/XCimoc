@@ -225,9 +225,10 @@ public class ComicFragment extends BaseFragment implements ComicView {
         int theme = ThemeUtils.getThemeId();
         ComicFilterDialog comicFilterDialog = new ComicFilterDialog(getContext(), ThemeUtils.getDialogThemeById(theme), new ComicFilterDialog.SubmitCallBack() {
             @Override
-            public void OnClickCommit(String keyword, boolean isCompleted, boolean isNotCompleted) {
+            public void OnClickCommit(String keyword, boolean isCompleted, boolean isNotCompleted,
+                                      boolean hasUpdate) {
                 GridFragment item = (GridFragment) mTabAdapter.getItem(mViewPager.getCurrentItem());
-                item.filterByKeyword(keyword, isCompleted, isNotCompleted);
+                item.filterByKeyword(keyword, isCompleted, isNotCompleted, hasUpdate);
             }
 
             @Override

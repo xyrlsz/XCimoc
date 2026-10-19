@@ -20,11 +20,25 @@
         android:focusable="false" />
 
     <TextView
+        android:id="@+id/item_select_bookmark"
+        android:layout_width="40dp"
+        android:layout_height="48dp"
+        android:layout_centerVertical="true"
+        android:layout_toLeftOf="@id/item_select_checkbox"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="☆"
+        android:textColor="?attr/colorAccent"
+        android:textSize="22sp" />
+
+    <TextView
         android:id="@+id/item_select_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
-        android:layout_toLeftOf="@id/item_select_checkbox"
+        android:layout_toLeftOf="@id/item_select_bookmark"
         android:ellipsize="end"
         android:maxLines="1"
         android:textColor="?android:attr/textColorPrimary"

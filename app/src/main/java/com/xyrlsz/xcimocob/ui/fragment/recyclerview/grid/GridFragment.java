@@ -123,11 +123,23 @@ public abstract class GridFragment extends RecyclerViewFragment implements GridV
 
     @Override
     public void filterByKeyword(String keyword, boolean isCompleted, boolean isNotCompleted) {
+        filterByKeyword(keyword, isCompleted, isNotCompleted, false);
+    }
+
+    @Override
+    public void filterByKeyword(String keyword, boolean isCompleted, boolean isNotCompleted,
+                                boolean hasUpdate) {
         if (keyword.isEmpty() && !isCompleted && !isNotCompleted) {
+            if (!hasUpdate) {
+                cancelFilter();
+                return;
+            }
+        }
+        if (!isCompleted && !isNotCompleted && !hasUpdate) {
             cancelFilter();
             return;
         }
-        mGridAdapter.filterByKeyword(keyword, isCompleted, isNotCompleted);
+        mGridAdapter.filterByKeyword(keyword, isCompleted, isNotCompleted, hasUpdate);
     }
 
     @Override

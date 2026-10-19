@@ -23,6 +23,7 @@ import com.facebook.drawee.backends.pipeline.PipelineDraweeControllerBuilder;
 import com.facebook.drawee.backends.pipeline.PipelineDraweeControllerBuilderSupplier;
 import com.facebook.drawee.view.SimpleDraweeView;
 import com.xyrlsz.xcimocob.R;
+import com.xyrlsz.xcimocob.manager.ChapterBookmarkStore;
 import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.ui.widget.ChapterButton;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
@@ -30,6 +31,7 @@ import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Created by Hiroshi on 2016/7/2.
@@ -52,6 +54,8 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     private String last;
     private List<String> tags;
     private OnTagClickListener mTagClickListener;
+    private long mBookmarkComicId = -1L;
+    private Set<String> mBookmarkedPaths = new java.util.HashSet<>();
 
     private static final int TAG_MAX_COUNT = 20;
     public interface OnTagClickListener {
@@ -186,6 +190,12 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         notifyItemChanged(0);
     }
 
+    public void setBookmarkComicId(long sourceComic) {
+        mBookmarkComicId = sourceComic;
+        mBookmarkedPaths = ChapterBookmarkStore.getBookmarks(mContext, sourceComic);
+        notifyDataSetChanged();
+    }
+
     public void setOnTagClickListener(OnTagClickListener listener) {
         mTagClickListener = listener;
     }
@@ -227,8 +237,10 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
             } else {
                 Chapter chapter = mDataSet.get(position - 1);
                 ChapterHolder viewHolder = (ChapterHolder) holder;
+                viewHolder.chapterButton.setOnClickListener(v -> viewHolder.itemView.performClick());
                 viewHolder.chapterButton.setText(STConvertUtils.convert(chapter.getTitle()));
                 viewHolder.chapterButton.setDownload(chapter.isComplete());
+                bindBookmark(viewHolder, chapter);
                 if (chapter.getPath() != null && chapter.getPath().equals(last)) {
                     viewHolder.chapterButton.setSelected(true);
                 } else if (viewHolder.chapterButton.isSelected()) {
@@ -238,7 +250,28 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         } catch (Exception ignored) {
 
         }
+    }
 
+    private void bindBookmark(ChapterHolder holder, Chapter chapter) {
+        TextView bookmark = holder.bookmark;
+        if (mBookmarkComicId == -1L) {
+            bookmark.setVisibility(View.GONE);
+            return;
+        }
+        bookmark.setVisibility(View.VISIBLE);
+        boolean marked = mBookmarkedPaths.contains(chapter.getPath());
+        bookmark.setText(marked ? "★" : "☆");
+        bookmark.setAlpha(marked ? 1f : 0.55f);
+        bookmark.setContentDescription(mContext.getString(
+                marked ? R.string.chapter_bookmark_remove : R.string.chapter_bookmark_add));
+        bookmark.setOnClickListener(v -> {
+            ChapterBookmarkStore.setBookmarked(mContext, mBookmarkComicId, chapter.getPath(), !marked);
+            mBookmarkedPaths = ChapterBookmarkStore.getBookmarks(mContext, mBookmarkComicId);
+            int adapterPosition = holder.getBindingAdapterPosition();
+            if (adapterPosition != RecyclerView.NO_POSITION) {
+                notifyItemChanged(adapterPosition);
+            }
+        });
     }
 
     @Override
@@ -279,10 +312,12 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
 
     static class ChapterHolder extends BaseViewHolder {
         ChapterButton chapterButton;
+        TextView bookmark;
 
         ChapterHolder(View view) {
             super(view);
             chapterButton = view.findViewById(R.id.item_chapter_button);
+            bookmark = view.findViewById(R.id.item_chapter_bookmark);
         }
     }
 

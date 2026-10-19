@@ -15,6 +15,7 @@ public class ComicFilterDialog extends Dialog {
     EditText keywordEditText;
     CheckBox isCompletedCheckBox;
     CheckBox isNotCompletedCheckBox;
+    CheckBox hasUpdateCheckBox;
     Button commitButton;
     Button cancelButton;
 
@@ -29,6 +30,7 @@ public class ComicFilterDialog extends Dialog {
         keywordEditText = findViewById(R.id.et_keyword);
         isCompletedCheckBox = findViewById(R.id.cb_is_completed);
         isNotCompletedCheckBox = findViewById(R.id.cb_is_not_completed);
+        hasUpdateCheckBox = findViewById(R.id.cb_has_update);
         commitButton = findViewById(R.id.btn_commit);
         cancelButton = findViewById(R.id.btn_cancel);
         isCompletedCheckBox.setChecked(true);
@@ -38,14 +40,15 @@ public class ComicFilterDialog extends Dialog {
             String keyword = keywordEditText.getText().toString().trim();
             boolean isCompleted = isCompletedCheckBox.isChecked();
             boolean isNotCompleted = isNotCompletedCheckBox.isChecked();
-            if (StringUtils.isEmpty(keyword) && !isCompleted && !isNotCompleted) {
+            boolean hasUpdate = hasUpdateCheckBox.isChecked();
+            if (StringUtils.isEmpty(keyword) && !isCompleted && !isNotCompleted && !hasUpdate) {
                 callBack.OnClickCancel();
                 dismiss();
             } else if (!isCompleted && !isNotCompleted) {
                 isCompleted = true;
                 isNotCompleted = true;
             }
-            callBack.OnClickCommit(keyword, isCompleted, isNotCompleted);
+            callBack.OnClickCommit(keyword, isCompleted, isNotCompleted, hasUpdate);
             dismiss();
         });
         cancelButton.setOnClickListener(v -> {
@@ -56,7 +59,7 @@ public class ComicFilterDialog extends Dialog {
 
 
     public interface SubmitCallBack {
-        void OnClickCommit(String keyword, boolean isCompleted, boolean isNotCompleted);
+        void OnClickCommit(String keyword, boolean isCompleted, boolean isNotCompleted, boolean hasUpdate);
 
         void OnClickCancel();
     }

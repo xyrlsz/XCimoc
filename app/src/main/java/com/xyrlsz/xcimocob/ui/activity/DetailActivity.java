@@ -406,6 +406,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 
     @Override
     public void onComicLoadSuccess(Comic comic) {
+        mDetailAdapter.setBookmarkComicId(IdCreator.createSourceComic(comic));
         mDetailAdapter.setInfo(comic.getCover(), comic.getTitle(), comic.getAuthor(),
                 comic.getIntro(), comic.getFinish(), comic.getUpdate(), comic.getLast(), SourceManager.getInstance(getAppInstance()).getParser(comic.getSource()).getTitle());
         mDetailAdapter.setTags(comic.getTags());
@@ -446,6 +447,7 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     @Override
     public void onPreLoadSuccess(List<Chapter> list, Comic comic) {
         // 先用缓存章节展示，提升加载速度（不隐藏进度条，网络完成后会替换）
+        mDetailAdapter.setBookmarkComicId(IdCreator.createSourceComic(comic));
         mDetailAdapter.setInfo(comic.getCover(), comic.getTitle(), comic.getAuthor(),
                 comic.getIntro(), comic.getFinish(), comic.getUpdate(), comic.getLast(), SourceManager.getInstance(getAppInstance()).getParser(comic.getSource()).getTitle());
         mDetailAdapter.setTags(comic.getTags());

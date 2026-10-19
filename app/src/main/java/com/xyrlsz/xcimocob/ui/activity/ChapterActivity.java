@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.global.Extra;
 import com.xyrlsz.xcimocob.manager.ChapterManager;
+import com.xyrlsz.xcimocob.manager.ChapterBookmarkStore;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.misc.Switcher;
 import com.xyrlsz.xcimocob.model.Chapter;
@@ -31,8 +32,10 @@ import com.xyrlsz.xcimocob.utils.PermissionUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -58,7 +61,11 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     private ChapterAdapter mChapterAdapter;
     private boolean isAscendMode;
     private boolean isButtonMode;
+    private boolean mShowBookmarkedOnly;
     private long mChapterKey = -1;
+    private long mBookmarkComicId = -1L;
+    private List<Switcher<Chapter>> mAllChapters;
+    private Set<String> mBookmarkPaths = new HashSet<>();
     private Handler mHandler = new Handler();
     private RecyclerView.OnItemTouchListener mListener = new CustomTouchListener();
     private RecyclerView.ItemDecoration mDecoration;
@@ -69,6 +76,9 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
 
     public static Intent createIntent(Context context, ArrayList<Chapter> list, long sourceComic) {
         Intent intent = new Intent(context, ChapterActivity.class);
+        if (sourceComic == -1L && list != null && !list.isEmpty()) {
+            sourceComic = list.get(0).getSourceComic();
+        }
         long key = sChapterKeyGenerator.incrementAndGet();
         sChapterCache.put(key, list);
         intent.putExtra(Extra.EXTRA_CHAPTER_KEY, key);
@@ -98,7 +108,15 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     @Override
     protected void initView() {
         isButtonMode = mPreference.getBoolean(PreferenceManager.PREF_CHAPTER_BUTTON_MODE, false);
-        mChapterAdapter = new ChapterAdapter(this, getAdapterList());
+        mAllChapters = getAdapterList();
+        mBookmarkComicId = getIntent().getLongExtra(Extra.EXTRA_SOURCE_COMIC, -1L);
+        if (mBookmarkComicId == -1L && !mAllChapters.isEmpty()) {
+            mBookmarkComicId = mAllChapters.get(0).getElement().getSourceComic();
+        }
+        loadBookmarks();
+        mChapterAdapter = new ChapterAdapter(this, new ArrayList<>(mAllChapters));
+        mChapterAdapter.setBookmarks(mBookmarkPaths);
+        mChapterAdapter.setOnBookmarkClickListener(this::toggleBookmark);
         mDecoration = mChapterAdapter.getItemDecoration();
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
@@ -160,6 +178,39 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
         return result;
     }
 
+    private void loadBookmarks() {
+        if (mBookmarkComicId == -1L) {
+            return;
+        }
+        mBookmarkPaths = ChapterBookmarkStore.getBookmarks(this, mBookmarkComicId);
+    }
+
+    private void toggleBookmark(Chapter chapter) {
+        String path = chapter.getPath();
+        if (path == null || path.isEmpty()) {
+            return;
+        }
+        boolean bookmarked = !mBookmarkPaths.contains(path);
+        ChapterBookmarkStore.setBookmarked(this, mBookmarkComicId, path, bookmarked);
+        mBookmarkPaths = ChapterBookmarkStore.getBookmarks(this, mBookmarkComicId);
+        mChapterAdapter.setBookmarks(mBookmarkPaths);
+        if (mShowBookmarkedOnly) {
+            applyBookmarkFilter();
+        } else {
+            mChapterAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void applyBookmarkFilter() {
+        List<Switcher<Chapter>> visible = new ArrayList<>();
+        for (Switcher<Chapter> switcher : mAllChapters) {
+            if (!mShowBookmarkedOnly || mBookmarkPaths.contains(switcher.getElement().getPath())) {
+                visible.add(switcher);
+            }
+        }
+        mChapterAdapter.setData(visible);
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_chapter, menu);
@@ -197,6 +248,10 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
                     isButtonMode = !isButtonMode;
                     switchMode();
                     mPreference.putBoolean(PreferenceManager.PREF_CHAPTER_BUTTON_MODE, isButtonMode);
+            } else if (__id == R.id.chapter_bookmarks) {
+                    mShowBookmarkedOnly = !mShowBookmarkedOnly;
+                    item.setChecked(mShowBookmarkedOnly);
+                    applyBookmarkFilter();
             }
         }
         return super.onOptionsItemSelected(item);
@@ -257,11 +312,17 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
 
         @Override
         public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull MotionEvent e) {
+            if (isBookmarkTouch(rv, e)) {
+                mHandler.removeCallbacksAndMessages(null);
+                mLastPosition = -1;
+                return false;
+            }
             if (isLongPress) {
                 return true;
             }
 
-            int pos = rv.getChildAdapterPosition(Objects.requireNonNull(rv.findChildViewUnder(e.getX(), e.getY())));
+            View itemView = rv.findChildViewUnder(e.getX(), e.getY());
+            int pos = itemView == null ? RecyclerView.NO_POSITION : rv.getChildAdapterPosition(itemView);
             switch (e.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                     mLastPosition = pos;
@@ -288,6 +349,21 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
                     break;
             }
             return false;
+        }
+
+        private boolean isBookmarkTouch(RecyclerView rv, MotionEvent event) {
+            View itemView = rv.findChildViewUnder(event.getX(), event.getY());
+            if (itemView == null) {
+                return false;
+            }
+            View bookmark = itemView.findViewById(R.id.item_chapter_bookmark);
+            if (bookmark == null || bookmark.getVisibility() != View.VISIBLE) {
+                return false;
+            }
+            float x = event.getX() - itemView.getLeft();
+            float y = event.getY() - itemView.getTop();
+            return x >= bookmark.getLeft() && x <= bookmark.getRight()
+                    && y >= bookmark.getTop() && y <= bookmark.getBottom();
         }
 
         @Override

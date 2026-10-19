@@ -1,16 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.xyrlsz.xcimocob.ui.widget.ChapterButton xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:id="@+id/item_chapter_button"
     android:layout_width="match_parent"
-    android:layout_height="32dp"
-    android:ellipsize="end"
-    android:gravity="center"
-    android:maxLines="1"
-    android:paddingLeft="6dp"
-    android:paddingRight="6dp"
-    android:textSize="12sp"
-    android:contentDescription="chapter"
-    app:selected_color="?attr/colorAccent" />
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
 
+    <com.xyrlsz.xcimocob.ui.widget.ChapterButton
+        android:id="@+id/item_chapter_button"
+        android:layout_width="0dp"
+        android:layout_height="32dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:maxLines="1"
+        android:paddingLeft="6dp"
+        android:paddingRight="6dp"
+        android:textSize="12sp"
+        android:contentDescription="chapter"
+        app:selected_color="?attr/colorAccent" />
 
+    <TextView
+        android:id="@+id/item_chapter_bookmark"
+        android:layout_width="30dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:text="☆"
+        android:textColor="?attr/colorAccent"
+        android:textSize="22sp"
+        android:visibility="gone" />
+
+</LinearLayout>

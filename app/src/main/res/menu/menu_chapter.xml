@@ -25,4 +25,9 @@
         android:id="@+id/chapter_switch_view"
         android:title="@string/chapter_switch_view"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/chapter_bookmarks"
+        android:checkable="true"
+        android:title="@string/chapter_bookmarks_only"
+        app:showAsAction="never" />
 </menu>

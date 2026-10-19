@@ -229,19 +229,23 @@ public class GridAdapter extends BaseAdapter<Object> {
 
     @SuppressLint("NotifyDataSetChanged")
     public void filterByKeyword(String keyword, boolean isCompleted, boolean isNotCompleted) {
+        filterByKeyword(keyword, isCompleted, isNotCompleted, false);
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    public void filterByKeyword(String keyword, boolean isCompleted, boolean isNotCompleted,
+                                boolean hasUpdate) {
         List<Object> temp = new ArrayList<>();
-        if (mOriginalData.isEmpty()) {
+        if (mOriginalData.isEmpty() && !mDataSet.isEmpty()) {
             mOriginalData.addAll(mDataSet);
-        } else if (mDataSet.isEmpty()) {
-            mDataSet.addAll(mOriginalData);
         }
-        for (Object O_comic : mDataSet) {
+        for (Object O_comic : mOriginalData) {
             MiniComic comic = (MiniComic) O_comic;
             String title = STConvertUtils.T2S(comic.getTitle()).toUpperCase(Locale.getDefault());
             if (title.contains(STConvertUtils.T2S(keyword.toUpperCase(Locale.getDefault()))) || keyword.isEmpty()) {
-                if (isCompleted && comic.isFinish()) {
-                    temp.add(comic);
-                } else if (isNotCompleted && !comic.isFinish()) {
+                boolean finish = Boolean.TRUE.equals(comic.isFinish());
+                boolean matchesStatus = (isCompleted && finish) || (isNotCompleted && !finish);
+                if (matchesStatus && (!hasUpdate || comic.isHighlight())) {
                     temp.add(comic);
                 }
             }
