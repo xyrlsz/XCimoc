@@ -28,6 +28,12 @@
         android:icon="@drawable/ic_swap_vert_white_24dp"
         android:title="@string/detail_reverse_list"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/detail_bookmarks"
+        android:checkable="true"
+        android:icon="@drawable/ic_favorite"
+        android:title="@string/detail_bookmarks_only"
+        app:showAsAction="ifRoom" />
     <!--<item android:id="@+id/detail_disqus"-->
     <!--android:title="@string/detail_disqus"-->
     <!--android:icon="@drawable/ic_chat_bubble_white_24dp"-->

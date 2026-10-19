@@ -49,6 +49,8 @@
     <string name="detail_search_author">搜尋作者</string>
     <string name="detail_share_url">分享漫畫</string>
     <string name="detail_reverse_list">反轉列表</string>
+    <string name="detail_bookmarks_only">只看書籤章節</string>
+    <string name="detail_all_chapters">顯示全部章節</string>
 
     <string name="tag_editor">標籤編輯</string>
 
@@ -58,7 +60,6 @@
     <string name="chapter_reverse">反向選擇</string>
     <string name="chapter_sort">排序</string>
     <string name="chapter_switch_view">切換視圖</string>
-    <string name="chapter_bookmarks_only">只顯示書籤章節</string>
     <string name="chapter_bookmark_add">新增章節書籤</string>
     <string name="chapter_bookmark_remove">移除章節書籤</string>
     <string name="chapter_download_perm_fail">取得權限失敗</string>

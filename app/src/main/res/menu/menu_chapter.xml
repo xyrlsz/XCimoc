@@ -3,17 +3,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/chapter_all"
-        android:icon="@drawable/hugeiconstickdouble01"
+        android:icon="@drawable/ic_select_all_white_24dp"
         android:title="@string/chapter_all"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/chapter_none"
-        android:icon="@drawable/hugeiconscheckunread02"
+        android:icon="@drawable/ic_deselect_all_white_24dp"
         android:title="@string/chapter_none"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/chapter_opposition"
-        android:icon="@drawable/hugeiconscheckunread01"
+        android:icon="@drawable/ic_invert_selection_white_24dp"
         android:title="@string/chapter_reverse"
         app:showAsAction="ifRoom" />
     <item
@@ -24,10 +24,5 @@
     <item
         android:id="@+id/chapter_switch_view"
         android:title="@string/chapter_switch_view"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/chapter_bookmarks"
-        android:checkable="true"
-        android:title="@string/chapter_bookmarks_only"
         app:showAsAction="never" />
 </menu>

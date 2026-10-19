@@ -29,6 +29,8 @@ import com.xyrlsz.xcimocob.ui.widget.ChapterButton;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -56,6 +58,8 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     private OnTagClickListener mTagClickListener;
     private long mBookmarkComicId = -1L;
     private Set<String> mBookmarkedPaths = new java.util.HashSet<>();
+    private final List<Chapter> mAllChapters = new ArrayList<>();
+    private boolean mShowBookmarkedOnly;
 
     private static final int TAG_MAX_COUNT = 20;
     public interface OnTagClickListener {
@@ -135,7 +139,8 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     @Override
     public void reverse() {
         this.Reversed = !this.Reversed;
-        super.reverse();
+        Collections.reverse(mAllChapters);
+        refreshChapterData();
     }
 
     //判断是否分组且当前是否为第一个元素
@@ -193,7 +198,33 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     public void setBookmarkComicId(long sourceComic) {
         mBookmarkComicId = sourceComic;
         mBookmarkedPaths = ChapterBookmarkStore.getBookmarks(mContext, sourceComic);
-        notifyDataSetChanged();
+        refreshChapterData();
+    }
+
+    public void setBookmarkedOnly(boolean bookmarkedOnly) {
+        mShowBookmarkedOnly = bookmarkedOnly;
+        refreshChapterData();
+    }
+
+    public boolean isBookmarkedOnly() {
+        return mShowBookmarkedOnly;
+    }
+
+    @Override
+    public void setData(Collection<Chapter> chapters) {
+        mAllChapters.clear();
+        mAllChapters.addAll(chapters);
+        refreshChapterData();
+    }
+
+    private void refreshChapterData() {
+        List<Chapter> visible = new ArrayList<>();
+        for (Chapter chapter : mAllChapters) {
+            if (!mShowBookmarkedOnly || mBookmarkedPaths.contains(chapter.getPath())) {
+                visible.add(chapter);
+            }
+        }
+        super.setData(visible);
     }
 
     public void setOnTagClickListener(OnTagClickListener listener) {
@@ -267,10 +298,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         bookmark.setOnClickListener(v -> {
             ChapterBookmarkStore.setBookmarked(mContext, mBookmarkComicId, chapter.getPath(), !marked);
             mBookmarkedPaths = ChapterBookmarkStore.getBookmarks(mContext, mBookmarkComicId);
-            int adapterPosition = holder.getBindingAdapterPosition();
-            if (adapterPosition != RecyclerView.NO_POSITION) {
-                notifyItemChanged(adapterPosition);
-            }
+            refreshChapterData();
         });
     }
 

@@ -172,6 +172,18 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
     }
 
     @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        MenuItem bookmarksItem = menu.findItem(R.id.detail_bookmarks);
+        if (bookmarksItem != null) {
+            boolean showingBookmarks = mDetailAdapter != null && mDetailAdapter.isBookmarkedOnly();
+            bookmarksItem.setChecked(showingBookmarks);
+            bookmarksItem.setTitle(showingBookmarks
+                    ? R.string.detail_all_chapters : R.string.detail_bookmarks_only);
+        }
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
 
         if (!isProgressBarShown()) {
@@ -239,6 +251,9 @@ public class DetailActivity extends CoordinatorActivity implements DetailView {
 //                    }
             } else if (__id == R.id.detail_reverse_list) {
                 mDetailAdapter.reverse();
+            } else if (__id == R.id.detail_bookmarks) {
+                mDetailAdapter.setBookmarkedOnly(!mDetailAdapter.isBookmarkedOnly());
+                invalidateOptionsMenu();
 //                case R.id.detail_disqus:
 //                    intent = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_cimqus_url) + "/cimoc/" + mPresenter.getComic().getTitle()));
 //                    try {

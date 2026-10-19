@@ -61,7 +61,6 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
     private ChapterAdapter mChapterAdapter;
     private boolean isAscendMode;
     private boolean isButtonMode;
-    private boolean mShowBookmarkedOnly;
     private long mChapterKey = -1;
     private long mBookmarkComicId = -1L;
     private List<Switcher<Chapter>> mAllChapters;
@@ -194,21 +193,7 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
         ChapterBookmarkStore.setBookmarked(this, mBookmarkComicId, path, bookmarked);
         mBookmarkPaths = ChapterBookmarkStore.getBookmarks(this, mBookmarkComicId);
         mChapterAdapter.setBookmarks(mBookmarkPaths);
-        if (mShowBookmarkedOnly) {
-            applyBookmarkFilter();
-        } else {
-            mChapterAdapter.notifyDataSetChanged();
-        }
-    }
-
-    private void applyBookmarkFilter() {
-        List<Switcher<Chapter>> visible = new ArrayList<>();
-        for (Switcher<Chapter> switcher : mAllChapters) {
-            if (!mShowBookmarkedOnly || mBookmarkPaths.contains(switcher.getElement().getPath())) {
-                visible.add(switcher);
-            }
-        }
-        mChapterAdapter.setData(visible);
+        mChapterAdapter.notifyDataSetChanged();
     }
 
     @Override
@@ -248,10 +233,6 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
                     isButtonMode = !isButtonMode;
                     switchMode();
                     mPreference.putBoolean(PreferenceManager.PREF_CHAPTER_BUTTON_MODE, isButtonMode);
-            } else if (__id == R.id.chapter_bookmarks) {
-                    mShowBookmarkedOnly = !mShowBookmarkedOnly;
-                    item.setChecked(mShowBookmarkedOnly);
-                    applyBookmarkFilter();
             }
         }
         return super.onOptionsItemSelected(item);
