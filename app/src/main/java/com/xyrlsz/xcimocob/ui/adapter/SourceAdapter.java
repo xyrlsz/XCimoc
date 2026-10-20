@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.model.Source;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
+import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
 import java.util.List;
 
@@ -56,8 +57,9 @@ public class SourceAdapter extends BaseAdapter<Source> {
             ColorStateList thumbList = new ColorStateList(new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
                     new int[]{Color.WHITE, color});
             viewHolder.sourceSwitch.setThumbTintList(thumbList);
+            int uncheckedTrack = ThemeUtils.isDarkMode(mContext) ? 0x4CFFFFFF : 0x4C000000;
             ColorStateList trackList = new ColorStateList(new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
-                    new int[]{0x4C000000, (0x00FFFFFF & color | 0x4C000000)});
+                    new int[]{uncheckedTrack, (0x00FFFFFF & color | 0x4C000000)});
             viewHolder.sourceSwitch.setTrackTintList(trackList);
         }
     }

@@ -33,7 +33,7 @@
             android:ellipsize="end"
             android:maxLines="2"
             android:padding="6dp"
-            android:textColor="#333"
+            android:textColor="?android:attr/textColorPrimary"
             android:textSize="14sp" />
 
     </LinearLayout>

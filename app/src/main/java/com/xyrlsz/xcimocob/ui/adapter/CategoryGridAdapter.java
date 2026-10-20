@@ -1,7 +1,6 @@
 package com.xyrlsz.xcimocob.ui.adapter;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,7 +22,6 @@ import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.model.CategoryMiniComic;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
-import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
 import java.util.List;
 
@@ -106,14 +104,8 @@ public class CategoryGridAdapter extends RecyclerView.Adapter<CategoryGridAdapte
             Uri uri = Uri.parse(comic.getCover());
             holder.cover.setImageURI(uri);
         }
-        // 标题
+        // 标题（颜色由布局中的 textColorPrimary 随明暗模式自动解析）
         holder.title.setText(STConvertUtils.convert(comic.getTitle()));
-        boolean isDarkMode = ThemeUtils.getSysIsDarkMode(mContext);
-        if (isDarkMode) {
-            holder.title.setTextColor(Color.WHITE);
-        } else {
-            holder.title.setTextColor(Color.BLACK);
-        }
         // 点击事件
         holder.itemView.setOnClickListener(v -> {
             if (mListener != null) {

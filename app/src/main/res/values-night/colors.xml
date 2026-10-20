@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorBackgroundTrans">#AA9A9A9A</color>
+    <color name="colorBackgroundTrans">#AA121212</color>
     <color name="colorAutoWG">#343434</color>
     <color name="colorAutoBG">#A9A9A9</color>
     <color name="colorAutoG_GW">#A9A9A9</color>

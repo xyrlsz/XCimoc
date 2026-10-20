@@ -303,7 +303,8 @@ public class ComicFragment extends BaseFragment implements ComicView {
             ((ThemeResponsive) mTabAdapter.getItem(i)).onThemeChange(primary, accent);
         }
         ColorStateList stateList = new ColorStateList(new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
-                new int[]{0x8A000000, ContextCompat.getColor(App.getAppContext(), accent)});
+                new int[]{ThemeUtils.isDarkMode(App.getAppContext()) ? 0x8AFFFFFF : 0x8A000000,
+                        ContextCompat.getColor(App.getAppContext(), accent)});
         mBottomNavigationView.setItemTextColor(stateList);
         mBottomNavigationView.setItemIconTintList(stateList);
     }

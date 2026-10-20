@@ -17,6 +17,7 @@ import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.component.ThemeResponsive;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
+import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
 /**
  * Created by Hiroshi on 2017/1/10.
@@ -84,9 +85,10 @@ public class CheckBoxPreference extends FrameLayout implements View.OnClickListe
 
     @Override
     public void onThemeChange(int primary, int accent) {
+        int unselectedColor = ThemeUtils.isDarkMode(getContext()) ? 0x8AFFFFFF : 0x8A000000;
         ColorStateList stateList = new ColorStateList(
                 new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
-                new int[]{0x8A000000, ContextCompat.getColor(getContext(), accent)});
+                new int[]{unselectedColor, ContextCompat.getColor(getContext(), accent)});
         setColorStateList(stateList);
     }
 

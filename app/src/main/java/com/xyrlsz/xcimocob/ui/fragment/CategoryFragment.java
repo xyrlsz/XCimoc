@@ -368,7 +368,7 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
                 UP, DOWN, NONE
             }
         });
-        boolean isDarkMode = ThemeUtils.getSysIsDarkMode(requireContext());
+        boolean isDarkMode = ThemeUtils.isDarkMode(requireContext());
         if (isDarkMode) {
             toggleHeadButton.setImageResource(R.drawable.ic_bxs_up_arrow_white);
         } else {
