@@ -12,7 +12,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -62,6 +61,7 @@ import com.xyrlsz.xcimocob.ui.view.MainView;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.PermissionUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
+import com.xyrlsz.xcimocob.utils.ThemeUtils;
 import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
 import java.io.IOException;
@@ -606,13 +606,17 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
 
     private void changeTheme(@StyleRes int theme, @ColorRes int primary, @ColorRes int accent) {
         setTheme(theme);
+        boolean darkMode = ThemeUtils.isDarkMode(this);
+        int unselectedTextColor = ContextCompat.getColor(this,
+                darkMode ? R.color.white : R.color.black);
+        int unselectedIconColor = darkMode ? 0x8AFFFFFF : 0x8A000000;
         ColorStateList itemList = new ColorStateList(new int[][]{{-android.R.attr.state_checked},
                 {android.R.attr.state_checked}},
-                new int[]{Color.BLACK, ContextCompat.getColor(this, accent)});
+                new int[]{unselectedTextColor, ContextCompat.getColor(this, accent)});
         mNavigationView.setItemTextColor(itemList);
         ColorStateList iconList = new ColorStateList(new int[][]{{-android.R.attr.state_checked},
                 {android.R.attr.state_checked}},
-                new int[]{0x8A000000, ContextCompat.getColor(this, accent)});
+                new int[]{unselectedIconColor, ContextCompat.getColor(this, accent)});
         mNavigationView.setItemIconTintList(iconList);
         mNavigationView.getHeaderView(0).setBackgroundColor(ContextCompat.getColor(this, primary));
         if (mToolbar != null) {
