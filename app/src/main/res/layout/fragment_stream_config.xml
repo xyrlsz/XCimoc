@@ -37,20 +37,6 @@
             app:title="@string/settings_reader_long_click_event" />
 
         <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
-            android:id="@+id/settings_reader_load_prev"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:summary="@string/settings_reader_load_prev_summary"
-            app:title="@string/settings_reader_load_prev" />
-
-        <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
-            android:id="@+id/settings_reader_load_next"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:summary="@string/settings_reader_load_next_summary"
-            app:title="@string/settings_reader_load_next" />
-
-        <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
             android:id="@+id/settings_reader_interval"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

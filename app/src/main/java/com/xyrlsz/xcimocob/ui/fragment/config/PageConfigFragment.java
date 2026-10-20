@@ -33,8 +33,6 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
     private static final int OPERATION_VOLUME_UP = 0;
     private static final int OPERATION_VOLUME_DOWN = 1;
 
-    CheckBoxPreference mReaderLoadPrev;
-    CheckBoxPreference mReaderLoadNext;
     CheckBoxPreference mReaderBanTurn;
     CheckBoxPreference mReaderQuickTurn;
     ChoicePreference mReaderOrientation;
@@ -45,8 +43,6 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
 
     @Override
     protected void initView() {
-        mReaderLoadPrev = mRootView.findViewById(R.id.settings_reader_load_prev);
-        mReaderLoadNext = mRootView.findViewById(R.id.settings_reader_load_next);
         mReaderBanTurn = mRootView.findViewById(R.id.settings_reader_ban_turn);
         mReaderQuickTurn = mRootView.findViewById(R.id.settings_reader_quick_turn);
         mReaderOrientation = mRootView.findViewById(R.id.settings_reader_orientation);
@@ -59,8 +55,6 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
 //        } else {
 //            mReaderVolumeEvent.setVisibility(View.GONE);
 //        }
-        mReaderLoadPrev.bindPreference(PreferenceManager.PREF_READER_PAGE_LOAD_PREV, true);
-        mReaderLoadNext.bindPreference(PreferenceManager.PREF_READER_PAGE_LOAD_NEXT, true);
         mReaderBanTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false);
         mReaderQuickTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_QUICK_TURN, false);
         mReaderOrientation.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_PAGE_ORIENTATION,

@@ -24,6 +24,10 @@ import java.util.List;
 public class StreamReaderActivity extends ReaderActivity {
 
     private int mLastPosition = 0;
+    /** 用户是否真正滚动过：避免刚打开章节时停在顶部就误加载上一章 */
+    private boolean mHasUserScrolled = false;
+    /** 已请求加载相邻章节，避免插入数据后布局尚未完成时重复触发 */
+    private boolean mAdjacentLoadRequested = false;
 
     @Override
     protected void initView() {
@@ -53,41 +57,41 @@ public class StreamReaderActivity extends ReaderActivity {
                         // 快速滑动结束时再次同步进度，避免最后一次 onScrolled 因布局
                         // 未完成（findFirstVisibleItemPosition 滞后）导致进度信息不更新
                         syncStreamProgress(mLayoutManager.findFirstVisibleItemPosition(), 0, 0);
-                        if (isLoadPrevEnabled()) {
-                            int item = mLayoutManager.findFirstVisibleItemPosition();
-                            if (item == 0) {
-                                mPresenter.loadPrev();
-                            }
-                        }
-                        if (isLoadNextEnabled()) {
-                            int item = mLayoutManager.findLastVisibleItemPosition();
-                            if (item == mReaderAdapter.getItemCount() - 1) {
-                                mPresenter.loadNext();
-                            }
-                        }
+                        loadAdjacentChapter();
                         break;
                     case RecyclerView.SCROLL_STATE_SETTLING:
-                        if (isLoadPrevEnabled()) {
-                            int item = mLayoutManager.findFirstVisibleItemPosition();
-                            if (item == 0) {
-                                mPresenter.loadPrev();
-                            }
-                        }
-                        if (isLoadNextEnabled()) {
-                            int item = mLayoutManager.findLastVisibleItemPosition();
-                            if (item == mReaderAdapter.getItemCount() - 1) {
-                                mPresenter.loadNext();
-                            }
-                        }
+                        loadAdjacentChapter();
                         break;
                 }
             }
 
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (dx != 0 || dy != 0) {
+                    mHasUserScrolled = true;
+                    mAdjacentLoadRequested = false;
+                }
                 syncStreamProgress(mLayoutManager.findFirstVisibleItemPosition(), dx, dy);
             }
         });
+    }
+
+    /**
+     * 滚动到内容顶部/底部时加载相邻章节（条漫没有边界滑动机制，只能靠此连续阅读）。
+     * 打开章节时静止在顶部不算「滚到顶部」，需用户至少滚动过一次。
+     */
+    private void loadAdjacentChapter() {
+        int count = mReaderAdapter.getItemCount();
+        if (count == 0 || mAdjacentLoadRequested) {
+            return;
+        }
+        if (mHasUserScrolled && mLayoutManager.findFirstVisibleItemPosition() == 0) {
+            mAdjacentLoadRequested = true;
+            mPresenter.loadPrev();
+        } else if (mLayoutManager.findLastVisibleItemPosition() == count - 1) {
+            mAdjacentLoadRequested = true;
+            mPresenter.loadNext();
+        }
     }
 
     /**

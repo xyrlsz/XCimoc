@@ -31,8 +31,6 @@ public class StreamConfigFragment extends BaseFragment implements DialogCaller {
     private static final int OPERATION_VOLUME_DOWN = 1;
 
     CheckBoxPreference mReaderInterval;
-    CheckBoxPreference mReaderLoadPrev;
-    CheckBoxPreference mReaderLoadNext;
     ChoicePreference mReaderOrientation;
     ChoicePreference mReaderTurn;
 
@@ -41,8 +39,6 @@ public class StreamConfigFragment extends BaseFragment implements DialogCaller {
     @Override
     protected void initView() {
         mReaderInterval = mRootView.findViewById(R.id.settings_reader_interval);
-        mReaderLoadPrev = mRootView.findViewById(R.id.settings_reader_load_prev);
-        mReaderLoadNext = mRootView.findViewById(R.id.settings_reader_load_next);
         mReaderOrientation = mRootView.findViewById(R.id.settings_reader_orientation);
         mReaderTurn = mRootView.findViewById(R.id.settings_reader_turn);
         mRootView.findViewById(R.id.settings_reader_click_event).setOnClickListener(v -> onReaderEventClick(v));
@@ -53,8 +49,6 @@ public class StreamConfigFragment extends BaseFragment implements DialogCaller {
 //            mReaderVolumeEvent.setVisibility(View.GONE);
 //        }
         mReaderInterval.bindPreference(PreferenceManager.PREF_READER_STREAM_INTERVAL, false);
-        mReaderLoadPrev.bindPreference(PreferenceManager.PREF_READER_STREAM_LOAD_PREV, false);
-        mReaderLoadNext.bindPreference(PreferenceManager.PREF_READER_STREAM_LOAD_NEXT, true);
         mReaderOrientation.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_STREAM_ORIENTATION,
                 PreferenceManager.READER_ORIENTATION_AUTO, R.array.reader_orientation_items, DIALOG_REQUEST_ORIENTATION);
         mReaderTurn.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_STREAM_TURN,

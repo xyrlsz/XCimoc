@@ -172,10 +172,6 @@
     <string name="settings_reader_click_event_summary">閱讀狀態螢幕及音量鍵點擊事件</string>
     <string name="settings_reader_long_click_event">自訂長按事件</string>
     <string name="settings_reader_long_click_event_summary">閱讀狀態螢幕長按事件</string>
-    <string name="settings_reader_load_prev">自動載入上一章</string>
-    <string name="settings_reader_load_prev_summary">位於第一頁自動載入上一章</string>
-    <string name="settings_reader_load_next">自動載入下一章</string>
-    <string name="settings_reader_load_next_summary">位於最後一頁自動載入下一章</string>
     <string name="settings_reader_white_edge">自動裁剪白邊</string>
     <string name="settings_reader_white_edge_summary">閱讀狀態自動裁剪白邊</string>
     <string name="settings_reader_ban_double_click">禁止雙擊放大</string>

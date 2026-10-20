@@ -89,8 +89,6 @@ public class PreferenceManager {
     public static final String PREF_READER_PAGE_LONG_CLICK_MIDDLE = "pref_reader_page_long_click_middle";
     public static final String PREF_READER_PAGE_LONG_CLICK_BOTTOM = "pref_reader_page_long_click_bottom";
     public static final String PREF_READER_PAGE_LONG_CLICK_RIGHT = "pref_reader_page_long_click_right";
-    public static final String PREF_READER_PAGE_LOAD_PREV = "pref_reader_page_load_prev";
-    public static final String PREF_READER_PAGE_LOAD_NEXT = "pref_reader_page_load_next";
     public static final String PREF_READER_PAGE_TRIGGER = "pref_reader_page_trigger";
     public static final String PREF_READER_PAGE_BAN_TURN = "pref_reader_page_ban_turn";
     public static final String PREF_READER_PAGE_QUICK_TURN = "pref_reader_page_quick_turn";
@@ -119,8 +117,6 @@ public class PreferenceManager {
     public static final String PREF_READER_STREAM_LONG_CLICK_MIDDLE = "pref_reader_stream_long_click_middle";
     public static final String PREF_READER_STREAM_LONG_CLICK_BOTTOM = "pref_reader_stream_long_click_bottom";
     public static final String PREF_READER_STREAM_LONG_CLICK_RIGHT = "pref_reader_stream_long_click_right";
-    public static final String PREF_READER_STREAM_LOAD_PREV = "pref_reader_stream_load_prev";
-    public static final String PREF_READER_STREAM_LOAD_NEXT = "pref_reader_stream_load_next";
     public static final String PREF_READER_STREAM_INTERVAL = "pref_reader_stream_interval";
 
     public static final String PREF_NIGHT = "pref_night";
@@ -224,8 +220,6 @@ public class PreferenceManager {
             PREF_READER_PAGE_LONG_CLICK_MIDDLE,
             PREF_READER_PAGE_LONG_CLICK_BOTTOM,
             PREF_READER_PAGE_LONG_CLICK_RIGHT,
-            PREF_READER_PAGE_LOAD_PREV,
-            PREF_READER_PAGE_LOAD_NEXT,
             PREF_READER_PAGE_TRIGGER,
             PREF_READER_PAGE_BAN_TURN,
             PREF_READER_PAGE_QUICK_TURN,
@@ -254,8 +248,6 @@ public class PreferenceManager {
             PREF_READER_STREAM_LONG_CLICK_MIDDLE,
             PREF_READER_STREAM_LONG_CLICK_BOTTOM,
             PREF_READER_STREAM_LONG_CLICK_RIGHT,
-            PREF_READER_STREAM_LOAD_PREV,
-            PREF_READER_STREAM_LOAD_NEXT,
             PREF_READER_STREAM_INTERVAL,
             // ---- 通用设置 ----
             PREF_NIGHT,
