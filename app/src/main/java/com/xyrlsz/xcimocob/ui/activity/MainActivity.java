@@ -272,6 +272,9 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                 case PreferenceManager.HOME_SOURCE:
                     mCheckItem = R.id.drawer_source;
                     break;
+                case PreferenceManager.HOME_TAG:
+                    mCheckItem = R.id.drawer_category;
+                    break;
             }
         }
 
@@ -701,8 +704,8 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                 return getString(R.string.comic_tab_local);
             case PreferenceManager.HOME_SOURCE:
                 return getString(R.string.drawer_source);
-//            case PreferenceManager.HOME_TAG:
-//                return getString(R.string.drawer_tag);
+            case PreferenceManager.HOME_TAG:
+                return getString(R.string.drawer_category);
         }
     }
 
