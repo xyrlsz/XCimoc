@@ -3,9 +3,12 @@ package com.xyrlsz.xcimocob.utils;
 import android.content.Context;
 import android.content.res.Configuration;
 import android.util.TypedValue;
+import android.view.View;
+import android.view.ViewGroup;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
+import com.xyrlsz.xcimocob.component.ThemeResponsive;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 
 /**
@@ -87,6 +90,18 @@ public class ThemeUtils {
                 return R.color.colorPrimaryBlue;
             case THEME_BROWN:
                 return R.color.colorPrimaryBrown;
+        }
+    }
+
+    public static void applyThemeToViewTree(View view, int primary, int accent) {
+        if (view instanceof ThemeResponsive) {
+            ((ThemeResponsive) view).onThemeChange(primary, accent);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup viewGroup = (ViewGroup) view;
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                applyThemeToViewTree(viewGroup.getChildAt(i), primary, accent);
+            }
         }
     }
 

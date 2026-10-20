@@ -11,16 +11,18 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.widget.AppCompatCheckBox;
+import androidx.core.content.ContextCompat;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
+import com.xyrlsz.xcimocob.component.ThemeResponsive;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 
 /**
  * Created by Hiroshi on 2017/1/10.
  */
 
-public class CheckBoxPreference extends FrameLayout implements View.OnClickListener {
+public class CheckBoxPreference extends FrameLayout implements View.OnClickListener, ThemeResponsive {
 
     private AppCompatCheckBox mCheckBox;
     private PreferenceManager mPreferenceManager;
@@ -78,6 +80,14 @@ public class CheckBoxPreference extends FrameLayout implements View.OnClickListe
     @SuppressLint("RestrictedApi")
     public void setColorStateList(ColorStateList stateList) {
         mCheckBox.setSupportButtonTintList(stateList);
+    }
+
+    @Override
+    public void onThemeChange(int primary, int accent) {
+        ColorStateList stateList = new ColorStateList(
+                new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
+                new int[]{0x8A000000, ContextCompat.getColor(getContext(), accent)});
+        setColorStateList(stateList);
     }
 
     public boolean isChecked() {

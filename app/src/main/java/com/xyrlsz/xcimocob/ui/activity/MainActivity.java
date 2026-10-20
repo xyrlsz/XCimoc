@@ -46,7 +46,6 @@ import com.facebook.imagepipeline.request.ImageRequestBuilder;
 import com.google.android.material.navigation.NavigationView;
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
-import com.xyrlsz.xcimocob.component.ThemeResponsive;
 import com.xyrlsz.xcimocob.core.Update;
 import com.xyrlsz.xcimocob.fresco.ControllerBuilderProvider;
 import com.xyrlsz.xcimocob.global.Extra;
@@ -621,7 +620,7 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
         }
 
         for (int i = 0; i < mFragmentArray.size(); ++i) {
-            ((ThemeResponsive) mFragmentArray.valueAt(i)).onThemeChange(primary, accent);
+            mFragmentArray.valueAt(i).onThemeChange(primary, accent);
         }
     }
 

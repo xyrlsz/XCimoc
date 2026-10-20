@@ -7,7 +7,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.content.ContextCompat;
@@ -34,8 +33,6 @@ import com.xyrlsz.xcimocob.utils.StringUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 
@@ -61,7 +58,6 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     private final int[] mResultArray = new int[8];
     private final Intent mResultIntent = new Intent();
 
-    List<TextView> mTitleList;
     View mSettingsLayout;
     CheckBoxPreference mReaderKeepBright;
     CheckBoxPreference mReaderHideInfo;
@@ -106,11 +102,6 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     @Override
     protected void initViewById() {
         super.initViewById();
-        mTitleList = new ArrayList<>();
-        mTitleList.add(findViewById(R.id.settings_reader_title));
-        mTitleList.add(findViewById(R.id.settings_download_title));
-        mTitleList.add(findViewById(R.id.settings_other_title));
-        mTitleList.add(findViewById(R.id.settings_search_title));
         mSettingsLayout = findViewById(R.id.settings_layout);
         mReaderKeepBright = findViewById(R.id.settings_reader_keep_bright);
         mReaderHideInfo = findViewById(R.id.settings_reader_hide_info);
@@ -343,30 +334,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         if (mToolbar != null) {
             mToolbar.setBackgroundColor(ContextCompat.getColor(this, primary));
         }
-        for (TextView textView : mTitleList) {
-            textView.setTextColor(ContextCompat.getColor(this, primary));
-        }
-        ColorStateList stateList = new ColorStateList(new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
-                new int[]{0x8A000000, ContextCompat.getColor(this, accent)});
-        mReaderKeepBright.setColorStateList(stateList);
-        mReaderHideInfo.setColorStateList(stateList);
-        mReaderHideNav.setColorStateList(stateList);
-        mReaderBanDoubleClick.setColorStateList(stateList);
-        mReaderPaging.setColorStateList(stateList);
-        mReaderPagingReverse.setColorStateList(stateList);
-        mReaderWhiteEdge.setColorStateList(stateList);
-        mReaderWhiteBackground.setColorStateList(stateList);
-        mSearchAutoComplete.setColorStateList(stateList);
-        mCheckCimocUpdate.setColorStateList(stateList);
-        mCheckSoftwareUpdate.setColorStateList(stateList);
-        mConnectOnlyWifi.setColorStateList(stateList);
-        mLoadCoverOnlyWifi.setColorStateList(stateList);
-//        mFireBaseEvent.setColorStateList(stateList);
-//        mReduceAd.setColorStateList(stateList);
-        mOtherShowTopbar.setColorStateList(stateList);
-        mReaderCloseAutoResizeImage.setColorStateList(stateList);
-        mReaderVolumeKeyControls.setColorStateList(stateList);
-        mReaderPagingStreamOff.setColorStateList(stateList);
+        ThemeUtils.applyThemeToViewTree(mSettingsLayout, primary, accent);
     }
 
     void onOtherStorageClick() {

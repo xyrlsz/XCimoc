@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
+import com.xyrlsz.xcimocob.component.ThemeResponsive;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.presenter.BasePresenter;
 import com.xyrlsz.xcimocob.ui.activity.BaseActivity;
@@ -26,7 +27,7 @@ import com.xyrlsz.xcimocob.utils.ThreadRunUtils;
 /**
  * Created by Hiroshi on 2016/7/1.
  */
-public abstract class BaseFragment extends Fragment implements BaseView {
+public abstract class BaseFragment extends Fragment implements BaseView, ThemeResponsive {
 
     protected PreferenceManager mPreference;
     @Nullable
@@ -74,6 +75,10 @@ public abstract class BaseFragment extends Fragment implements BaseView {
 
     @Override
     public void onNightSwitch() {
+    }
+
+    @Override
+    public void onThemeChange(int primary, int accent) {
     }
 
     private void initProgressBar() {

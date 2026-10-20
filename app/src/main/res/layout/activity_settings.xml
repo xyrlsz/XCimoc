@@ -36,7 +36,7 @@
                     app:summary="@string/data_server_config_title"
                     app:title="@string/backup_data_server" />
 
-                <TextView
+                <com.xyrlsz.xcimocob.ui.widget.ThemeColorTextView
                     android:id="@+id/settings_reader_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -162,7 +162,7 @@
                     app:summary="@string/settings_reader_controller_trig_threshold_summary"
                     app:title="@string/settings_reader_controller_trig_threshold" />
 
-                <TextView
+                <com.xyrlsz.xcimocob.ui.widget.ThemeColorTextView
                     android:id="@+id/settings_download_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -189,7 +189,7 @@
                     app:summary="@string/settings_download_scan_summary"
                     app:title="@string/settings_download_scan" />
 
-                <TextView
+                <com.xyrlsz.xcimocob.ui.widget.ThemeColorTextView
                     android:id="@+id/settings_search_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -208,7 +208,7 @@
                     app:summary="@string/settings_search_auto_complete_summary"
                     app:title="@string/settings_search_auto_complete" />
 
-                <TextView
+                <com.xyrlsz.xcimocob.ui.widget.ThemeColorTextView
                     android:id="@+id/settings_other_title"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
