@@ -24,6 +24,8 @@ import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 
+import org.json.JSONObject;
+
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -88,6 +90,8 @@ public class WebParser {
      * DOM 就绪后注入执行的自定义 JS，可为 null
      */
     private final String injectJs;
+    private final String waitForSelector;
+    private final long waitForSelectorTimeoutMs;
     /**
      * 是否处理 Cloudflare 认证（默认开启，仅当检测到挑战页时生效）
      */
@@ -139,6 +143,8 @@ public class WebParser {
         this.UA = UA;
         this.autoScroll = config.isAutoScroll();
         this.injectJs = config.getInjectJs();
+        this.waitForSelector = config.getWaitForSelector();
+        this.waitForSelectorTimeoutMs = config.getWaitForSelectorTimeoutMs();
         this.handleCloudflare = config.isHandleCloudflare();
         this.cloudflareTimeoutMs = config.getCloudflareTimeoutMs();
         this.interactiveChallenge = config.isInteractiveChallenge();
@@ -573,9 +579,46 @@ public class WebParser {
     private void getPageHtml() {
         if (destroyed || mWebView == null) return;
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        if (waitForSelector == null || waitForSelector.trim().isEmpty()) {
+            capturePageHtml(300);
+        } else {
+            waitForSelector(System.currentTimeMillis());
+        }
+    }
+
+    private void waitForSelector(long startedAt) {
+        if (destroyed || mWebView == null) return;
+
+        String selector = JSONObject.quote(waitForSelector);
+        String script = "(function(){try{return document.querySelectorAll("
+                + selector + ").length}catch(e){return -1}})()";
+        mWebView.evaluateJavascript(script, value -> {
             if (destroyed || mWebView == null) return;
 
+            int count;
+            try {
+                count = Integer.parseInt(value == null ? "" : value.replace("\"", ""));
+            } catch (NumberFormatException e) {
+                emitError(new Exception("WebParser: failed to check selector: " + waitForSelector, e));
+                return;
+            }
+
+            if (count > 0) {
+                capturePageHtml(0);
+            } else if (count < 0) {
+                emitError(new Exception("WebParser: invalid selector: " + waitForSelector));
+            } else if (System.currentTimeMillis() - startedAt >= waitForSelectorTimeoutMs) {
+                emitError(new Exception("WebParser: timed out waiting for selector: " + waitForSelector));
+            } else {
+                new Handler(Looper.getMainLooper()).postDelayed(
+                        () -> waitForSelector(startedAt), 250);
+            }
+        });
+    }
+
+    private void capturePageHtml(long delayMs) {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (destroyed || mWebView == null) return;
             mWebView.evaluateJavascript(
                     "(function(){return document.documentElement.outerHTML})()", value -> {
                         if (destroyed || mWebView == null) return;
@@ -594,7 +637,7 @@ public class WebParser {
                             emitError(new Exception("WebParser: failed to get HTML"));
                         }
                     });
-        }, 300);
+        }, delayMs);
     }
 
     /**

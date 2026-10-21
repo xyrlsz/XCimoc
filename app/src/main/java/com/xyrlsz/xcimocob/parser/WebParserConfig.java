@@ -11,6 +11,8 @@ package com.xyrlsz.xcimocob.parser;
  *     <li>{@link #useWebParser}：是否使用 WebView 渲染页面后再解析，用于需要执行 JS 才能拿到完整内容的网站；</li>
  *     <li>{@link #autoScroll}：渲染完成后是否自动向下滑动页面以触发懒加载，获取完整 HTML；</li>
  *     <li>{@link #injectJs}：DOM 就绪后注入并执行的自定义 JS 脚本（例如点击按钮展开内容）。</li>
+ *     <li>{@link #waitForSelector}：抓取 HTML 前等待页面中出现指定 CSS 选择器。</li>
+ *     <li>{@link #waitForSelectorTimeoutMs}：等待选择器出现的最长时间。</li>
  *     <li>{@link #handleCloudflare}：是否自动处理 Cloudflare 认证挑战（纯 JS 挑战自动等待通过，交互式验证需手动完成）；</li>
  *     <li>{@link #cloudflareTimeoutMs}：Cloudflare JS 挑战等待通过的超时时间。</li>
  *     <li>{@link #interactiveChallenge}：交互式验证时是否把 WebView 显示到前台由用户手动完成。</li>
@@ -39,6 +41,16 @@ public class WebParserConfig {
      * DOM 就绪后注入执行的自定义 JS，可为 {@code null}。
      */
     private String injectJs = null;
+
+    /**
+     * 抓取 HTML 前等待出现的 CSS 选择器，可为 {@code null}。
+     */
+    private String waitForSelector = null;
+
+    /**
+     * 等待选择器出现的最长时间，默认 15 秒。
+     */
+    private long waitForSelectorTimeoutMs = 15_000;
 
     /**
      * 是否处理 Cloudflare 认证，默认 {@code true}。仅在页面命中 Cloudflare 挑战页时生效：
@@ -101,6 +113,24 @@ public class WebParserConfig {
 
     public WebParserConfig setInjectJs(String injectJs) {
         this.injectJs = injectJs;
+        return this;
+    }
+
+    public String getWaitForSelector() {
+        return waitForSelector;
+    }
+
+    public WebParserConfig setWaitForSelector(String waitForSelector) {
+        this.waitForSelector = waitForSelector;
+        return this;
+    }
+
+    public long getWaitForSelectorTimeoutMs() {
+        return waitForSelectorTimeoutMs;
+    }
+
+    public WebParserConfig setWaitForSelectorTimeoutMs(long waitForSelectorTimeoutMs) {
+        this.waitForSelectorTimeoutMs = Math.max(0, waitForSelectorTimeoutMs);
         return this;
     }
 

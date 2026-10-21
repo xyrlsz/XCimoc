@@ -822,6 +822,9 @@ public class JsMangaParser extends MangaParser {
         cfg.setUseWebParser(o.optBoolean("useWebParser", cfg.isUseWebParser()));
         if (o.has("autoScroll")) cfg.setAutoScroll(o.optBoolean("autoScroll"));
         if (o.has("injectJs")) cfg.setInjectJs(o.optString("injectJs"));
+        if (o.has("waitForSelector")) cfg.setWaitForSelector(o.optString("waitForSelector"));
+        if (o.has("waitForSelectorTimeoutMs"))
+            cfg.setWaitForSelectorTimeoutMs(o.optLong("waitForSelectorTimeoutMs"));
         if (o.has("handleCloudflare")) cfg.setHandleCloudflare(o.optBoolean("handleCloudflare"));
         if (o.has("cloudflareTimeoutMs"))
             cfg.setCloudflareTimeoutMs(o.optLong("cloudflareTimeoutMs"));
