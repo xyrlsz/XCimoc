@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorBackgroundTrans">#AA121212</color>
-    <color name="colorAutoWG">#343434</color>
+    <color name="colorBackgroundTrans">#AA1E2024</color>
+    <color name="colorAutoWG">#2A2D33</color>
     <color name="colorAutoBG">#A9A9A9</color>
     <color name="colorAutoG_GW">#A9A9A9</color>
     <color name="colorAutoWB">@color/black</color>
@@ -31,7 +31,9 @@
     <color name="colorPrimaryOrangeDark">#B97300</color>
 
 
-    <color name="colorBackground">#121212</color>
+    <color name="colorBackground">#1E2024</color>
+    <!-- 深色模式不用纯黑：略偏蓝的炭灰底 + 稍亮的表面色，形成轻微层次 -->
+    <color name="colorSurface">#26292E</color>
 
     <!-- 阅读器快捷设置面板描边按钮的边框色（深色模式下用半透明白，保证边框清晰可见） -->
     <color name="reader_outline">#80FFFFFF</color>

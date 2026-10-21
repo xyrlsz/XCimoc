@@ -5,6 +5,10 @@
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
+        <!-- 深色模式不使用纯黑：窗口 / 卡片表面统一走自适应色 -->
+        <item name="android:windowBackground">@color/colorBackground</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="colorSurface">@color/colorSurface</item>
         <item name="colorBackgroundTrans">@color/colorBackgroundTrans</item>
         <item name="colorAutoWG">@color/colorAutoWG</item>
         <item name="colorAutoG_GW">@color/colorAutoG_GW</item>
@@ -17,6 +21,11 @@
 
     <style name="Widget.MyApp.MaterialButton" parent="Widget.MaterialComponents.Button">
         <item name="backgroundTint">?attr/colorAccent</item>
+    </style>
+
+    <!-- 溢出菜单 / 下拉弹窗：跟随应用表面色，避免深色模式下弹出 AppCompat 默认的 #303030 面板 -->
+    <style name="ThemeOverlay.AppTheme.Popup" parent="ThemeOverlay.AppCompat.DayNight">
+        <item name="android:colorBackground">@color/colorSurface</item>
     </style>
 
     <!-- 阅读器快捷设置面板：描边按钮（边框颜色按明暗模式自适应，深色下更亮） -->
@@ -51,6 +60,7 @@
         <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
         <item name="android:textColorPrimary">@color/white</item>
         <item name="android:textColorSecondary">#B3FFFFFF</item>
+        <item name="colorSurface">@color/colorSurface</item>
         <item name="colorPrimary">@color/colorPrimaryOrange</item>
         <item name="colorPrimaryDark">@color/colorPrimaryOrangeDark</item>
         <item name="colorAccent">@color/colorPrimaryOrangeDark</item>

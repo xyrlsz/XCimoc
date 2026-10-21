@@ -33,6 +33,8 @@
     <color name="transparent">#00000000</color>
 
     <color name="colorBackground">#FFFFFF</color>
+    <!-- 卡片 / 抽屉 / 对话框等“抬升”表面的底色 -->
+    <color name="colorSurface">#FFFFFF</color>
 
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
