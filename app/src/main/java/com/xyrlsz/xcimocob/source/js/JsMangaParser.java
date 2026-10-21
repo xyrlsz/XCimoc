@@ -65,10 +65,10 @@ public class JsMangaParser extends MangaParser {
 
     private final JsSource mSource;
     /**
-     * 当前线程的会话引擎（单次详情流程内复用）。非会话调用时 {@code withEngine} 仍每次新建引擎，
+     * 当前线程的引擎会话（单次详情/搜索流程内复用）。非会话调用时 {@code withEngine} 仍每次新建引擎，
      * 保持源脚本无跨调用状态、解析器无状态、可多线程共享的既有语义。
      */
-    private final ThreadLocal<QuickJSEngine> mSessionEngine = new ThreadLocal<>();
+    private final ThreadLocal<Session> mSessionEngine = new ThreadLocal<>();
     /**
      * JS 源 initWhenParserCreate() 的实例级去重：每次 parser 创建时只调度一次。
      * 用于需要在每次构建源时重跑的探测逻辑，内部可执行 fetch()，必须在后台线程进行。
@@ -160,33 +160,71 @@ public class JsMangaParser extends MangaParser {
     }
 
     /**
-     * 开启一次引擎会话：在会话期间（同一线程串行）复用同一引擎，使详情加载的多次解析调用
-     * （getInfoRequest → parseInfo → getChapterRequest → parseChapter）只需编译一次体积较大的
-     * SDK+脚本，显著降低详情加载耗时。会话结束（close）即销毁引擎，跨漫画/任务互不污染。
+     * 一次引擎会话。{@link #closed} 用原子变量而非直接读引擎状态：会话可能在别的线程关闭
+     * （如 WebParser 在主线程发射 HTML 后才终止上游），必须保证关闭对其它线程立即可见，
+     * 否则会拿到已释放的引擎（use-after-free）。
+     */
+    private static final class Session {
+        final QuickJSEngine engine;
+        private final AtomicBoolean closed = new AtomicBoolean(false);
+
+        Session(QuickJSEngine engine) {
+            this.engine = engine;
+        }
+
+        boolean isUsable() {
+            return !closed.get() && !engine.isClosed();
+        }
+
+        void markClosed() {
+            closed.set(true);
+        }
+    }
+
+    /**
+     * 开启一次引擎会话：在会话期间（同一线程串行）复用同一引擎，使一次流程内的多次解析调用
+     * （详情加载的 getInfoRequest → parseInfo → getChapterRequest → parseChapter、搜索的
+     * getSearchRequest → getSearchIterator）只需编译一次体积较大的 SDK+脚本，显著降低耗时。
+     * 会话结束（close）即销毁引擎，跨漫画/任务互不污染。
      * <p>
      * 必须配合 {@code try-with-resources} 使用，且只能在单个线程内串行调用解析方法
      * （不得跨线程、不得并发复用）。这是唯一安全的引擎复用方式：复用范围严格限定在单次
      * 流程内，不引入跨任务的状态污染。
      */
     public java.io.Closeable openSession() {
-        QuickJSEngine engine = createEngine();
-        final QuickJSEngine prev = mSessionEngine.get();
-        mSessionEngine.set(engine);
+        final Thread owner = Thread.currentThread();
+        final Session session = new Session(createEngine());
+        Session prev = mSessionEngine.get();
+        if (prev != null && !prev.isUsable()) {
+            prev = null;
+        }
+        final Session restore = prev;
+        mSessionEngine.set(session);
         return () -> {
+            session.markClosed();
             try {
-                engine.close();
+                session.engine.close();
             } catch (Throwable ignore) {
             }
-            mSessionEngine.set(prev);
+            // 关闭可能发生在别的线程，此时线程局部值属于打开会话的线程，不能写到关闭线程；
+            // 遗留在 owner 线程上的失效会话由 withEngine 的失效检查回收。
+            if (Thread.currentThread() != owner) {
+                return;
+            }
+            if (restore == null) {
+                mSessionEngine.remove();
+            } else {
+                mSessionEngine.set(restore);
+            }
         };
     }
 
     private <T> T withEngine(EngineAction<T> action) {
-        QuickJSEngine session = mSessionEngine.get();
-        if (session != null && !session.isClosed()) {
+        Session session = mSessionEngine.get();
+        if (session != null && session.isUsable()) {
             // 会话中：复用会话引擎（不 close，由会话统一释放）
             try {
-                return action.run(session);
+                return action.run(session.engine);
             } catch (Throwable t) {
                 Log.w("JsParser", "withEngine(session) failed for type "
                         + mSource.getType() + ": " + t);
@@ -194,7 +232,7 @@ public class JsMangaParser extends MangaParser {
             }
         }
 
-        if (session != null && session.isClosed()) {
+        if (session != null) {
             mSessionEngine.remove();
             Log.w("JsParser", "cleared stale closed session for type "
                     + mSource.getType());

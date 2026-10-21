@@ -98,8 +98,29 @@ public class Manga {
     }
 
 
+    /**
+     * JS 源：把整段流程包进一次引擎会话，使流程内的多次解析调用复用同一个 QuickJS 引擎，
+     * 只需编译一次体积较大的 SDK+源脚本（见 {@link JsMangaParser#openSession()}）。
+     * 复用范围严格限定在本流程、串行使用、用完即弃，不污染其它任务；非 JS 源直接返回
+     * 原 Observable，行为不变。
+     */
+    private static <T> Observable<T> withSession(final MangaParser parser, final Observable<T> body) {
+        if (!(parser instanceof JsMangaParser)) {
+            return body;
+        }
+        return Observable.using(
+                ((JsMangaParser) parser)::openSession,
+                session -> body,
+                session -> {
+                    try {
+                        session.close();
+                    } catch (Throwable ignore) {
+                    }
+                });
+    }
+
     public static Observable<Comic> getSearchResult(final MangaParser parser, final String keyword, final int page, final boolean strictSearch, final boolean stSame) {
-        return Observable.defer(() -> {
+        return withSession(parser, Observable.defer(() -> {
             Request request = parser.getSearchRequest(keyword, page);
             if (request == null) {
                 return Observable.error(new Exception("Search request returned null"));
@@ -135,11 +156,11 @@ public class Manga {
                         setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
-        }).subscribeOn(Schedulers.io());
+        })).subscribeOn(Schedulers.io());
     }
 
     public static Observable<Comic> getSearchResult(final MangaParser parser, final String keyword, final int page, final boolean strictSearch, final boolean stSame, final int searchType) {
-        return Observable.defer(() -> {
+        return withSession(parser, Observable.defer(() -> {
             Request request = parser.getSearchRequest(keyword, page);
             if (request == null) {
                 return Observable.error(new Exception("Search request returned null"));
@@ -196,19 +217,11 @@ public class Manga {
                         setForceRefreshUrl(url);
                         return Observable.error(e);
                     });
-        }).subscribeOn(Schedulers.io());
+        })).subscribeOn(Schedulers.io());
     }
 
     public static Observable<List<Chapter>> getComicInfo(final MangaParser parser, final Comic comic) {
-        // JS 源：在单次详情流程内复用同一 QuickJS 引擎，避免多次重复编译体积较大的 SDK+脚本
-        // （见 JsMangaParser.openSession）。复用范围严格限定本流程、同线程串行、用完即弃，
-        // 不污染其它漫画/任务；非 JS 源走空会话，行为不变。
-        return Observable.using(
-                () -> (parser instanceof JsMangaParser)
-                        ? ((JsMangaParser) parser).openSession()
-                        : (java.io.Closeable) () -> {
-                },
-                session -> Observable.defer(() -> {
+        return withSession(parser, Observable.defer(() -> {
             String cid = comic.getCid();
             if (cid == null) {
                 return Observable.error(new Exception("Comic CID is null"));
@@ -291,14 +304,7 @@ public class Manga {
                         setForceRefreshUrl(infoUrl);
                         return Observable.error(e);
                     });
-                }),
-                session -> {
-                    try {
-                        session.close();
-                    } catch (Throwable ignore) {
-                    }
-                })
-                .subscribeOn(Schedulers.io());
+        })).subscribeOn(Schedulers.io());
     }
 
     public static Observable<List<Comic>> getCategoryComic(final Parser parser, final String format,
