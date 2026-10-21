@@ -175,6 +175,13 @@ public final class QuickJSEngine {
     private static native String nativeEvaluateJson(long contextPtr, String script,
                                                     String filename);
 
+    private static native byte[] nativeCompileBytecode(long contextPtr, String script,
+                                                       String filename);
+
+    private static native String nativeEvaluateBytecode(long contextPtr, byte[] bytecode);
+
+    private static native String nativeGetVersion();
+
     private static native boolean nativeHasGlobalFunction(long contextPtr, String name);
 
     private static native boolean nativeHasGlobal(long contextPtr, String name);
@@ -226,6 +233,48 @@ public final class QuickJSEngine {
     public String evaluateJson(String script) {
         checkOpen();
         return nativeEvaluateJson(contextPtr, script, "<eval>");
+    }
+
+    /* ---------------- 字节码预编译 ---------------- */
+
+    /**
+     * 把脚本预编译为字节码，不执行、无副作用。
+     * <p>
+     * 产出的字节码可由 {@link #evaluateBytecode(byte[])} 在任意实例上加载执行，
+     * 用于缓存「体积大且很少变化」的脚本（如源 SDK），跳过重复的解析 + 编译开销。
+     * 字节码内含源码与调试信息，加载后运行期异常的行号与源码求值一致。
+     * <p>
+     * <b>只可用于本机由同一份脚本编译出的字节码</b>：QuickJS 的字节码格式不防御恶意输入，
+     * 加载不可信字节码可能导致内存破坏（见 {@code quickjs.h} 中 {@code JS_READ_OBJ_BYTECODE} 的警告）。
+     *
+     * @param script   待编译的 JS 代码
+     * @param filename 文件名（用于报错与堆栈），可为 null
+     * @return 字节码；语法错误或内存不足时返回 null
+     */
+    public byte[] compileToBytecode(String script, String filename) {
+        checkOpen();
+        return nativeCompileBytecode(contextPtr, script, filename);
+    }
+
+    /**
+     * 执行 {@link #compileToBytecode(String, String)} 产出的字节码。
+     *
+     * @param bytecode 字节码
+     * @return 结果的字符串化值；字节码损坏 / 版本不匹配 / 执行异常时返回 null
+     */
+    public String evaluateBytecode(byte[] bytecode) {
+        checkOpen();
+        if (bytecode == null || bytecode.length == 0) {
+            return null;
+        }
+        return nativeEvaluateBytecode(contextPtr, bytecode);
+    }
+
+    /**
+     * @return 底层 QuickJS 的版本串。字节码格式与之绑定，缓存 key 必须包含它。
+     */
+    public static String getVersion() {
+        return nativeGetVersion();
     }
 
     /* ---------------- 全局对象访问 ---------------- */

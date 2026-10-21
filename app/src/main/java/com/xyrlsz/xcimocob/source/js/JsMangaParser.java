@@ -5,7 +5,6 @@ import android.util.Log;
 import android.util.Pair;
 
 import com.xyrlsz.quickjs.QuickJSEngine;
-import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.model.Chapter;
 import com.xyrlsz.xcimocob.model.Comic;
 import com.xyrlsz.xcimocob.model.ImageUrl;
@@ -17,7 +16,6 @@ import com.xyrlsz.xcimocob.parser.SearchIterator;
 import com.xyrlsz.xcimocob.parser.UrlFilter;
 import com.xyrlsz.xcimocob.parser.UrlFilterWithCidQueryKey;
 import com.xyrlsz.xcimocob.parser.WebParserConfig;
-import com.xyrlsz.xcimocob.utils.BinStreamUtils;
 import com.xyrlsz.xcimocob.utils.IdCreator;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
@@ -27,7 +25,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,7 +52,6 @@ import okhttp3.RequestBody;
  */
 public class JsMangaParser extends MangaParser {
 
-    private static final String SDK;
     private static final int HEADER_CACHE_CAP = 64;
     /**
      * JS 源 init() 的 app 启动级去重：按 source type 维度，整个 app 生命周期只执行一次。
@@ -65,16 +61,6 @@ public class JsMangaParser extends MangaParser {
 
     static {
         QuickJSEngine.setHostBridge(JsHost.INSTANCE);
-        String sdk;
-        try {
-            sdk = new String(
-                    BinStreamUtils.readAllBytesCompat(
-                            App.getAppContext().getAssets().open("source_sdk.js")),
-                    StandardCharsets.UTF_8);
-        } catch (Exception e) {
-            sdk = "";
-        }
-        SDK = sdk;
     }
 
     private final JsSource mSource;
@@ -156,11 +142,14 @@ public class JsMangaParser extends MangaParser {
         QuickJSEngine engine = new QuickJSEngine();
         try {
             engine.setGlobal("__SOURCE_TYPE", String.valueOf(mSource.getType()));
-            String result = engine.evaluate(SDK + "\n" + mSource.getScript());
+            String script = mSource.getScript();
+            // SDK 与脚本各自优先走字节码缓存：SDK 体积最大，命中后创建引擎只剩加载开销
+            String result = JsScriptCache.evaluate(engine, script);
             if (result == null || result.isEmpty()) {
                 android.util.Log.e("JsParser", "eval returned empty for type "
-                        + mSource.getType() + " '" + mTitle + "', sdkLen=" + SDK.length()
-                        + ", scriptLen=" + (mSource.getScript() == null ? -1 : mSource.getScript().length()));
+                        + mSource.getType() + " '" + mTitle + "', sdkLen="
+                        + JsScriptCache.getSdk().length()
+                        + ", scriptLen=" + (script == null ? -1 : script.length()));
             }
         } catch (Throwable t) {
             // 脚本/引擎异常：后续 callFunction 均返回 "null"，各方法自然回退

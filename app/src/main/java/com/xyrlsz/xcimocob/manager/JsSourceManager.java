@@ -12,6 +12,7 @@ import com.xyrlsz.xcimocob.model.JsSource;
 import com.xyrlsz.xcimocob.model.JsSource_;
 import com.xyrlsz.xcimocob.model.Source;
 import com.xyrlsz.xcimocob.model.Source_;
+import com.xyrlsz.xcimocob.source.js.JsScriptCache;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -521,12 +522,9 @@ public class JsSourceManager {
     public JSONObject validateScript(String script) throws Exception {
         QuickJSEngine engine = new QuickJSEngine();
         try {
-            String sdk = new String(
-                    com.xyrlsz.xcimocob.utils.BinStreamUtils.readAllBytesCompat(
-                            App.getAppContext().getAssets().open("source_sdk.js")),
-                    java.nio.charset.StandardCharsets.UTF_8);
             engine.setGlobal("__SOURCE_TYPE", "-1");
-            engine.evaluate(sdk + "\n" + script);
+            // 与运行时同一条求值路径：顺带产出/复用字节码缓存，后续创建解析器引擎直接命中
+            JsScriptCache.evaluate(engine, script);
             String src = engine.getGlobalJson("SOURCE");
             if (src == null || "null".equals(src)) {
                 throw new IllegalArgumentException("脚本缺少 SOURCE 元数据（需用 var SOURCE = {...}）");

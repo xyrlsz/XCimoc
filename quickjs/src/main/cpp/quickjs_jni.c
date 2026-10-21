@@ -537,6 +537,147 @@ static jstring native_evaluate_json(JNIEnv *env, jclass clazz, jlong ctx_ptr,
     return qjs_evaluate(env, ctx_ptr, script, filename, NULL, JNI_TRUE);
 }
 
+/* 把脚本编译成字节码但不执行，返回写入缓存的二进制流（失败返回 NULL）。
+ * 刻意不传 JS_WRITE_OBJ_STRIP_SOURCE / STRIP_DEBUG，保留源码与调试信息，
+ * 使加载字节码后运行期异常的堆栈仍能给出正确行号。 */
+static jbyteArray native_compile_bytecode(JNIEnv *env, jclass clazz, jlong ctx_ptr,
+                                          jstring script, jstring filename) {
+    JSContext *ctx = (JSContext *) (intptr_t) ctx_ptr;
+    const char *script_str;
+    const char *filename_str = "<eval>";
+    jboolean filename_allocated = JNI_FALSE;
+    JSValue obj;
+    uint8_t *buf;
+    size_t len = 0;
+    jbyteArray result = NULL;
+
+    if (!ctx || !script)
+        return NULL;
+
+    qjs_reset_deadline(ctx);
+
+    script_str = (*env)->GetStringUTFChars(env, script, NULL);
+    if (!script_str)
+        return NULL;
+    if (filename) {
+        const char *fs = (*env)->GetStringUTFChars(env, filename, NULL);
+        if (fs) {
+            filename_str = fs;
+            filename_allocated = JNI_TRUE;
+        }
+    }
+
+    obj = JS_Eval(ctx, script_str, strlen(script_str), filename_str,
+                  JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY);
+    if (JS_IsException(obj)) {
+        JSValue exc = JS_GetException(ctx);
+        const char *msg = JS_ToCString(ctx, exc);
+        LOGE("JS compile error: %s", msg ? msg : "(unknown)");
+        if (msg)
+            JS_FreeCString(ctx, msg);
+        JS_FreeValue(ctx, exc);
+        JS_FreeValue(ctx, obj);
+        goto done;
+    }
+
+    buf = JS_WriteObject(ctx, &len, obj, JS_WRITE_OBJ_BYTECODE);
+    JS_FreeValue(ctx, obj);
+    if (!buf) {
+        JSValue exc = JS_GetException(ctx);
+        const char *msg = JS_ToCString(ctx, exc);
+        LOGE("JS_WriteObject failed: %s", msg ? msg : "(unknown)");
+        if (msg)
+            JS_FreeCString(ctx, msg);
+        JS_FreeValue(ctx, exc);
+        goto done;
+    }
+
+    result = (*env)->NewByteArray(env, (jsize) len);
+    if (result)
+        (*env)->SetByteArrayRegion(env, result, 0, (jsize) len, (const jbyte *) buf);
+    /* JS_WriteObject 返回的是 js_malloc 缓冲，必须用 js_free 释放 */
+    js_free(ctx, buf);
+
+    done:
+    (*env)->ReleaseStringUTFChars(env, script, script_str);
+    if (filename_allocated)
+        (*env)->ReleaseStringUTFChars(env, filename, filename_str);
+    return result;
+}
+
+/* 执行 native_compile_bytecode 产出的字节码。
+ * 成功时返回结果的字符串化值（与 nativeEvaluate 语义一致）；加载或执行失败返回 NULL，
+ * 由 Java 侧丢弃缓存并回退到源码求值。 */
+static jstring native_eval_bytecode(JNIEnv *env, jclass clazz, jlong ctx_ptr,
+                                    jbyteArray bytecode) {
+    JSContext *ctx = (JSContext *) (intptr_t) ctx_ptr;
+    jsize len;
+    uint8_t *buf;
+    JSValue obj, result, str_val;
+    jstring jresult = NULL;
+
+    if (!ctx || !bytecode)
+        return NULL;
+
+    qjs_reset_deadline(ctx);
+
+    len = (*env)->GetArrayLength(env, bytecode);
+    if (len <= 0)
+        return NULL;
+
+    buf = (uint8_t *) js_malloc(ctx, (size_t) len);
+    if (!buf)
+        return NULL;
+    (*env)->GetByteArrayRegion(env, bytecode, 0, len, (jbyte *) buf);
+
+    /* 未传 JS_READ_OBJ_ROM_DATA，读取过程会复制数据，不会改写 buf */
+    obj = JS_ReadObject(ctx, buf, (size_t) len, JS_READ_OBJ_BYTECODE);
+    js_free(ctx, buf);
+    if (JS_IsException(obj)) {
+        JSValue exc = JS_GetException(ctx);
+        const char *msg = JS_ToCString(ctx, exc);
+        LOGE("JS_ReadObject failed: %s", msg ? msg : "(unknown)");
+        if (msg)
+            JS_FreeCString(ctx, msg);
+        JS_FreeValue(ctx, exc);
+        return NULL;
+    }
+
+    result = JS_EvalFunction(ctx, obj); /* 成功时吃掉 obj */
+    if (JS_IsException(result)) {
+        JSValue exc = JS_GetException(ctx);
+        const char *msg = JS_ToCString(ctx, exc);
+        LOGE("JS exception (eval bytecode): %s", msg ? msg : "(unknown)");
+        if (msg)
+            JS_FreeCString(ctx, msg);
+        JS_FreeValue(ctx, exc);
+        JS_FreeValue(ctx, result);
+        return NULL;
+    }
+
+    str_val = JS_ToString(ctx, result);
+    JS_FreeValue(ctx, result);
+    if (JS_IsException(str_val)) {
+        JSValue exc = JS_GetException(ctx);
+        const char *msg = JS_ToCString(ctx, exc);
+        LOGE("JS exception (bytecode to string): %s", msg ? msg : "(unknown)");
+        if (msg)
+            JS_FreeCString(ctx, msg);
+        JS_FreeValue(ctx, exc);
+        JS_FreeValue(ctx, str_val);
+        return NULL;
+    }
+    jresult = qjs_jsvalue_to_jstring(env, ctx, str_val);
+    JS_FreeValue(ctx, str_val);
+    return jresult;
+}
+
+/* 底层 QuickJS 版本串，供 Java 侧拼接字节码缓存的 key（版本变化即缓存失效）。 */
+static jstring native_get_version(JNIEnv *env, jclass clazz) {
+    const char *v = JS_GetVersion();
+    return (*env)->NewStringUTF(env, v ? v : "unknown");
+}
+
 /* 判断全局对象上 name 是否为可调用函数 */
 static jboolean native_has_global_function(JNIEnv *env, jclass clazz, jlong ctx_ptr,
                                            jstring name) {
@@ -796,6 +937,12 @@ static const JNINativeMethod g_methods[] = {
                 (void *) native_evaluate},
         {"nativeEvaluateJson",      "(JLjava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
                 (void *) native_evaluate_json},
+        {"nativeCompileBytecode",   "(JLjava/lang/String;Ljava/lang/String;)[B",
+                (void *) native_compile_bytecode},
+        {"nativeEvaluateBytecode",  "(J[B)Ljava/lang/String;",
+                (void *) native_eval_bytecode},
+        {"nativeGetVersion",        "()Ljava/lang/String;",
+                (void *) native_get_version},
         {"nativeHasGlobalFunction", "(JLjava/lang/String;)Z",
                 (void *) native_has_global_function},
         {"nativeHasGlobal",         "(JLjava/lang/String;)Z",
