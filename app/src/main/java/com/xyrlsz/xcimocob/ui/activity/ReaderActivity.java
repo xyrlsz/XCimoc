@@ -82,7 +82,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -967,21 +966,33 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
+     * 当前屏的列表项位置（无法确定时回退到第一个可见项）
+     */
+    private int getActionAdapterPosition() {
+        int position = getCurPosition();
+        return position == -1 ? mLayoutManager.findFirstVisibleItemPosition() : position;
+    }
+
+    /**
      * 保存图片、重新加载图片等只针对单张图片的操作，换算成要操作的数据位置。
      * 双页模式下按最近一次点击落在哪一侧决定是左边还是右边那一页。
+     *
+     * @return 数据位置，数据集为空时返回 -1
      */
     private int getDataPositionForAction(int adapterPosition) {
-        if (adapterPosition < 0) {
-            return 0;
+        int size = mReaderAdapter.getDateSet().size();
+        if (size == 0) {
+            return -1;
         }
-        if (!mDualPage) {
-            return adapterPosition;
-        }
-        int dataPosition = mReaderAdapter.toDataPosition(adapterPosition);
-        // 从左往右排列时右侧是后一页，从右往左排列时右侧是前一页
-        boolean secondPage = mTapOnRightHalf != mReaderAdapter.isDualPageRtl();
-        if (secondPage && dataPosition + 1 < mReaderAdapter.getDateSet().size()) {
-            return dataPosition + 1;
+        // 列表项位置不一定有效（滚动中可能取到 childCount），统一钳制到合法范围
+        int dataPosition = mDualPage ? adapterPosition * 2 : adapterPosition;
+        dataPosition = Math.max(0, Math.min(dataPosition, size - 1));
+        if (mDualPage) {
+            // 从左往右排列时右侧是后一页，从右往左排列时右侧是前一页
+            boolean secondPage = mTapOnRightHalf != mReaderAdapter.isDualPageRtl();
+            if (secondPage && dataPosition + 1 < size) {
+                dataPosition += 1;
+            }
         }
         return dataPosition;
     }
@@ -1046,31 +1057,31 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     protected void reloadImage() {
-        int position = getCurPosition();
-        if (position == -1) {
-            position = mLayoutManager.findFirstVisibleItemPosition();
+        int dataPosition = getDataPositionForAction(getActionAdapterPosition());
+        if (dataPosition < 0) {
+            return;
         }
-        ImageUrl image = mReaderAdapter.getDateSet().get(getDataPositionForAction(position));
+        ImageUrl image = mReaderAdapter.getDateSet().get(dataPosition);
         String rawUrl = image.getUrl();
         String postUrl = StringUtils.format("%s-post-%d", image.getUrl(), image.getId());
         ImagePipelineFactory factory = image.getSize() > App.mLargePixels ?
                 mLargeImagePipelineFactory : mImagePipelineFactory;
         factory.getImagePipeline().evictFromCache(Uri.parse(rawUrl));
         factory.getImagePipeline().evictFromCache(Uri.parse(postUrl));
-        mReaderAdapter.notifyItemChanged(position);
+        mReaderAdapter.notifyItemChanged(mReaderAdapter.toAdapterPosition(dataPosition));
     }
 
     protected void savePicture() {
         if (isSavingPicture) {
             return;
         }
+        int dataPosition = getDataPositionForAction(getActionAdapterPosition());
+        if (dataPosition < 0) {
+            return;
+        }
         isSavingPicture = true;
 
-        int position = getCurPosition();
-        if (position == -1) {
-            position = mLayoutManager.findFirstVisibleItemPosition();
-        }
-        ImageUrl imageUrl = mReaderAdapter.getDateSet().get(getDataPositionForAction(position));
+        ImageUrl imageUrl = mReaderAdapter.getDateSet().get(dataPosition);
         String[] urls = imageUrl.getUrls().toArray(new String[0]);
         // 双页时可能保存的是右侧那一页，页码按该图自己的页码而不是当前屏第一页
         int page = imageUrl.getNum() > 0 ? imageUrl.getNum() : progress;
@@ -1099,7 +1110,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                     return;
                 }
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            // 任何异常都要走到 onPictureSaveFail 重置 isSavingPicture，否则保存功能会永久失效
             e.printStackTrace();
         }
         onPictureSaveFail();
