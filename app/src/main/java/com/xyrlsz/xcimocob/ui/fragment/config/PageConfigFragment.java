@@ -63,7 +63,7 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
 //        }
         mReaderBanTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false);
         mReaderQuickTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_QUICK_TURN, false);
-        mReaderDualPage.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, true);
+        mReaderDualPage.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false);
         mReaderDualPageRtl.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false);
         mReaderDualPageNoGap.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false);
         // 未开启左右双页时，排列顺序/无间隔设置无意义

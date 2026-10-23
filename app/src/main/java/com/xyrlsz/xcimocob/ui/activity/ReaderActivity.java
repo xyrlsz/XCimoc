@@ -415,24 +415,10 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setScaleFactor(mPreference.getNumber(PreferenceManager.PREF_READER_SCALE_FACTOR, 200).intValue() * 0.01f);
         mReaderAdapter.setDoubleTap(!mPreference.getBoolean(PreferenceManager.PREF_READER_BAN_DOUBLE_CLICK, false));
         mReaderAdapter.setVertical(turn == PreferenceManager.READER_TURN_ATB);
-        mReaderAdapter.setDualPageRtl(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false));
-        mReaderAdapter.setDualPageNoGap(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false));
-        if (App.getPreferenceManager().getNumber(PreferenceManager.PREF_READER_MODE, PreferenceManager.READER_MODE_PAGE).intValue() == PreferenceManager.READER_MODE_STREAM
-                &&
-                App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, true)) {
-            mReaderAdapter.setPaging(false);
-            mReaderAdapter.setPagingReverse(false);
-        } else {
-            mReaderAdapter.setPaging(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING, false));
-            mReaderAdapter.setPagingReverse(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_REVERSE, false));
-        }
         mDualPage = isDualPageEnabled();
         mReaderAdapter.setDualPage(mDualPage);
-        if (mDualPage) {
-            // 双页本身已是左右两页，不再对单张图做横向拆页
-            mReaderAdapter.setPaging(false);
-            mReaderAdapter.setPagingReverse(false);
-        }
+        applyDualPageOptions();
+        applyPaging();
         mReaderAdapter.setCloseAutoResizeImage(mPreference.getBoolean(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false));
         mReaderAdapter.setWhiteEdge(mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_EDGE, false));
         mReaderAdapter.setBanTurn(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false));
@@ -452,7 +438,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     private boolean isDualPageEnabled() {
         return mode == PreferenceManager.READER_MODE_PAGE
                 && turn != PreferenceManager.READER_TURN_ATB
-                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, true)
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false)
                 && isLargeLandscape();
     }
 
@@ -460,6 +446,34 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         Configuration configuration = getResources().getConfiguration();
         return configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
                 && configuration.smallestScreenWidthDp >= 600;
+    }
+
+    /**
+     * 双页的两个子设置（从右往左 / 左右无间隔）只在双页实际生效时才应用，
+     * 关闭「大横屏左右双页」后不再对阅读器产生任何影响
+     */
+    protected void applyDualPageOptions() {
+        if (mReaderAdapter == null) {
+            return;
+        }
+        mReaderAdapter.setDualPageRtl(mDualPage
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false));
+        mReaderAdapter.setDualPageNoGap(mDualPage
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false));
+    }
+
+    /**
+     * 同步自动切割大图设置；双页本身已是左右两页，不再对单张图做横向拆页
+     */
+    private void applyPaging() {
+        boolean streamOff = mPreference.getNumber(PreferenceManager.PREF_READER_MODE,
+                PreferenceManager.READER_MODE_PAGE).intValue() == PreferenceManager.READER_MODE_STREAM
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, true);
+        boolean paging = !mDualPage && !streamOff
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING, false);
+        mReaderAdapter.setPaging(paging);
+        mReaderAdapter.setPagingReverse(paging
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_REVERSE, false));
     }
 
     /**
@@ -476,6 +490,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         int dataPosition = mReaderAdapter.toDataPosition(Math.max(getCurPosition(), 0));
         mDualPage = dualPage;
         mReaderAdapter.setDualPage(dualPage);
+        applyDualPageOptions();
+        applyPaging();
         mReaderAdapter.notifyDataSetChanged();
         int position = mReaderAdapter.toAdapterPosition(dataPosition);
         if (mRecyclerView instanceof RecyclerViewPager) {
@@ -1176,7 +1192,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         hideInfoSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_HIDE_INFO, false));
         // 左右双页仅在分页模式下有效，排列顺序/无间隔仅在开启左右双页后才有效
         boolean pageMode = mode == PreferenceManager.READER_MODE_PAGE;
-        boolean dualPageOn = mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, true);
+        boolean dualPageOn = mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false);
         int dualPageSubVisibility = pageMode && dualPageOn ? View.VISIBLE : View.GONE;
         dualPageSwitch.setVisibility(pageMode ? View.VISIBLE : View.GONE);
         dualPageRtlSwitch.setVisibility(dualPageSubVisibility);
@@ -1246,13 +1262,13 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         // 双页从右往左排列（只改变左右顺序，不改变分页位置）
         dualPageRtlSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, isChecked);
-            mReaderAdapter.setDualPageRtl(isChecked);
+            applyDualPageOptions();
             mReaderAdapter.notifyDataSetChanged();
         });
         // 左右图片无间隔
         dualPageNoGapSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, isChecked);
-            mReaderAdapter.setDualPageNoGap(isChecked);
+            applyDualPageOptions();
             mReaderAdapter.notifyDataSetChanged();
         });
         // 音量键翻页
