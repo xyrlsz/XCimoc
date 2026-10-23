@@ -287,7 +287,9 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     /**
      * 绑定一屏双页：按排列顺序开关决定哪张图在左、哪张图在右。
-     * 需要单独占屏的图（超长 / 超宽）独占一整屏，其余相邻两张并排，末尾落单时独占一屏。
+     * 需要单独占屏的图（超长 / 超宽）独占一整屏；只有一张（章节末页、相邻图是长图）时
+     * 普通图仍占一半，另一侧留空白页。空白页总是在后面那一页的位置上：
+     * 从左往右排列时在右边，从右往左排列时在左边。
      */
     private void bindDualPage(@NonNull DualPageHolder holder, int position) {
         int firstPosition = toDataPosition(position);
@@ -311,24 +313,29 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
         PhotoDraweeView firstView = isDualPageRtl ? holder.rightView : holder.leftView;
         PhotoDraweeView secondView = isDualPageRtl ? holder.leftView : holder.rightView;
+        // 无间隔时左右两图各自贴向中线，否则各自居中。按视图所在的一侧决定，排列方向不影响
+        holder.leftView.setHorizontalAlign(isDualPageNoGap ?
+                PhotoDraweeView.ALIGN_RIGHT : PhotoDraweeView.ALIGN_CENTER);
+        holder.rightView.setHorizontalAlign(isDualPageNoGap ?
+                PhotoDraweeView.ALIGN_LEFT : PhotoDraweeView.ALIGN_CENTER);
+
         if (secondImage == null) {
-            // 独占一整屏：另一侧隐藏，这一张占满整个宽度并居中
+            // 一屏只有一张图：长图/宽图铺满整屏；普通图仍按半屏显示，另一侧留空白页
+            boolean fullScreen = isSinglePageImage(firstPosition);
             secondView.setTag(null);
             secondView.setController(null);
-            secondView.setVisibility(View.GONE);
+            // GONE 让这一张占满整屏，INVISIBLE 保留一半位置当作空白页
+            secondView.setVisibility(fullScreen ? View.GONE : View.INVISIBLE);
             firstView.setVisibility(View.VISIBLE);
-            firstView.setHorizontalAlign(PhotoDraweeView.ALIGN_CENTER);
-            bindImage(firstView, firstImage, true, true);
+            if (fullScreen) {
+                firstView.setHorizontalAlign(PhotoDraweeView.ALIGN_CENTER);
+            }
+            bindImage(firstView, firstImage, true, fullScreen);
             return;
         }
 
         firstView.setVisibility(View.VISIBLE);
         secondView.setVisibility(View.VISIBLE);
-        // 无间隔时两侧图片各自贴向中线，否则居中显示
-        firstView.setHorizontalAlign(isDualPageNoGap ?
-                PhotoDraweeView.ALIGN_RIGHT : PhotoDraweeView.ALIGN_CENTER);
-        secondView.setHorizontalAlign(isDualPageNoGap ?
-                PhotoDraweeView.ALIGN_LEFT : PhotoDraweeView.ALIGN_CENTER);
         bindImage(firstView, firstImage, true, false);
         bindImage(secondView, secondImage, true, false);
     }
@@ -633,7 +640,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     }
 
     /**
-     * 重建双页分组：需要单独占屏的图各占一屏，其余相邻两张并排。
+     * 重建双页分组：需要单独占屏的图各占一屏，同一章节内其余相邻两张并排。
+     * 不同章节的图片不能并到同一屏上，章节最后一页单独成组。
      * 图片尺寸只有解码后才知道，判定结果变化时列表项数量会变，因此调用方需重新刷新列表。
      */
     private void ensureGroups() {
@@ -656,7 +664,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
                 counts[groupCount] = 1;
                 groupCount++;
                 index++;
-            } else if (index + 1 < size && !isSinglePageImage(index + 1)) {
+            } else if (index + 1 < size && !isSinglePageImage(index + 1)
+                    && isSameChapter(index, index + 1)) {
                 starts[groupCount] = index;
                 counts[groupCount] = 2;
                 groupCount++;
@@ -672,6 +681,23 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         mGroupCounts = new int[groupCount];
         System.arraycopy(starts, 0, mGroupStarts, 0, groupCount);
         System.arraycopy(counts, 0, mGroupCounts, 0, groupCount);
+    }
+
+    /**
+     * 两个数据位置是否属于同一章节。优先用章节 id 判断，取不到时退回章节名，
+     * 都取不到时视为同一章节，避免影响只有单一章节来源的并排显示
+     */
+    private boolean isSameChapter(int first, int second) {
+        ImageUrl firstImage = mDataSet.get(first);
+        ImageUrl secondImage = mDataSet.get(second);
+        long firstChapter = firstImage.getComicChapter();
+        long secondChapter = secondImage.getComicChapter();
+        if (firstChapter != 0 && secondChapter != 0) {
+            return firstChapter == secondChapter;
+        }
+        String firstName = firstImage.getChapter();
+        String secondName = secondImage.getChapter();
+        return firstName == null || secondName == null || firstName.equals(secondName);
     }
 
     /**
