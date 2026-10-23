@@ -180,12 +180,6 @@
         android:text="@string/settings_reader_dual_page" />
 
     <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/reader_switch_dual_page_rtl"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/settings_reader_dual_page_rtl" />
-
-    <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/reader_switch_dual_page_no_gap"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

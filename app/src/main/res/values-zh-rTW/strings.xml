@@ -186,9 +186,7 @@
     <string name="settings_reader_ban_turn">放大禁止翻頁</string>
     <string name="settings_reader_ban_turn_summary">放大狀態禁止翻頁</string>
     <string name="settings_reader_dual_page">大橫屏左右雙頁</string>
-    <string name="settings_reader_dual_page_summary">橫屏且螢幕夠寬時（摺疊螢幕展開、平板）左右各顯示一頁</string>
-    <string name="settings_reader_dual_page_rtl">雙頁從右往左</string>
-    <string name="settings_reader_dual_page_rtl_summary">雙頁時把後一頁排在左側，適合從右往左閱讀的漫畫</string>
+    <string name="settings_reader_dual_page_summary">橫屏且螢幕夠寬時（摺疊螢幕展開、平板）左右各顯示一頁，左右順序跟隨閱讀方向</string>
     <string name="settings_reader_dual_page_no_gap">左右圖片無間隔</string>
     <string name="settings_reader_dual_page_no_gap_summary">雙頁時左右兩圖緊貼中間，適合跨頁長圖</string>
     <string name="settings_reader_interval">顯示圖片間隔</string>

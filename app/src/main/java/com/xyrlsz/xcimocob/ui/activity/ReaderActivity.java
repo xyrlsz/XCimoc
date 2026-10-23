@@ -456,8 +456,9 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
-     * 双页的两个子设置（从右往左 / 左右无间隔）只在双页实际生效时才应用，
-     * 关闭「大横屏左右双页」后不再对阅读器产生任何影响
+     * 双页的附加设置（左右无间隔）只在双页实际生效时才应用，
+     * 关闭「大横屏左右双页」后不再对阅读器产生任何影响。
+     * 左右排列顺序跟随阅读方向：从右往左阅读时后一页排在左侧
      *
      * @return 设置是否发生了变化（调用方据此决定是否需要刷新列表）
      */
@@ -465,8 +466,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (mReaderAdapter == null) {
             return false;
         }
-        boolean rtl = mDualPage
-                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false);
+        boolean rtl = mDualPage && turn == PreferenceManager.READER_TURN_RTL;
         boolean noGap = mDualPage
                 && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false);
         boolean changed = rtl != mReaderAdapter.isDualPageRtl()
@@ -1380,7 +1380,6 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         SwitchCompat keepBrightSwitch = view.findViewById(R.id.reader_switch_keep_bright);
         SwitchCompat hideInfoSwitch = view.findViewById(R.id.reader_switch_hide_info);
         SwitchCompat dualPageSwitch = view.findViewById(R.id.reader_switch_dual_page);
-        SwitchCompat dualPageRtlSwitch = view.findViewById(R.id.reader_switch_dual_page_rtl);
         SwitchCompat dualPageNoGapSwitch = view.findViewById(R.id.reader_switch_dual_page_no_gap);
         SwitchCompat volumeKeySwitch = view.findViewById(R.id.reader_switch_volume_key);
         MaterialButton fullSettingsBtn = view.findViewById(R.id.reader_settings_full);
@@ -1422,15 +1421,13 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         whiteBgSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_BACKGROUND, true));
         keepBrightSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_KEEP_BRIGHT, false));
         hideInfoSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_HIDE_INFO, false));
-        // 左右双页仅在分页模式下有效，排列顺序/无间隔仅在开启左右双页后才有效
+        // 左右双页仅在分页模式下有效，无间隔仅在开启左右双页后才有效
         boolean pageMode = mode == PreferenceManager.READER_MODE_PAGE;
         boolean dualPageOn = mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false);
         int dualPageSubVisibility = pageMode && dualPageOn ? View.VISIBLE : View.GONE;
         dualPageSwitch.setVisibility(pageMode ? View.VISIBLE : View.GONE);
-        dualPageRtlSwitch.setVisibility(dualPageSubVisibility);
         dualPageNoGapSwitch.setVisibility(dualPageSubVisibility);
         dualPageSwitch.setChecked(dualPageOn);
-        dualPageRtlSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false));
         dualPageNoGapSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false));
         volumeKeySwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_VOLUME_KEY_CONTROLS_PAGE_TURNING, false));
 
@@ -1487,15 +1484,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
             mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, isChecked);
             int visibility = isChecked && mode == PreferenceManager.READER_MODE_PAGE
                     ? View.VISIBLE : View.GONE;
-            dualPageRtlSwitch.setVisibility(visibility);
             dualPageNoGapSwitch.setVisibility(visibility);
             applyDualPage();
-        });
-        // 双页从右往左排列（只改变左右顺序，不改变分页位置）
-        dualPageRtlSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, isChecked);
-            applyDualPageOptions();
-            mReaderAdapter.notifyDataSetChanged();
         });
         // 左右图片无间隔
         dualPageNoGapSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {

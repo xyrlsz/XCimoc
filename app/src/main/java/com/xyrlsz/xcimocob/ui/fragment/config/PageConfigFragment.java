@@ -36,7 +36,6 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
     CheckBoxPreference mReaderBanTurn;
     CheckBoxPreference mReaderQuickTurn;
     CheckBoxPreference mReaderDualPage;
-    CheckBoxPreference mReaderDualPageRtl;
     CheckBoxPreference mReaderDualPageNoGap;
     ChoicePreference mReaderOrientation;
     ChoicePreference mReaderTurn;
@@ -49,7 +48,6 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
         mReaderBanTurn = mRootView.findViewById(R.id.settings_reader_ban_turn);
         mReaderQuickTurn = mRootView.findViewById(R.id.settings_reader_quick_turn);
         mReaderDualPage = mRootView.findViewById(R.id.settings_reader_dual_page);
-        mReaderDualPageRtl = mRootView.findViewById(R.id.settings_reader_dual_page_rtl);
         mReaderDualPageNoGap = mRootView.findViewById(R.id.settings_reader_dual_page_no_gap);
         mReaderOrientation = mRootView.findViewById(R.id.settings_reader_orientation);
         mReaderTurn = mRootView.findViewById(R.id.settings_reader_turn);
@@ -64,9 +62,8 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
         mReaderBanTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false);
         mReaderQuickTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_QUICK_TURN, false);
         mReaderDualPage.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false);
-        mReaderDualPageRtl.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false);
         mReaderDualPageNoGap.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false);
-        // 未开启左右双页时，排列顺序/无间隔设置无意义
+        // 未开启左右双页时，无间隔设置无意义
         mReaderDualPage.setOnCheckedChangeListener((buttonView, isChecked) -> updateDualPageSubVisibility());
         updateDualPageSubVisibility();
         mReaderOrientation.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_PAGE_ORIENTATION,
@@ -79,7 +76,6 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
 
     private void updateDualPageSubVisibility() {
         int visibility = mReaderDualPage.isChecked() ? View.VISIBLE : View.GONE;
-        mReaderDualPageRtl.setVisibility(visibility);
         mReaderDualPageNoGap.setVisibility(visibility);
     }
 

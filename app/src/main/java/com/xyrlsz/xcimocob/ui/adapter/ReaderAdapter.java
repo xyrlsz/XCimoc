@@ -530,7 +530,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     }
 
     /**
-     * 双页排列顺序：true 为从右往左（第一张图在右），false 为从左往右
+     * 双页排列顺序：true 为从右往左（第一张图在右），false 为从左往右。
+     * 由阅读方向决定，不单独提供开关
      */
     public void setDualPageRtl(boolean rtl) {
         isDualPageRtl = rtl;
