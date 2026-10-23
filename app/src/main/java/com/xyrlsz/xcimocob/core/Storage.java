@@ -180,19 +180,27 @@ public class Storage {
                 .subscribeOn(Schedulers.io());
     }
 
+    /**
+     * 保存图片写盘串行化：双页模式会同时保存两张图，
+     * 并发创建目录/同名文件会在 SAF 层互相干扰
+     */
+    private static final Object PICTURE_SAVE_LOCK = new Object();
+
     public static Observable<Uri> savePicture(final ContentResolver resolver,
                                               final CimocDocumentFile root, final InputStream stream, final String filename) {
         return Observable
                 .create((io.reactivex.rxjava3.core.ObservableOnSubscribe<Uri>) emitter -> {
                     try {
-                        CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(root, PICTURE);
-                        if (dir != null) {
-                            CimocDocumentFile file = DocumentUtils.getOrCreateFile(dir, filename);
-                            DocumentUtils.writeBinaryToFile(
-                                    resolver, Objects.requireNonNull(file), stream);
-                            emitter.onNext(file.getUri());
-                            emitter.onComplete();
-                            return;
+                        synchronized (PICTURE_SAVE_LOCK) {
+                            CimocDocumentFile dir = DocumentUtils.getOrCreateSubDirectory(root, PICTURE);
+                            if (dir != null) {
+                                CimocDocumentFile file = DocumentUtils.getOrCreateFile(dir, filename);
+                                DocumentUtils.writeBinaryToFile(
+                                        resolver, Objects.requireNonNull(file), stream);
+                                emitter.onNext(file.getUri());
+                                emitter.onComplete();
+                                return;
+                            }
                         }
                         stream.close();
                     } catch (IOException ignored) {

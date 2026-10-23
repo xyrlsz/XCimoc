@@ -82,6 +82,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -164,6 +165,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     RelativeLayout mReaderBox;
     ProgressBar mLoadingIcon;
     private boolean isSavingPicture = false;
+    private int mPendingPictureSaves = 0; // 等待写盘的图片数量（双页时一屏两张）
+    private int mPictureSaveFailCount = 0;
     private boolean mHideInfo;
     private boolean mHideNav;
     private boolean mShowTopbar;
@@ -762,14 +765,23 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     @Override
     public void onPictureSaveSuccess(Uri uri) {
         sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, uri));
+        if (--mPendingPictureSaves > 0) {
+            return;
+        }
         isSavingPicture = false;
-        HintUtils.showToast(this, R.string.reader_picture_save_success);
+        HintUtils.showToast(this, mPictureSaveFailCount == 0 ?
+                R.string.reader_picture_save_success : R.string.reader_picture_save_fail);
     }
 
     @Override
     public void onPictureSaveFail() {
+        ++mPictureSaveFailCount;
+        if (--mPendingPictureSaves > 0) {
+            return;
+        }
         isSavingPicture = false;
-        HintUtils.showToast(this, R.string.reader_picture_save_fail);
+        HintUtils.showToast(this, mPictureSaveFailCount == 0 ?
+                R.string.reader_picture_save_success : R.string.reader_picture_save_fail);
     }
 
     @Override
@@ -974,6 +986,23 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
+     * 当前屏包含的数据位置：单页时一张，双页时最多两张（顺序即数据顺序）
+     */
+    private int[] getScreenDataPositions(int adapterPosition) {
+        int size = mReaderAdapter.getDateSet().size();
+        if (size == 0) {
+            return new int[0];
+        }
+        if (!mDualPage) {
+            return new int[]{Math.max(0, Math.min(adapterPosition, size - 1))};
+        }
+        // 列表项位置不一定有效（滚动中可能取到 childCount），钳制后对齐到该屏的第一张
+        int first = Math.max(0, Math.min(adapterPosition * 2, size - 1));
+        first -= first % 2;
+        return first + 1 < size ? new int[]{first, first + 1} : new int[]{first};
+    }
+
+    /**
      * 保存图片、重新加载图片等只针对单张图片的操作，换算成要操作的数据位置。
      * 双页模式下按最近一次点击落在哪一侧决定是左边还是右边那一页。
      *
@@ -1075,46 +1104,67 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (isSavingPicture) {
             return;
         }
-        int dataPosition = getDataPositionForAction(getActionAdapterPosition());
-        if (dataPosition < 0) {
+        int[] dataPositions = getScreenDataPositions(getActionAdapterPosition());
+        if (dataPositions.length == 0) {
             return;
         }
-        isSavingPicture = true;
+        mPendingPictureSaves = 0;
+        mPictureSaveFailCount = 0;
 
-        ImageUrl imageUrl = mReaderAdapter.getDateSet().get(dataPosition);
-        String[] urls = imageUrl.getUrls().toArray(new String[0]);
-        // 双页时可能保存的是右侧那一页，页码按该图自己的页码而不是当前屏第一页
-        int page = imageUrl.getNum() > 0 ? imageUrl.getNum() : progress;
-        try {
-            String title = mChapterTitle.getText().toString();
-            for (String url : urls) {
-                if (url.startsWith("file")) {
-                    mPresenter.savePicture(new FileInputStream(new File(Objects.requireNonNull(Uri.parse(url).getPath()))), url, title, page);
-                    return;
-                } else if (url.startsWith("content")) {
-                    mPresenter.savePicture(getContentResolver().openInputStream(Uri.parse(url)), url, title, page);
-                    return;
-                } else {
-//                    ImagePipelineFactory factory = imageUrl.getSize() > App.mLargePixels ?
-//                            mLargeImagePipelineFactory : mImagePipelineFactory;
-//                    BinaryResource resource = factory
-//                            .getDiskCachesStoreSupplier()
-//                            .get()
-//                            .getMainFileCache().getResource(new SimpleCacheKey(url));
-//                    if (resource != null) {
-//                        mPresenter.savePicture(resource.openStream(), url, title, progress);
-//                        return;
-//                    }
-                    InputStream inputStream = FrescoUtils.getCacheFileInputStream(url);
-                    mPresenter.savePicture(inputStream, url, title, page);
-                    return;
+        String title = mChapterTitle.getText().toString();
+        // 先把所有要保存的图片流准备好，避免保存一半才发现另一张取不到
+        List<InputStream> streams = new ArrayList<>(dataPositions.length);
+        List<String> urls = new ArrayList<>(dataPositions.length);
+        List<Integer> pages = new ArrayList<>(dataPositions.length);
+        for (int dataPosition : dataPositions) {
+            ImageUrl imageUrl = mReaderAdapter.getDateSet().get(dataPosition);
+            int page = imageUrl.getNum() > 0 ? imageUrl.getNum() : progress;
+            // 切割成两半的长图两半页码相同、文件名也相同，只需保存一次
+            if (pages.contains(page)) {
+                continue;
+            }
+            for (String url : imageUrl.getUrls()) {
+                InputStream stream;
+                try {
+                    stream = openPictureStream(url);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    continue;
+                }
+                // 缓存里还没有这张图时继续尝试同一页的候选 URL
+                if (stream != null) {
+                    streams.add(stream);
+                    urls.add(url);
+                    pages.add(page);
+                    break;
                 }
             }
-        } catch (Exception e) {
-            // 任何异常都要走到 onPictureSaveFail 重置 isSavingPicture，否则保存功能会永久失效
-            e.printStackTrace();
         }
-        onPictureSaveFail();
+        if (streams.isEmpty()) {
+            onPictureSaveFail();
+            return;
+        }
+
+        isSavingPicture = true;
+        mPendingPictureSaves = streams.size();
+        for (int i = 0; i < streams.size(); ++i) {
+            mPresenter.savePicture(streams.get(i), urls.get(i), title, pages.get(i));
+        }
+    }
+
+    /**
+     * 打开图片对应的输入流：本地文件/文档直接读，网络图片从 Fresco 磁盘缓存取原始文件
+     *
+     * @return 取不到时返回 null
+     */
+    private InputStream openPictureStream(String url) throws IOException {
+        if (url.startsWith("file")) {
+            return new FileInputStream(new File(Objects.requireNonNull(Uri.parse(url).getPath())));
+        }
+        if (url.startsWith("content")) {
+            return getContentResolver().openInputStream(Uri.parse(url));
+        }
+        return FrescoUtils.getCacheFileInputStream(url);
     }
 
     protected void loadPrev() {
