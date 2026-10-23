@@ -4,6 +4,8 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -35,6 +37,7 @@ import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +89,39 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     /** 预计算的 ResizeOptions，减少重复创建 */
     private ResizeOptions mCachedVerticalResize;
     private ResizeOptions mCachedHorizontalResize;
+    /** 独占一屏的图按整屏尺寸解码，与并排时的半屏尺寸不同 */
+    private ResizeOptions mCachedFullVerticalResize;
+    private ResizeOptions mCachedFullHorizontalResize;
+
+    /**
+     * 需要单独占一屏的判定，与 {@link MangaPostprocessor} 的切割判定保持一致：
+     * 单页模式下需要切割的超长 / 超宽图，在双页模式下改为独占一屏显示
+     */
+    private static final float SINGLE_PAGE_MAX_RATIO = 3f;      // height > 3 * width
+    private static final float SINGLE_PAGE_MIN_RATIO = 1 / 1.2f; // width > 1.2 * height
+
+    /** 已解码图片的高宽比（height / width），图片尺寸只有解码后才知道，不持久化 */
+    private final Map<Long, Float> mImageRatios = new HashMap<>();
+    /** 比例信息版本号，用于让双页分组失效 */
+    private int mRatioVersion;
+    /** 数据集版本号，数据增删后自增 */
+    private int mDataVersion;
+
+    /** 双页分组缓存：每个列表项对应的起始数据位置与张数（1 = 独占一屏，2 = 并排） */
+    private int[] mGroupStarts = new int[0];
+    private int[] mGroupCounts = new int[0];
+    private int mGroupedDataVersion = -1;
+    private int mGroupedRatioVersion = -1;
+    private int mGroupedSize = -1;
+
+    private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+    private OnPageGroupChangedListener mPageGroupChangedListener;
+    private boolean mGroupChangeNotified;
+
+    /** 双页分组因图片尺寸信息更新而变化时的回调 */
+    public interface OnPageGroupChangedListener {
+        void onPageGroupChanged();
+    }
 
     /** 页面模式图片加载成功监听器（复用实例） */
     private final BaseControllerListener<ImageInfo> mPageSuccessListener =
@@ -145,8 +181,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 //        return mDataSet.get(position).isLazy() ? TYPE_LOADING : TYPE_IMAGE;
         if (isDualPage) {
             int dataPosition = toDataPosition(position);
-            // 同一屏的第二张图如果还在懒加载，整屏先显示加载占位
-            if (isLazy(dataPosition) || isLazy(dataPosition + 1)) {
+            // 同一屏的任意一张图如果还在懒加载，整屏先显示加载占位
+            if (isLazy(dataPosition) || isLazy(getGroupDataPosition(position, 1))) {
                 return TYPE_LOADING;
             }
             return TYPE_IMAGE_PAGE_DUAL;
@@ -205,7 +241,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
             int dataPosition = toDataPosition(position);
             requestLazyLoad(dataPosition);
             if (isDualPage) {
-                requestLazyLoad(dataPosition + 1);
+                requestLazyLoad(getGroupDataPosition(position, 1));
             }
             return;
         }
@@ -251,17 +287,20 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     /**
      * 绑定一屏双页：按排列顺序开关决定哪张图在左、哪张图在右。
-     * 一屏按数据顺序固定合并相邻两张图，奇数页时最后一屏按顺序留空一侧。
+     * 需要单独占屏的图（超长 / 超宽）独占一整屏，其余相邻两张并排，末尾落单时独占一屏。
      */
     private void bindDualPage(@NonNull DualPageHolder holder, int position) {
         int firstPosition = toDataPosition(position);
+        if (firstPosition < 0 || firstPosition >= mDataSet.size()) {
+            return;
+        }
         ImageUrl firstImage = mDataSet.get(firstPosition);
-        ImageUrl secondImage = firstPosition + 1 < mDataSet.size()
-                ? mDataSet.get(firstPosition + 1) : null;
+        int secondPosition = getGroupDataPosition(position, 1);
+        ImageUrl secondImage = secondPosition >= 0 ? mDataSet.get(secondPosition) : null;
 
         requestLazyLoad(firstPosition);
         if (secondImage != null) {
-            requestLazyLoad(firstPosition + 1);
+            requestLazyLoad(secondPosition);
         }
 
         if (!holder.mConfigured) {
@@ -269,24 +308,40 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
             configurePageView(holder.leftView);
             configurePageView(holder.rightView);
         }
-        // 无间隔时两侧图片各自贴向中线，否则居中显示
-        holder.leftView.setHorizontalAlign(isDualPageNoGap ?
-                PhotoDraweeView.ALIGN_RIGHT : PhotoDraweeView.ALIGN_CENTER);
-        holder.rightView.setHorizontalAlign(isDualPageNoGap ?
-                PhotoDraweeView.ALIGN_LEFT : PhotoDraweeView.ALIGN_CENTER);
 
         PhotoDraweeView firstView = isDualPageRtl ? holder.rightView : holder.leftView;
         PhotoDraweeView secondView = isDualPageRtl ? holder.leftView : holder.rightView;
-        bindImage(firstView, firstImage, true);
-        if (secondImage != null) {
-            bindImage(secondView, secondImage, true);
-        } else {
+        if (secondImage == null) {
+            // 独占一整屏：另一侧隐藏，这一张占满整个宽度并居中
             secondView.setTag(null);
             secondView.setController(null);
+            secondView.setVisibility(View.GONE);
+            firstView.setVisibility(View.VISIBLE);
+            firstView.setHorizontalAlign(PhotoDraweeView.ALIGN_CENTER);
+            bindImage(firstView, firstImage, true, true);
+            return;
         }
+
+        firstView.setVisibility(View.VISIBLE);
+        secondView.setVisibility(View.VISIBLE);
+        // 无间隔时两侧图片各自贴向中线，否则居中显示
+        firstView.setHorizontalAlign(isDualPageNoGap ?
+                PhotoDraweeView.ALIGN_RIGHT : PhotoDraweeView.ALIGN_CENTER);
+        secondView.setHorizontalAlign(isDualPageNoGap ?
+                PhotoDraweeView.ALIGN_LEFT : PhotoDraweeView.ALIGN_CENTER);
+        bindImage(firstView, firstImage, true, false);
+        bindImage(secondView, secondImage, true, false);
     }
 
     private void bindImage(@NonNull DraweeView draweeView, @NonNull ImageUrl imageUrl, final boolean isPageMode) {
+        bindImage(draweeView, imageUrl, isPageMode, false);
+    }
+
+    /**
+     * @param fullWidth 该图是否独占一整屏（按整屏尺寸解码，否则双页模式下按半屏解码）
+     */
+    private void bindImage(@NonNull DraweeView draweeView, @NonNull ImageUrl imageUrl,
+                           final boolean isPageMode, final boolean fullWidth) {
         // 设置 Headers
         Headers currHeaders = imageUrl.getHeaders();
 
@@ -324,13 +379,19 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         if (mCachedVerticalResize == null) {
             int width = mViewWidth > 0 ? mViewWidth : App.mWidthPixels;
             int height = mViewHeight > 0 ? mViewHeight : App.mHeightPixels;
-            // 双页时每页只占半屏宽，按半屏宽解码以节省内存
+            mCachedFullVerticalResize = new ResizeOptions(width, height);
+            mCachedFullHorizontalResize = new ResizeOptions(height, width);
+            // 双页并排时每页只占半屏宽，按半屏宽解码以节省内存
             int pageWidth = isDualPage ? width / 2 : width;
             mCachedVerticalResize = new ResizeOptions(pageWidth, height);
             mCachedHorizontalResize = new ResizeOptions(height, pageWidth);
         }
-        final ResizeOptions resizeOptions = isVertical
-                ? mCachedVerticalResize : mCachedHorizontalResize;
+        final ResizeOptions resizeOptions;
+        if (fullWidth) {
+            resizeOptions = isVertical ? mCachedFullVerticalResize : mCachedFullHorizontalResize;
+        } else {
+            resizeOptions = isVertical ? mCachedVerticalResize : mCachedHorizontalResize;
+        }
 
         // 预创建 MangaPostprocessor（所有 URL 共享同一个处理器）
         final MangaPostprocessor sharedProcessor = new MangaPostprocessor(
@@ -368,6 +429,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
                 public void onFinalImageSet(String id, ImageInfo imageInfo, Animatable animatable) {
                     if (imageInfo != null) {
                         imageUrl.setSuccess(true);
+                        // 记录实际尺寸：双页模式据此判断该图是否需要单独占一屏
+                        recordImageRatio(imageUrl, imageInfo);
                         photoView.update(imageId);
                     }
                 }
@@ -482,8 +545,9 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
             return;
         }
         isDualPage = dualPage;
-        mCachedVerticalResize = null;
-        mCachedHorizontalResize = null;
+        mGroupedDataVersion = -1;
+        mGroupedRatioVersion = -1;
+        clearResizeOptions();
     }
 
     public boolean isDualPage() {
@@ -499,17 +563,180 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     }
 
     /**
-     * 列表项位置 → 数据位置
+     * 列表项位置 → 数据位置（该屏第一张图的数据位置）
      */
     public int toDataPosition(int position) {
-        return isDualPage && position >= 0 ? position * 2 : position;
+        if (!isDualPage) {
+            return position;
+        }
+        ensureGroups();
+        if (mGroupStarts.length == 0) {
+            return 0;
+        }
+        int index = Math.max(0, Math.min(position, mGroupStarts.length - 1));
+        return mGroupStarts[index];
     }
 
     /**
-     * 数据位置 → 列表项位置
+     * 数据位置 → 列表项位置（包含该数据位置的那一屏）
      */
     public int toAdapterPosition(int position) {
-        return isDualPage && position >= 0 ? position / 2 : position;
+        if (!isDualPage) {
+            return position;
+        }
+        ensureGroups();
+        int count = mGroupStarts.length;
+        if (count == 0) {
+            return 0;
+        }
+        int dataPosition = Math.max(0, position);
+        int low = 0, high = count - 1, result = count - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            if (mGroupStarts[mid] <= dataPosition) {
+                result = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 该屏显示几张图（1 表示独占一整屏，2 表示左右并排）
+     */
+    public int getGroupCount(int position) {
+        if (!isDualPage) {
+            return 1;
+        }
+        ensureGroups();
+        if (mGroupCounts.length == 0) {
+            return 1;
+        }
+        return mGroupCounts[Math.max(0, Math.min(position, mGroupCounts.length - 1))];
+    }
+
+    /**
+     * 该屏第 index 张图的数据位置，越界返回 -1
+     */
+    public int getGroupDataPosition(int position, int index) {
+        if (!isDualPage) {
+            return index == 0 ? position : -1;
+        }
+        int count = getGroupCount(position);
+        if (index < 0 || index >= count) {
+            return -1;
+        }
+        int dataPosition = toDataPosition(position) + index;
+        return dataPosition < mDataSet.size() ? dataPosition : -1;
+    }
+
+    /**
+     * 重建双页分组：需要单独占屏的图各占一屏，其余相邻两张并排。
+     * 图片尺寸只有解码后才知道，判定结果变化时列表项数量会变，因此调用方需重新刷新列表。
+     */
+    private void ensureGroups() {
+        int size = mDataSet.size();
+        if (mGroupedDataVersion == mDataVersion && mGroupedRatioVersion == mRatioVersion
+                && mGroupedSize == size) {
+            return;
+        }
+        mGroupedDataVersion = mDataVersion;
+        mGroupedRatioVersion = mRatioVersion;
+        mGroupedSize = size;
+
+        int[] starts = new int[size];
+        int[] counts = new int[size];
+        int groupCount = 0;
+        int index = 0;
+        while (index < size) {
+            if (isSinglePageImage(index)) {
+                starts[groupCount] = index;
+                counts[groupCount] = 1;
+                groupCount++;
+                index++;
+            } else if (index + 1 < size && !isSinglePageImage(index + 1)) {
+                starts[groupCount] = index;
+                counts[groupCount] = 2;
+                groupCount++;
+                index += 2;
+            } else {
+                starts[groupCount] = index;
+                counts[groupCount] = 1;
+                groupCount++;
+                index++;
+            }
+        }
+        mGroupStarts = new int[groupCount];
+        mGroupCounts = new int[groupCount];
+        System.arraycopy(starts, 0, mGroupStarts, 0, groupCount);
+        System.arraycopy(counts, 0, mGroupCounts, 0, groupCount);
+    }
+
+    /**
+     * 该数据位置的图是否需要单独占一屏显示
+     */
+    private boolean isSinglePageImage(int dataPosition) {
+        if (dataPosition < 0 || dataPosition >= mDataSet.size()) {
+            return false;
+        }
+        ImageUrl image = mDataSet.get(dataPosition);
+        Float ratio = mImageRatios.get(image.getId());
+        if (ratio == null) {
+            int width = image.getWidth();
+            int height = image.getHeight();
+            if (width <= 0 || height <= 0) {
+                return false;
+            }
+            ratio = (float) height / width;
+        }
+        return needsSinglePage(ratio);
+    }
+
+    /**
+     * 高宽比过大（超长图）或过小（超宽图）时单独占一屏，否则并排会显得过小
+     */
+    private static boolean needsSinglePage(float ratio) {
+        return ratio > SINGLE_PAGE_MAX_RATIO || ratio < SINGLE_PAGE_MIN_RATIO;
+    }
+
+    /**
+     * 记录解码后的图片比例；判定结果发生变化时通知调用方刷新列表
+     */
+    private void recordImageRatio(ImageUrl image, ImageInfo imageInfo) {
+        if (imageInfo == null || imageInfo.getWidth() <= 0 || imageInfo.getHeight() <= 0) {
+            return;
+        }
+        float ratio = (float) imageInfo.getHeight() / imageInfo.getWidth();
+        Float old = mImageRatios.put(image.getId(), ratio);
+        boolean wasSingle = old != null && needsSinglePage(old);
+        boolean isSingle = needsSinglePage(ratio);
+        if (wasSingle == isSingle) {
+            // 是否单独占屏的判定没有变化，分组不受影响（普通图首次解码也走这里）
+            return;
+        }
+        mRatioVersion++;
+        if (isDualPage) {
+            notifyPageGroupChanged();
+        }
+    }
+
+    private void notifyPageGroupChanged() {
+        if (mPageGroupChangedListener == null || mGroupChangeNotified) {
+            return;
+        }
+        mGroupChangeNotified = true;
+        mMainHandler.post(() -> {
+            mGroupChangeNotified = false;
+            if (mPageGroupChangedListener != null) {
+                mPageGroupChangedListener.onPageGroupChanged();
+            }
+        });
+    }
+
+    public void setOnPageGroupChangedListener(OnPageGroupChangedListener listener) {
+        mPageGroupChangedListener = listener;
     }
 
     /**
@@ -524,14 +751,23 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         }
         mViewWidth = width;
         mViewHeight = height;
+        clearResizeOptions();
+    }
+
+    private void clearResizeOptions() {
         mCachedVerticalResize = null;
         mCachedHorizontalResize = null;
+        mCachedFullVerticalResize = null;
+        mCachedFullHorizontalResize = null;
     }
 
     @Override
     public int getItemCount() {
-        int size = mDataSet.size();
-        return isDualPage ? (size + 1) / 2 : size;
+        if (!isDualPage) {
+            return mDataSet.size();
+        }
+        ensureGroups();
+        return mGroupStarts.length;
     }
 
     @Override
@@ -546,6 +782,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
      */
     @Override
     public void add(int location, ImageUrl data) {
+        mDataVersion++;
         if (!isDualPage) {
             super.add(location, data);
             return;
@@ -557,6 +794,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     @Override
     public void addAll(int location, Collection<ImageUrl> collection) {
+        mDataVersion++;
         if (!isDualPage) {
             super.addAll(location, collection);
             return;
@@ -564,23 +802,15 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         if (collection == null || collection.isEmpty()) {
             return;
         }
-        int oldSize = mDataSet.size();
-        int oldSpreadCount = getItemCount();
         mDataSet.addAll(location, collection);
         mOriginalData.addAll(location, collection);
-        if (location >= oldSize) {
-            // 追加不影响已有列表项的位置，只需刷新被补全的最后一屏并插入新屏
-            if (oldSize % 2 == 1) {
-                notifyItemChanged(oldSpreadCount - 1);
-            }
-            notifyItemRangeInserted(oldSpreadCount, getItemCount() - oldSpreadCount);
-        } else {
-            notifyDataSetChanged();
-        }
+        // 分组取决于图片尺寸与数量，增量通知的下标不再固定，全量刷新最稳妥
+        notifyDataSetChanged();
     }
 
     @Override
     public void remove(int position) {
+        mDataVersion++;
         if (!isDualPage) {
             super.remove(position);
             return;
@@ -588,6 +818,18 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         mDataSet.remove(position);
         mOriginalData.remove(position);
         notifyDataSetChanged();
+    }
+
+    @Override
+    public void setData(Collection<ImageUrl> collection) {
+        mDataVersion++;
+        super.setData(collection);
+    }
+
+    @Override
+    public void clear() {
+        mDataVersion++;
+        super.clear();
     }
 
     public void setPaging(boolean paging) {
@@ -655,18 +897,23 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     /**
      * 假设一定找得到。
      * current 为数据位置，返回列表项位置（双页模式下两者不同）。
+     * 数据位置是逐张递增的，因此按 ±1 步进查找；每屏张数不再固定，不能用 ±2。
      */
     public int getPositionByNum(int current, int num, boolean reverse) {
-        int position = current;
-        try {
-            while (mDataSet.get(position).getNum() < num) {
-                position = reverse ? position - 1 : position + 2;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            return toAdapterPosition(position);
+        int size = mDataSet.size();
+        if (size == 0) {
+            return 0;
         }
+        int start = Math.max(0, Math.min(current, size - 1));
+        int position = start;
+        int step = reverse ? -1 : 1;
+        while (position >= 0 && position < size && mDataSet.get(position).getNum() < num) {
+            position += step;
+        }
+        if (position < 0 || position >= size) {
+            position = start;
+        }
+        return toAdapterPosition(position);
     }
 
     /**

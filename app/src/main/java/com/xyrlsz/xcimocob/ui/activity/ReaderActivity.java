@@ -417,6 +417,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter = new ReaderAdapter(this, new LinkedList<>());
         mReaderAdapter.setTapGestureListener(this);
         mReaderAdapter.setLazyLoadListener(this);
+        // 图片尺寸只有解码后才知道，识别出需要单独占屏的图后重建列表项
+        mReaderAdapter.setOnPageGroupChangedListener(this::onPageGroupChanged);
         mReaderAdapter.setScaleFactor(mPreference.getNumber(PreferenceManager.PREF_READER_SCALE_FACTOR, 200).intValue() * 0.01f);
         mReaderAdapter.setDoubleTap(!mPreference.getBoolean(PreferenceManager.PREF_READER_BAN_DOUBLE_CLICK, false));
         mReaderAdapter.setVertical(turn == PreferenceManager.READER_TURN_ATB);
@@ -568,6 +570,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 mReaderAdapter.notifyItemRangeChanged(0, itemCount);
             }
         });
+    }
+
+    /**
+     * 双页分组随图片尺寸信息更新而变化（识别出需要单独占屏的图）后重建列表项，保持当前阅读位置
+     */
+    private void onPageGroupChanged() {
+        if (mReaderAdapter == null || !mDualPage || isFinishing() || isDestroyed()) {
+            return;
+        }
+        rebindAfterLayoutChange(mReaderAdapter.toDataPosition(Math.max(getActionAdapterPosition(), 0)));
     }
 
     /**
@@ -1058,6 +1070,10 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
             ReaderAdapter.DualPageHolder dualHolder = (ReaderAdapter.DualPageHolder) holder;
             mTapOnRightHalf = isTapOnRightHalf(x);
             draweeView = mTapOnRightHalf ? dualHolder.rightView : dualHolder.leftView;
+            if (draweeView.getVisibility() != View.VISIBLE) {
+                // 该屏只有一张图（长图/宽图独占一屏）时另一侧是隐藏的，改用可见的那一张
+                draweeView = mTapOnRightHalf ? dualHolder.leftView : dualHolder.rightView;
+            }
         } else if (holder instanceof ReaderAdapter.StreamHolder) {
             draweeView = ((ReaderAdapter.StreamHolder) holder).draweeView;
         }
@@ -1100,7 +1116,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
-     * 当前屏包含的数据位置：单页时一张，双页时最多两张（顺序即数据顺序）
+     * 当前屏包含的数据位置：单页时一张，双页时 1 张（长图独占一屏）或 2 张（顺序即数据顺序）
      */
     private int[] getScreenDataPositions(int adapterPosition) {
         int size = mReaderAdapter.getDateSet().size();
@@ -1110,10 +1126,12 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (!mDualPage) {
             return new int[]{Math.max(0, Math.min(adapterPosition, size - 1))};
         }
-        // 列表项位置不一定有效（滚动中可能取到 childCount），钳制后对齐到该屏的第一张
-        int first = Math.max(0, Math.min(adapterPosition * 2, size - 1));
-        first -= first % 2;
-        return first + 1 < size ? new int[]{first, first + 1} : new int[]{first};
+        int first = mReaderAdapter.getGroupDataPosition(adapterPosition, 0);
+        if (first < 0) {
+            first = 0;
+        }
+        int second = mReaderAdapter.getGroupDataPosition(adapterPosition, 1);
+        return second >= 0 ? new int[]{first, second} : new int[]{first};
     }
 
     /**
@@ -1127,17 +1145,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (size == 0) {
             return -1;
         }
-        // 列表项位置不一定有效（滚动中可能取到 childCount），统一钳制到合法范围
-        int dataPosition = mDualPage ? adapterPosition * 2 : adapterPosition;
-        dataPosition = Math.max(0, Math.min(dataPosition, size - 1));
-        if (mDualPage) {
-            // 从左往右排列时右侧是后一页，从右往左排列时右侧是前一页
-            boolean secondPage = mTapOnRightHalf != mReaderAdapter.isDualPageRtl();
-            if (secondPage && dataPosition + 1 < size) {
-                dataPosition += 1;
-            }
+        if (!mDualPage) {
+            return Math.max(0, Math.min(adapterPosition, size - 1));
         }
-        return dataPosition;
+        // 从左往右排列时右侧是后一页，从右往左排列时右侧是前一页
+        boolean secondPage = mTapOnRightHalf != mReaderAdapter.isDualPageRtl();
+        int dataPosition = mReaderAdapter.getGroupDataPosition(adapterPosition, secondPage ? 1 : 0);
+        if (dataPosition < 0) {
+            dataPosition = mReaderAdapter.getGroupDataPosition(adapterPosition, 0);
+        }
+        return Math.max(0, Math.min(dataPosition, size - 1));
     }
 
     private void doClickEvent(int value) {
