@@ -7,12 +7,14 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -45,6 +47,7 @@ import com.xyrlsz.xcimocob.ui.fragment.dialog.EditorDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.DetailView;
 import com.xyrlsz.xcimocob.utils.IdCreator;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
 
@@ -74,6 +77,8 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
     private int mBackupCount;
     private Chapter mPendingBookmarkNote;
     private boolean mBookmarkEnabled;
+    private boolean mTwoPane;
+    private View mHeaderView;
 
     public static Intent createIntent(Context context, Long id, int source, String cid) {
         Intent intent = new Intent(context, DetailActivity.class);
@@ -95,6 +100,42 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
         super.initView();
         findViewById(R.id.coordinator_action_button).setOnClickListener(v -> onActionButtonClick());
         findViewById(R.id.coordinator_action_button2).setOnClickListener(v -> onActionButton2Click());
+        applyTwoPane();
+    }
+
+    /**
+     * 大屏横屏时改成双栏：左侧封面简介、右侧章节列表
+     */
+    private void applyTwoPane() {
+        if (mDetailAdapter == null) {
+            return;
+        }
+        boolean twoPane = ScreenUtils.isLargeLandscape(this);
+        if (twoPane == mTwoPane) {
+            return;
+        }
+        mTwoPane = twoPane;
+        View scroll = findViewById(R.id.detail_header_scroll);
+        ViewGroup container = findViewById(R.id.detail_header_container);
+        if (twoPane) {
+            if (mHeaderView == null) {
+                mHeaderView = getLayoutInflater().inflate(R.layout.item_chapter_header, container, false);
+            }
+            if (mHeaderView.getParent() == null) {
+                container.addView(mHeaderView);
+            }
+            scroll.setVisibility(View.VISIBLE);
+            mDetailAdapter.setExternalHeaderView(mHeaderView);
+        } else {
+            scroll.setVisibility(View.GONE);
+            mDetailAdapter.setExternalHeaderView(null);
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        applyTwoPane();
     }
 
     @Override
@@ -126,6 +167,14 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
     @Override
     protected RecyclerView.LayoutManager initLayoutManager() {
         return new GridLayoutManager(this, 3);
+    }
+
+    /**
+     * 章节按钮最小宽度：大屏时多排几列，减少翻找
+     */
+    @Override
+    protected float getGridMinItemWidthDp() {
+        return 92;
     }
 
     @Override
@@ -365,18 +414,16 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
 
     @Override
     public void onItemClick(View view, int position) {
-        if (position > 0 && position - 1 < mDetailAdapter.getDateSet().size()) {
-            String path = mDetailAdapter.getItem(position - 1).getPath();
-            if (!StringUtils.isEmpty(path)) {
-                startReader(path);
-            }
+        Chapter chapter = mDetailAdapter.getChapterAt(position);
+        if (chapter != null && !StringUtils.isEmpty(chapter.getPath())) {
+            startReader(chapter.getPath());
         }
     }
 
     @SuppressLint("SetTextI18n")
     @Override
     public boolean onItemLongClick(View view, int position) {
-        if (position == 0) {
+        if (position < mDetailAdapter.getHeaderOffset()) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
             View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_selectable_text, null);
@@ -562,6 +609,11 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
     @Override
     protected String getDefaultTitle() {
         return getString(R.string.detail);
+    }
+
+    @Override
+    protected int getLayoutRes() {
+        return R.layout.activity_detail;
     }
 
 }

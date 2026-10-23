@@ -12,10 +12,16 @@
 
         <include layout="@layout/custom_toolbar" />
 
-        <ScrollView
+        <com.xyrlsz.xcimocob.ui.widget.MaxWidthFrameLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scrollbars="none">
+            android:layout_gravity="center_horizontal"
+            app:contentMaxWidth="@dimen/content_max_width">
+
+            <ScrollView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scrollbars="none">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -339,6 +345,7 @@
 
             </LinearLayout>
         </ScrollView>
+        </com.xyrlsz.xcimocob.ui.widget.MaxWidthFrameLayout>
     </LinearLayout>
 
     <include layout="@layout/custom_night_mask" />

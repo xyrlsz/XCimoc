@@ -84,6 +84,14 @@ public abstract class GridFragment extends RecyclerViewFragment implements GridV
         return manager;
     }
 
+    /**
+     * 封面卡片最小宽度：手机上 3~4 列，平板/折叠屏展开后自动多排几列
+     */
+    @Override
+    protected float getGridMinItemWidthDp() {
+        return 112;
+    }
+
 
 
     @Override

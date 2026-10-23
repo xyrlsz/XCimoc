@@ -31,6 +31,7 @@ import com.xyrlsz.xcimocob.ui.adapter.ChapterAdapter;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.EditorDialogFragment;
 import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.utils.PermissionUtils;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -135,6 +136,7 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.setAdapter(mChapterAdapter);
         switchMode();
+        ScreenUtils.bindResponsiveGrid(mRecyclerView, 4, 92, 8);
         findViewById(R.id.chapter_action_button).setOnClickListener(v -> onActionButtonClick());
         ViewCompat.setOnApplyWindowInsetsListener(mCoordinatorLayout, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -156,6 +158,7 @@ public class ChapterActivity extends BackActivity implements BaseAdapter.OnItemC
             mRecyclerView.addItemDecoration(mDecoration);
             mRecyclerView.addOnItemTouchListener(mListener);
             mRecyclerView.setPadding((int) ViewUtils.dpToPixel(4, this), (int) ViewUtils.dpToPixel(10, this), (int) ViewUtils.dpToPixel(4, this), 0);
+            ScreenUtils.applyResponsiveGrid(mRecyclerView, 4, 92, 8);
         } else {
             mChapterAdapter.setOnItemClickListener(this);
             mRecyclerView.setLayoutManager(new LinearLayoutManager(this));

@@ -99,6 +99,16 @@ public class SourceFragment extends RecyclerViewFragment implements SourceView, 
     }
 
     @Override
+    protected float getGridMinItemWidthDp() {
+        return 180;
+    }
+
+    @Override
+    protected int getGridMaxSpans() {
+        return 4;
+    }
+
+    @Override
     protected void initData() {
         mPresenter.load();
     }

@@ -6,6 +6,7 @@ import android.view.View;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.ui.adapter.BaseAdapter;
 import com.xyrlsz.xcimocob.ui.fragment.BaseFragment;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 
 
 /**
@@ -22,6 +23,7 @@ public abstract class RecyclerViewFragment extends BaseFragment implements BaseA
         mRecyclerView = mRootView.findViewById(R.id.recycler_view_content);
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.setLayoutManager(initLayoutManager());
+        applyResponsiveGrid();
         BaseAdapter adapter = initAdapter();
         if (adapter != null) {
             adapter.setOnItemClickListener(this);
@@ -34,6 +36,28 @@ public abstract class RecyclerViewFragment extends BaseFragment implements BaseA
     abstract protected BaseAdapter initAdapter();
 
     protected abstract RecyclerView.LayoutManager initLayoutManager();
+
+    /**
+     * 网格每格的最小宽度（dp），返回大于 0 的值才会启用大屏列数自适应
+     */
+    protected float getGridMinItemWidthDp() {
+        return 0;
+    }
+
+    protected int getGridMaxSpans() {
+        return 8;
+    }
+
+    /**
+     * 大屏（平板、折叠屏展开）时按可用宽度重算网格列数，手机上保持 initLayoutManager 的固定列数
+     */
+    private void applyResponsiveGrid() {
+        float minItemWidthDp = getGridMinItemWidthDp();
+        if (minItemWidthDp <= 0) {
+            return;
+        }
+        ScreenUtils.bindResponsiveGrid(mRecyclerView, minItemWidthDp, getGridMaxSpans());
+    }
 
     @Override
     public void onItemClick(View view, int position) {

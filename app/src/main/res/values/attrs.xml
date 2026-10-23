@@ -11,6 +11,9 @@
         <attr name="min" format="integer" />
         <attr name="max" format="integer" />
     </declare-styleable>
+    <declare-styleable name="MaxWidthFrameLayout">
+        <attr name="contentMaxWidth" format="dimension" />
+    </declare-styleable>
     <declare-styleable name="ThemeAttributes">
         <attr name="colorBackgroundTrans" format="color" />
         <attr name="colorAutoWG" format="color" />

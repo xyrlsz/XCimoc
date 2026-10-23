@@ -28,6 +28,7 @@ import com.xyrlsz.xcimocob.ui.fragment.dialog.MessageDialogFragment;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.MultiDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.PartFavoriteView;
 import com.xyrlsz.xcimocob.utils.HintUtils;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -84,6 +85,7 @@ public class PartFavoriteActivity extends BackActivity implements PartFavoriteVi
         mGridAdapter.setOnItemClickListener(this);
         mGridAdapter.setOnItemLongClickListener(this);
         mRecyclerView.setLayoutManager(new GridLayoutManager(this, 3));
+        ScreenUtils.bindResponsiveGrid(mRecyclerView, 112, 8);
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.addItemDecoration(mGridAdapter.getItemDecoration());

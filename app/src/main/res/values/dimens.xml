@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 横屏大屏时单列内容（设置、搜索结果、详情章节）的最大宽度，避免一行过长 -->
+    <dimen name="content_max_width">840dp</dimen>
+    <!-- 详情页双栏时左侧封面简介栏的宽度 -->
+    <dimen name="detail_panel_width">340dp</dimen>
+    <!-- 主界面大屏横屏时常驻侧边导航的宽度 -->
+    <dimen name="permanent_nav_width">280dp</dimen>
+</resources>

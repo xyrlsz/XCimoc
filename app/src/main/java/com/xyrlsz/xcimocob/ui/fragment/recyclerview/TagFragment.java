@@ -68,6 +68,11 @@ public class TagFragment extends RecyclerViewFragment implements TagView {
     }
 
     @Override
+    protected float getGridMinItemWidthDp() {
+        return 96;
+    }
+
+    @Override
     protected void initData() {
         mPresenter.load();
     }

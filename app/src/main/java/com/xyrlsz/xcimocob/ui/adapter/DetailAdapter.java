@@ -62,6 +62,12 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     private boolean mShowBookmarkedOnly;
     private OnBookmarkNoteListener mBookmarkNoteListener;
 
+    /**
+     * header 项的偏移：1 = 封面简介作为列表第 0 项（单栏）；0 = 由外部视图显示（大屏双栏）
+     */
+    private int mHeaderOffset = 1;
+    private View mExternalHeaderView;
+
     private static final int TAG_MAX_COUNT = 20;
     public interface OnTagClickListener {
         void onTagClick(String tag);
@@ -87,13 +93,14 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
             @Override
             public void getItemOffsets(@NonNull Rect outRect, @NonNull View view, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
                 int position = parent.getChildLayoutPosition(view);
-                if (position == 0) {
+                if (position < mHeaderOffset) {
                     outRect.set(0, 0, 0, 10);
                 } else {
                     if (isFirst(position)) {
                         int offset = parent.getWidth() / 40;
-
-                        outRect.set(offset, 50, offset, (int) (offset * 1.5));
+                        // 双栏模式下列表里没有 header 项，首个分组标题需要自己留出空间，否则会被裁掉
+                        int top = mHeaderOffset == 0 && position == 0 ? 70 : 50;
+                        outRect.set(offset, top, offset, (int) (offset * 1.5));
 
                     } else {
                         int offset = parent.getWidth() / 40;
@@ -110,9 +117,12 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
                 if (parent.getAdapter() != null) {
 //                    RecyclerView.Adapter adapter = parent.getAdapter();
                     int count = parent.getChildCount();
-                    for (int i = 1; i < count; i++) {
+                    for (int i = 0; i < count; i++) {
                         View view = parent.getChildAt(i);
                         int position = parent.getChildLayoutPosition(view);
+                        if (position < mHeaderOffset) {
+                            continue;
+                        }
                         boolean isHeader = isFirst(position);
 
                         if (isHeader) {
@@ -134,7 +144,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
 
     @Override
     public int getItemViewType(int position) {
-        return position == 0 ? 0 : 1;
+        return position < mHeaderOffset ? 0 : 1;
     }
 
     @Override
@@ -146,27 +156,26 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
 
     //判断是否分组且当前是否为第一个元素
     public boolean isFirst(int position) {
-        position = position - 1;
-        if (mDataSet.get(position).getSourceGroup().isEmpty()) {
+        int index = position - mHeaderOffset;
+        if (index < 0 || index >= mDataSet.size()) {
             return false;
         }
-        if (position == 0) {
+        if (mDataSet.get(index).getSourceGroup().isEmpty()) {
+            return false;
+        }
+        if (index == 0) {
             return true;
         }
-        if (position <= 0) {
-            return false;
-        }
-        return !mDataSet.get(position - 1).getSourceGroup().equals(mDataSet.get(position).getSourceGroup());
+        return !mDataSet.get(index - 1).getSourceGroup().equals(mDataSet.get(index).getSourceGroup());
     }
 
     public String getGroupName(int position) {
-//        return mDataSet.get(position - 1).getSourceGroup();
-        return STConvertUtils.convert(mDataSet.get(position - 1).getSourceGroup());
+        return STConvertUtils.convert(mDataSet.get(position - mHeaderOffset).getSourceGroup());
     }
 
     @Override
     public int getItemCount() {
-        return mDataSet.size() + 1;
+        return mDataSet.size() + mHeaderOffset;
     }
 
     @NonNull
@@ -189,11 +198,12 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         this.author = author;
         this.last = last;
         this.source = source;
+        refreshHeader();
     }
 
     public void setTags(List<String> tags) {
         this.tags = tags == null ? null : new ArrayList<>(tags);
-        notifyItemChanged(0);
+        refreshHeader();
     }
 
     public void setBookmarkComicId(long sourceComic) {
@@ -252,33 +262,10 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
         super.onBindViewHolder(holder, position);
         try {
-            if (position == 0) {
-                HeaderHolder headerHolder = (HeaderHolder) holder;
-                if (title != null) {
-                    if (cover != null) {
-                        headerHolder.mComicImage.setController(mControllerSupplier.get().setUri(cover).build());
-                    }
-
-//                    headerHolder.mComicTitle.setTextIsSelectable(true);
-                    headerHolder.mComicTitle.setSelected(true);
-                    headerHolder.mComicTitle.setText(STConvertUtils.convert(title));
-//                    headerHolder.mComicIntro.setTextIsSelectable(true);
-                    headerHolder.mComicIntro.setText(STConvertUtils.convert(intro));
-//                    headerHolder.mComicAuthor.setTextIsSelectable(true);
-                    headerHolder.mComicAuthor.setSelected(true);
-
-                    if (finish != null) {
-                        headerHolder.mComicStatus.setText(finish ? mContext.getString(R.string.comic_status_finish) : mContext.getString(R.string.comic_status_continue));
-                    }
-                    if (update != null && !update.isEmpty()) {
-                        headerHolder.mComicUpdate.setText(mContext.getString(R.string.comic_last_update).concat(update));
-                    }
-                    headerHolder.mComicAuthor.setText(author);
-                    headerHolder.mComicSource.setText(STConvertUtils.convert(source));
-                    bindTags(headerHolder);
-                }
+            if (position < mHeaderOffset) {
+                bindHeader((HeaderHolder) holder);
             } else {
-                Chapter chapter = mDataSet.get(position - 1);
+                Chapter chapter = mDataSet.get(position - mHeaderOffset);
                 ChapterHolder viewHolder = (ChapterHolder) holder;
                 viewHolder.chapterButton.setOnClickListener(v -> viewHolder.itemView.performClick());
                 viewHolder.chapterButton.setText(STConvertUtils.convert(chapter.getTitle()));
@@ -292,6 +279,64 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
             }
         } catch (Exception ignored) {
 
+        }
+    }
+
+    private void bindHeader(HeaderHolder headerHolder) {
+        if (title == null) {
+            return;
+        }
+        if (cover != null && mControllerSupplier != null) {
+            headerHolder.mComicImage.setController(mControllerSupplier.get().setUri(cover).build());
+        }
+        headerHolder.mComicTitle.setSelected(true);
+        headerHolder.mComicTitle.setText(STConvertUtils.convert(title));
+        headerHolder.mComicIntro.setText(STConvertUtils.convert(intro));
+        headerHolder.mComicAuthor.setSelected(true);
+        if (finish != null) {
+            headerHolder.mComicStatus.setText(finish ? mContext.getString(R.string.comic_status_finish) : mContext.getString(R.string.comic_status_continue));
+        }
+        if (update != null && !update.isEmpty()) {
+            headerHolder.mComicUpdate.setText(mContext.getString(R.string.comic_last_update).concat(update));
+        }
+        headerHolder.mComicAuthor.setText(author);
+        headerHolder.mComicSource.setText(STConvertUtils.convert(source));
+        bindTags(headerHolder);
+    }
+
+    /**
+     * 把封面简介换成列表外的视图显示（大屏双栏），传 null 恢复为列表第 0 项
+     */
+    public void setExternalHeaderView(View view) {
+        mExternalHeaderView = view;
+        int offset = view == null ? 1 : 0;
+        if (offset != mHeaderOffset) {
+            mHeaderOffset = offset;
+            notifyDataSetChanged();
+        }
+        refreshHeader();
+    }
+
+    /**
+     * 列表当前把封面简介算作第几项：1 = 在列表内，0 = 已移到列表外
+     */
+    public int getHeaderOffset() {
+        return mHeaderOffset;
+    }
+
+    public Chapter getChapterAt(int adapterPosition) {
+        int index = adapterPosition - mHeaderOffset;
+        if (index < 0 || index >= mDataSet.size()) {
+            return null;
+        }
+        return mDataSet.get(index);
+    }
+
+    private void refreshHeader() {
+        if (mExternalHeaderView != null) {
+            bindHeader(new HeaderHolder(mExternalHeaderView));
+        } else if (mHeaderOffset > 0) {
+            notifyItemChanged(0);
         }
     }
 
@@ -328,7 +373,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         Objects.requireNonNull(manager).setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
             @Override
             public int getSpanSize(int position) {
-                if (position == 0 || isFirst(position)) {
+                if (position < mHeaderOffset || isFirst(position)) {
                     return manager.getSpanCount();
                 }
 
@@ -339,6 +384,7 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
 
     public void setControllerSupplier(Supplier<PipelineDraweeControllerBuilder> supplier) {
         this.mControllerSupplier = supplier;
+        refreshHeader();
     }
 
     public void setLast(String value) {
@@ -350,9 +396,9 @@ public class DetailAdapter extends BaseAdapter<Chapter> {
         for (int i = 0; i != mDataSet.size(); ++i) {
             String path = mDataSet.get(i).getPath();
             if (path.equals(last)) {
-                notifyItemChanged(i + 1);
+                notifyItemChanged(i + mHeaderOffset);
             } else if (path.equals(temp)) {
-                notifyItemChanged(i + 1);
+                notifyItemChanged(i + mHeaderOffset);
             }
         }
     }

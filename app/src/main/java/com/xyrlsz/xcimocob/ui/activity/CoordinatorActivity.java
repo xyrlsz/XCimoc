@@ -14,6 +14,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.xyrlsz.xcimocob.R;
 import com.xyrlsz.xcimocob.ui.adapter.BaseAdapter;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 
 
 
@@ -47,6 +48,7 @@ public abstract class CoordinatorActivity extends BackActivity implements
     protected void initView() {
         super.initView();
         mRecyclerView.setLayoutManager(initLayoutManager());
+        applyResponsiveGrid();
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
         BaseAdapter adapter = initAdapter();
@@ -77,6 +79,25 @@ public abstract class CoordinatorActivity extends BackActivity implements
 
     protected RecyclerView.LayoutManager initLayoutManager() {
         return new LinearLayoutManager(this);
+    }
+
+    /**
+     * 网格每格的最小宽度（dp），返回大于 0 的值才会启用大屏列数自适应
+     */
+    protected float getGridMinItemWidthDp() {
+        return 0;
+    }
+
+    protected int getGridMaxSpans() {
+        return 8;
+    }
+
+    private void applyResponsiveGrid() {
+        float minItemWidthDp = getGridMinItemWidthDp();
+        if (minItemWidthDp <= 0) {
+            return;
+        }
+        ScreenUtils.bindResponsiveGrid(mRecyclerView, minItemWidthDp, getGridMaxSpans());
     }
 
     @Override

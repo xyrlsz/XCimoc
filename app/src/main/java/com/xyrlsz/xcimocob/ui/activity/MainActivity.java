@@ -12,6 +12,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -20,7 +21,9 @@ import android.provider.Settings;
 import android.util.SparseArray;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
@@ -61,6 +64,7 @@ import com.xyrlsz.xcimocob.ui.view.MainView;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.PermissionUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
 import com.xyrlsz.xcimocob.utils.ThreadPoolManager;
 
@@ -97,6 +101,9 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
     DrawerLayout mDrawerLayout;
     NavigationView mNavigationView;
     FrameLayout mFrameLayout;
+    private View mDrawerContent;
+    private LinearLayout mPermanentRow;
+    private boolean mPermanentNavigation;
     private TextView mLastText;
     private SimpleDraweeView mDraweeView;
     private ControllerBuilderProvider mControllerBuilderProvider;
@@ -173,12 +180,14 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
         mDrawerLayout = findViewById(R.id.main_layout);
         mNavigationView = findViewById(R.id.main_navigation_view);
         mFrameLayout = findViewById(R.id.main_fragment_container);
+        mDrawerContent = findViewById(R.id.main_content);
     }
 
     @Override
     protected void initView() {
         initDrawerToggle();
         initNavigation();
+        applyResponsiveNavigation();
         initFragment();
     }
 
@@ -209,14 +218,88 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
             @Override
             public void onDrawerClosed(View drawerView) {
                 super.onDrawerClosed(drawerView);
-                if (refreshCurrentFragment()) {
-                    getSupportFragmentManager().beginTransaction().show(mCurrentFragment).commit();
-                } else {
-                    getSupportFragmentManager().beginTransaction().add(R.id.main_fragment_container, mCurrentFragment).commit();
-                }
+                showSelectedFragment();
             }
         };
         mDrawerLayout.setDrawerListener(mDrawerToggle);
+    }
+
+    private void showSelectedFragment() {
+        if (refreshCurrentFragment()) {
+            getSupportFragmentManager().beginTransaction().show(mCurrentFragment).commit();
+        } else {
+            getSupportFragmentManager().beginTransaction().add(R.id.main_fragment_container, mCurrentFragment).commit();
+        }
+    }
+
+    /**
+     * 常驻侧边栏没有抽屉可关，直接切换 Fragment；否则等抽屉收起动画结束后再切换
+     */
+    private void closeDrawerOrShowFragment() {
+        if (mPermanentNavigation) {
+            showSelectedFragment();
+        } else {
+            mDrawerLayout.closeDrawer(GravityCompat.START);
+        }
+    }
+
+    /**
+     * 大屏横屏（折叠屏展开、平板横放）时把导航抽屉改成常驻侧边栏，省去每次点开
+     */
+    private void applyResponsiveNavigation() {
+        if (mDrawerLayout == null || mNavigationView == null || mDrawerContent == null) {
+            return;
+        }
+        boolean permanent = ScreenUtils.isLargeLandscape(this);
+        if (permanent == mPermanentNavigation) {
+            return;
+        }
+        mPermanentNavigation = permanent;
+        if (permanent) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            // 同一个 View 不能同时挂在两个父容器上，换父容器前必须先移除
+            mDrawerLayout.removeView(mDrawerContent);
+            mDrawerLayout.removeView(mNavigationView);
+            row.addView(mDrawerContent, new LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+            row.addView(mNavigationView, new LinearLayout.LayoutParams(
+                    getResources().getDimensionPixelSize(R.dimen.permanent_nav_width),
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+            // DrawerLayout 在抽屉关闭时会把它设为 INVISIBLE，脱离 DrawerLayout 后需要手动恢复
+            mNavigationView.setVisibility(View.VISIBLE);
+            mDrawerLayout.addView(row, 0, new DrawerLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            mPermanentRow = row;
+            mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        } else {
+            if (mPermanentRow != null) {
+                mPermanentRow.removeAllViews();
+                mDrawerLayout.removeView(mPermanentRow);
+                mPermanentRow = null;
+            }
+            mDrawerLayout.addView(mDrawerContent, 0, new DrawerLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            mDrawerLayout.addView(mNavigationView, new DrawerLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT,
+                    GravityCompat.START));
+            mDrawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
+        }
+        if (mDrawerToggle != null) {
+            mDrawerToggle.setDrawerIndicatorEnabled(!permanent);
+            // 常驻侧边栏没有抽屉可开，隐藏抽屉/返回图标
+            if (permanent && mToolbar != null) {
+                mToolbar.setNavigationIcon(null);
+            }
+            // syncState 只在抽屉指示器启用时才会重新设置导航图标，放在最后
+            mDrawerToggle.syncState();
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        applyResponsiveNavigation();
     }
 
     private void goToLastComic() {
@@ -383,7 +466,7 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                 Objects.requireNonNull(mToolbarTitle).setText(title.isEmpty() ? mComicFragment.getCurrTitle() : title);
                 mCheckItem = itemId;
                 getSupportFragmentManager().beginTransaction().hide(mCurrentFragment).commit();
-                mDrawerLayout.closeDrawer(GravityCompat.START);
+                closeDrawerOrShowFragment();
             } else if (__id == R.id.drawer_source) {
 //                case R.id.drawer_tag:
                 mCheckItem = itemId;
@@ -391,12 +474,12 @@ public class MainActivity extends BaseActivity implements MainView, NavigationVi
                 if (itemId == R.id.drawer_source) {
                     Objects.requireNonNull(mToolbarTitle).setText(Objects.requireNonNull(item.getTitle()).toString());
                 }
-                mDrawerLayout.closeDrawer(GravityCompat.START);
+                closeDrawerOrShowFragment();
             } else if (__id == R.id.drawer_category) {
                 mCheckItem = itemId;
                 getSupportFragmentManager().beginTransaction().hide(mCurrentFragment).commit();
                 Objects.requireNonNull(mToolbarTitle).setText(Objects.requireNonNull(item.getTitle()).toString());
-                mDrawerLayout.closeDrawer(GravityCompat.START);
+                closeDrawerOrShowFragment();
             } else if (__id == R.id.drawer_comiclist) {
                 Intent intentBaidu = new Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.home_page_comiclist_url)));
                 try {

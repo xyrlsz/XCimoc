@@ -35,6 +35,7 @@ import com.xyrlsz.xcimocob.ui.adapter.CategoryGridAdapter;
 import com.xyrlsz.xcimocob.ui.view.CategoryView;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
+import com.xyrlsz.xcimocob.utils.ScreenUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
 import com.xyrlsz.xcimocob.utils.ThreadRunUtils;
 
@@ -301,6 +302,7 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.setLayoutManager(initLayoutManager());
+        ScreenUtils.bindResponsiveGrid(mRecyclerView, 112, 8);
 
         // 加载蒙层（含居中 ProgressBar）与内容容器：初始仅显示进度条，加载完成后显示内容
         mProgressOverlay = mRootView.findViewById(R.id.category_progress_overlay);
