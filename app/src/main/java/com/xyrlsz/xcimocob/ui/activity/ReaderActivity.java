@@ -46,6 +46,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.facebook.imagepipeline.core.ImagePipeline;
 import com.facebook.imagepipeline.core.ImagePipelineFactory;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -422,7 +423,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setDualPage(mDualPage);
         applyDualPageOptions();
         applyPaging();
-        mReaderAdapter.setCloseAutoResizeImage(mPreference.getBoolean(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false));
+        applyCloseAutoResizeImage();
         mReaderAdapter.setWhiteEdge(mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_EDGE, false));
         mReaderAdapter.setBanTurn(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false));
     }
@@ -474,41 +475,128 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
 
     /**
      * 同步自动切割大图设置；双页本身已是左右两页，不再对单张图做横向拆页
+     *
+     * @return 设置是否发生了变化（后处理方式变了，缓存里的图也不能再用）
      */
-    private void applyPaging() {
+    private boolean applyPaging() {
         boolean streamOff = mPreference.getNumber(PreferenceManager.PREF_READER_MODE,
                 PreferenceManager.READER_MODE_PAGE).intValue() == PreferenceManager.READER_MODE_STREAM
                 && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, true);
         boolean paging = !mDualPage && !streamOff
                 && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING, false);
+        boolean pagingReverse = paging
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_REVERSE, false);
+        boolean changed = paging != mReaderAdapter.isPaging()
+                || pagingReverse != mReaderAdapter.isPagingReverse();
         mReaderAdapter.setPaging(paging);
-        mReaderAdapter.setPagingReverse(paging
-                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_REVERSE, false));
+        mReaderAdapter.setPagingReverse(pagingReverse);
+        return changed;
+    }
+
+    /**
+     * 同步「关闭自动调整图片大小」设置
+     *
+     * @return 设置是否发生了变化（解码尺寸变了，需要重新解码）
+     */
+    private boolean applyCloseAutoResizeImage() {
+        boolean close = mPreference.getBoolean(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false);
+        boolean changed = close != mReaderAdapter.isCloseAutoResizeImage();
+        mReaderAdapter.setCloseAutoResizeImage(close);
+        return changed;
     }
 
     /**
      * 应用大横屏双页（切换开关、屏幕尺寸变化时调用），保持当前阅读位置
+     *
+     * @return 是否发生了模式切换（已内部重建列表项）
      */
-    protected void applyDualPage() {
+    protected boolean applyDualPage() {
         if (mReaderAdapter == null) {
-            return;
+            return false;
         }
         boolean dualPage = isDualPageEnabled();
         if (dualPage == mDualPage) {
-            return;
+            return false;
         }
-        int dataPosition = mReaderAdapter.toDataPosition(Math.max(getCurPosition(), 0));
+        int dataPosition = mReaderAdapter.toDataPosition(Math.max(getActionAdapterPosition(), 0));
         mDualPage = dualPage;
         mReaderAdapter.setDualPage(dualPage);
         applyDualPageOptions();
         applyPaging();
-        mReaderAdapter.notifyDataSetChanged();
+        rebindAfterLayoutChange(dataPosition);
+        return true;
+    }
+
+    /**
+     * 每屏图片数或视图类型改变后重建列表项并回到指定数据位置。
+     * 只发 notifyDataSetChanged 时 RecyclerView 会复用旧视图，旧图片/矩阵状态会残留，
+     * 表现为「图片没刷新，点一下才重新加载」，因此这里重挂 adapter 强制重新创建视图。
+     *
+     * @param dataPosition 需要保持可见的数据位置
+     */
+    private void rebindAfterLayoutChange(int dataPosition) {
+        // 先停掉进行中的惯性/平滑滚动，避免重建后被旧动画拉回旧位置
+        mRecyclerView.stopScroll();
+        // 解码尺寸按当前阅读区重新计算：单页与双页每页占的宽度不同，
+        // 沿用旧的尺寸会让图片按上一次的大小解码（看起来要再点一下才会「resize」）
+        mReaderAdapter.setViewSize(mRecyclerView.getWidth(), mRecyclerView.getHeight());
+        mRecyclerView.setAdapter(mReaderAdapter);
+        // 复用池里的旧视图带着上一次的缩放矩阵和已绑定的图片，留着会被再次复用，一并丢弃
+        mRecyclerView.getRecycledViewPool().clear();
+        int count = mReaderAdapter.getItemCount();
+        if (count == 0) {
+            return;
+        }
         int position = mReaderAdapter.toAdapterPosition(dataPosition);
+        position = Math.max(0, Math.min(position, count - 1));
         if (mRecyclerView instanceof RecyclerViewPager) {
             ((RecyclerViewPager) mRecyclerView).resetToPosition(position);
         } else {
             mRecyclerView.scrollToPosition(position);
         }
+        // 视图重建与布局不在同一帧，布局完成后再补一次绑定，确保新视图拿到最新图片
+        mRecyclerView.post(() -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            // 旧模式下解码/后处理过的图（可能是另一种尺寸或被切割过的半张）必须丢弃，
+            // 否则重新解码时会直接命中缓存，屏幕上看不出变化
+            evictScreenImageCache();
+            int itemCount = mReaderAdapter.getItemCount();
+            if (itemCount > 0) {
+                mReaderAdapter.notifyItemRangeChanged(0, itemCount);
+            }
+        });
+    }
+
+    /**
+     * 丢弃当前屏图片在 Fresco 内存缓存中的解码结果，使其按当前模式的尺寸重新解码。
+     * 只用内存版：切换模式不该把磁盘缓存也清掉，否则会重新下载
+     */
+    private void evictScreenImageCache() {
+        List<ImageUrl> list = mReaderAdapter.getDateSet();
+        for (int dataPosition : getScreenDataPositions(getActionAdapterPosition())) {
+            if (dataPosition >= 0 && dataPosition < list.size()) {
+                ImageUrl image = list.get(dataPosition);
+                getImagePipeline(image).evictFromMemoryCache(Uri.parse(image.getUrl()));
+            }
+        }
+    }
+
+    /**
+     * 手动「重新加载图片」：内存缓存和磁盘缓存一起清，确保重新下载
+     */
+    private void evictImageCache(ImageUrl image) {
+        ImagePipeline pipeline = getImagePipeline(image);
+        pipeline.evictFromCache(Uri.parse(image.getUrl()));
+        pipeline.evictFromCache(Uri.parse(StringUtils.format("%s-post-%d",
+                image.getUrl(), image.getId())));
+    }
+
+    private ImagePipeline getImagePipeline(ImageUrl image) {
+        ImagePipelineFactory factory = image.getSize() > App.mLargePixels ?
+                mLargeImagePipelineFactory : mImagePipelineFactory;
+        return factory.getImagePipeline();
     }
 
     @Override
@@ -543,10 +631,14 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     protected void onResume() {
         super.onResume();
         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        // 完整设置页是直接写偏好的，返回阅读器时需重新应用双页相关设置
-        applyDualPage();
-        if (applyDualPageOptions() && mReaderAdapter != null) {
-            mReaderAdapter.notifyDataSetChanged();
+        // 完整设置页是直接写偏好的，返回阅读器时需重新应用这些只影响图片解码方式的设置
+        boolean dualPageChanged = applyDualPage();
+        boolean pagingChanged = applyPaging();
+        boolean resizeChanged = applyCloseAutoResizeImage();
+        boolean optionsChanged = applyDualPageOptions();
+        // 双页切换内部已经重建过列表项，其余情况只要解码方式变了也要重建，否则图片会一直是旧尺寸
+        if (!dualPageChanged && (pagingChanged || resizeChanged || optionsChanged)) {
+            rebindAfterLayoutChange(mReaderAdapter.toDataPosition(Math.max(getActionAdapterPosition(), 0)));
         }
     }
 
@@ -1090,13 +1182,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (dataPosition < 0) {
             return;
         }
-        ImageUrl image = mReaderAdapter.getDateSet().get(dataPosition);
-        String rawUrl = image.getUrl();
-        String postUrl = StringUtils.format("%s-post-%d", image.getUrl(), image.getId());
-        ImagePipelineFactory factory = image.getSize() > App.mLargePixels ?
-                mLargeImagePipelineFactory : mImagePipelineFactory;
-        factory.getImagePipeline().evictFromCache(Uri.parse(rawUrl));
-        factory.getImagePipeline().evictFromCache(Uri.parse(postUrl));
+        evictImageCache(mReaderAdapter.getDateSet().get(dataPosition));
         mReaderAdapter.notifyItemChanged(mReaderAdapter.toAdapterPosition(dataPosition));
     }
 
@@ -1416,13 +1502,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setDualPage(mDualPage);
         applyDualPageOptions();
         applyPaging();
-        mReaderAdapter.notifyDataSetChanged();
-        int position = mReaderAdapter.toAdapterPosition(dataPosition);
-        if (mRecyclerView instanceof RecyclerViewPager) {
-            ((RecyclerViewPager) mRecyclerView).resetToPosition(position);
-        } else {
-            mRecyclerView.scrollToPosition(position);
-        }
+        rebindAfterLayoutChange(dataPosition);
         updateProgress();
     }
 

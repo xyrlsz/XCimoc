@@ -23,7 +23,10 @@ public class RecyclerViewPagerAdapter<VH extends RecyclerView.ViewHolder> extend
     public RecyclerViewPagerAdapter(RecyclerViewPager viewPager, RecyclerView.Adapter<VH> adapter) {
         mAdapter = adapter;
         mViewPager = viewPager;
-        setHasStableIds(mAdapter.hasStableIds());
+        // 只镜像内层 adapter 的设置，不能反向修改它：RecyclerView.setAdapter 会为 adapter
+        // 注册数据观察者，而 Adapter#setHasStableIds 在存在观察者时会直接抛
+        // IllegalStateException（例如切换双页后重新 setAdapter 同一实例的场景）
+        super.setHasStableIds(mAdapter.hasStableIds());
     }
 
     @NonNull
@@ -100,7 +103,9 @@ public class RecyclerViewPagerAdapter<VH extends RecyclerView.ViewHolder> extend
     @Override
     public void setHasStableIds(boolean hasStableIds) {
         super.setHasStableIds(hasStableIds);
-        mAdapter.setHasStableIds(hasStableIds);
+        if (mAdapter.hasStableIds() != hasStableIds) {
+            mAdapter.setHasStableIds(hasStableIds);
+        }
     }
 
     @Override

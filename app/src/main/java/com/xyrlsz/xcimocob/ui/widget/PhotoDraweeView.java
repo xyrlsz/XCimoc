@@ -46,6 +46,9 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
     private int mScrollMode = MODE_HORIZONTAL;
     private int mHorizontalAlign = ALIGN_CENTER;
     private boolean mMatrixResetPending = false;
+    /** 上一次成功对齐时的视图尺寸，尺寸变了需要重新计算对齐偏移 */
+    private int mMatrixWidth = -1;
+    private int mMatrixHeight = -1;
     private float mScaleFactor = 2.0f;
     private boolean isDoubleTap = true;
     private FlingRunnable mCurrentFlingRunnable;
@@ -77,8 +80,9 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        // 图片先于布局就绪时，等布局完成再按对齐方式校正
-        if (mMatrixResetPending) {
+        // 对齐偏移只能在布局完成后计算：onSizeChanged 阶段 ImageView 还没把新尺寸同步给
+        // drawable，此时按旧边界算会得到错误的偏移量，表现为图片整体错位、拖动一下才对
+        if (mMatrixResetPending || mMatrixWidth != getWidth() || mMatrixHeight != getHeight()) {
             resetMatrix();
         }
     }
@@ -86,9 +90,10 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        // 尺寸变化后矩阵中的对齐偏移量已失效
-        if (oldw != 0 && oldh != 0 && (w != oldw || h != oldh)) {
-            resetMatrix();
+        // 尺寸变了，已算好的对齐偏移量随之失效；drawable 边界此时尚未更新，留到 onLayout 重算
+        if (w != oldw || h != oldh) {
+            mMatrixResetPending = true;
+            invalidate();
         }
     }
 
@@ -141,6 +146,10 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
 
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
+        if (mMatrixResetPending) {
+            // 图片加载完成到下一次布局之间不会再有 onLayout，这里补做对齐校正
+            resetMatrix();
+        }
         int count = canvas.save();
         canvas.concat(mMatrix);
         super.onDraw(canvas);
@@ -405,12 +414,16 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
         mMatrix.reset();
         getHierarchy().getActualImageBounds(mDisplayRect);
         if (mDisplayRect.width() <= 0 || mDisplayRect.height() <= 0) {
-            // 图片尺寸尚未就绪，等加载完成（update）后再对齐
-            mMatrixResetPending = true;
-            invalidate();
+            // 图片尺寸尚未就绪，等加载完成（update）/绘制时再对齐
+            if (!mMatrixResetPending) {
+                mMatrixResetPending = true;
+                invalidate();
+            }
             return;
         }
         mMatrixResetPending = false;
+        mMatrixWidth = getWidth();
+        mMatrixHeight = getHeight();
         switch (mScrollMode) {
             case MODE_HORIZONTAL:
                 checkHorizontalBounds();

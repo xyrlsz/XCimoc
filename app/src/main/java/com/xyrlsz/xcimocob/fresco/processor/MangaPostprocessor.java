@@ -191,7 +191,10 @@ public class MangaPostprocessor extends BasePostprocessor {
 
     @Override
     public CacheKey getPostprocessorCacheKey() {
-        return new SimpleCacheKey(StringUtils.format("%s-post-%d", mImage.getUrl(), mImage.getId()));
+        // 处理方式（是否切割大图 / 裁白边）会改变输出内容，必须进入缓存键，
+        // 否则切换「大横屏左右双页」（会同时关掉切割大图）后会直接命中上一次切好的半张图
+        return new SimpleCacheKey(StringUtils.format("%s-post-%d-%d-%d", mImage.getUrl(),
+                mImage.getId(), isPaging ? 1 : 0, isWhiteEdge ? 1 : 0));
     }
 
     /**

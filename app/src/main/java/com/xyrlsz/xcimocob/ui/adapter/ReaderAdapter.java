@@ -594,12 +594,24 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         isPaging = paging;
     }
 
+    public boolean isPaging() {
+        return isPaging;
+    }
+
     public void setPagingReverse(boolean pagingReverse) {
         isPagingReverse = pagingReverse;
     }
 
+    public boolean isPagingReverse() {
+        return isPagingReverse;
+    }
+
     public void setCloseAutoResizeImage(boolean closeAutoResizeImage) {
         isCloseAutoResizeImage = closeAutoResizeImage;
+    }
+
+    public boolean isCloseAutoResizeImage() {
+        return isCloseAutoResizeImage;
     }
 
     public void setWhiteEdge(boolean whiteEdge) {
