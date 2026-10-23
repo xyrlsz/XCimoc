@@ -490,6 +490,14 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         return isDualPage;
     }
 
+    public boolean isDualPageRtl() {
+        return isDualPageRtl;
+    }
+
+    public boolean isDualPageNoGap() {
+        return isDualPageNoGap;
+    }
+
     /**
      * 列表项位置 → 数据位置
      */

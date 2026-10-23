@@ -131,6 +131,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     protected int orientation;
     protected int mode;
     protected boolean mDualPage; // 大横屏左右双页
+    private boolean mTapOnRightHalf; // 最近一次点击是否落在屏幕右半边（双页时用于判断操作的是哪一页）
     TextView mChapterTitle;
     TextView mChapterPage;
     TextView mBatteryText;
@@ -451,15 +452,22 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     /**
      * 双页的两个子设置（从右往左 / 左右无间隔）只在双页实际生效时才应用，
      * 关闭「大横屏左右双页」后不再对阅读器产生任何影响
+     *
+     * @return 设置是否发生了变化（调用方据此决定是否需要刷新列表）
      */
-    protected void applyDualPageOptions() {
+    protected boolean applyDualPageOptions() {
         if (mReaderAdapter == null) {
-            return;
+            return false;
         }
-        mReaderAdapter.setDualPageRtl(mDualPage
-                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false));
-        mReaderAdapter.setDualPageNoGap(mDualPage
-                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false));
+        boolean rtl = mDualPage
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false);
+        boolean noGap = mDualPage
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false);
+        boolean changed = rtl != mReaderAdapter.isDualPageRtl()
+                || noGap != mReaderAdapter.isDualPageNoGap();
+        mReaderAdapter.setDualPageRtl(rtl);
+        mReaderAdapter.setDualPageNoGap(noGap);
+        return changed;
     }
 
     /**
@@ -533,6 +541,11 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     protected void onResume() {
         super.onResume();
         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        // 完整设置页是直接写偏好的，返回阅读器时需重新应用双页相关设置
+        applyDualPage();
+        if (applyDualPageOptions() && mReaderAdapter != null) {
+            mReaderAdapter.notifyDataSetChanged();
+        }
     }
 
     @Override
@@ -918,7 +931,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         } else if (holder instanceof ReaderAdapter.DualPageHolder) {
             // 双页模式取被点击的那一侧，用于判断是否处于重试状态
             ReaderAdapter.DualPageHolder dualHolder = (ReaderAdapter.DualPageHolder) holder;
-            draweeView = x < point.x / 2.0f ? dualHolder.leftView : dualHolder.rightView;
+            mTapOnRightHalf = isTapOnRightHalf(x);
+            draweeView = mTapOnRightHalf ? dualHolder.rightView : dualHolder.leftView;
         } else if (holder instanceof ReaderAdapter.StreamHolder) {
             draweeView = ((ReaderAdapter.StreamHolder) holder).draweeView;
         }
@@ -941,6 +955,35 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
             return isLong ? mLongClickArray[2] : mClickArray[2];
         }
         return 0;
+    }
+
+    /**
+     * 点击点是否落在阅读区右半边（以 RecyclerView 的实际位置为准，避免系统栏留白造成偏差）
+     */
+    private boolean isTapOnRightHalf(float x) {
+        int[] location = new int[2];
+        mRecyclerView.getLocationOnScreen(location);
+        return x >= location[0] + mRecyclerView.getWidth() / 2.0f;
+    }
+
+    /**
+     * 保存图片、重新加载图片等只针对单张图片的操作，换算成要操作的数据位置。
+     * 双页模式下按最近一次点击落在哪一侧决定是左边还是右边那一页。
+     */
+    private int getDataPositionForAction(int adapterPosition) {
+        if (adapterPosition < 0) {
+            return 0;
+        }
+        if (!mDualPage) {
+            return adapterPosition;
+        }
+        int dataPosition = mReaderAdapter.toDataPosition(adapterPosition);
+        // 从左往右排列时右侧是后一页，从右往左排列时右侧是前一页
+        boolean secondPage = mTapOnRightHalf != mReaderAdapter.isDualPageRtl();
+        if (secondPage && dataPosition + 1 < mReaderAdapter.getDateSet().size()) {
+            return dataPosition + 1;
+        }
+        return dataPosition;
     }
 
     private void doClickEvent(int value) {
@@ -1007,7 +1050,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (position == -1) {
             position = mLayoutManager.findFirstVisibleItemPosition();
         }
-        ImageUrl image = mReaderAdapter.getItem(position);
+        ImageUrl image = mReaderAdapter.getDateSet().get(getDataPositionForAction(position));
         String rawUrl = image.getUrl();
         String postUrl = StringUtils.format("%s-post-%d", image.getUrl(), image.getId());
         ImagePipelineFactory factory = image.getSize() > App.mLargePixels ?
@@ -1027,7 +1070,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (position == -1) {
             position = mLayoutManager.findFirstVisibleItemPosition();
         }
-        ImageUrl imageUrl = mReaderAdapter.getItem(position);
+        ImageUrl imageUrl = mReaderAdapter.getDateSet().get(getDataPositionForAction(position));
         String[] urls = imageUrl.getUrls().toArray(new String[0]);
         try {
             String title = mChapterTitle.getText().toString();
@@ -1307,6 +1350,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         // 上下滚动时不再左右双页
         mDualPage = isDualPageEnabled();
         mReaderAdapter.setDualPage(mDualPage);
+        applyDualPageOptions();
+        applyPaging();
         mReaderAdapter.notifyDataSetChanged();
         int position = mReaderAdapter.toAdapterPosition(dataPosition);
         if (mRecyclerView instanceof RecyclerViewPager) {

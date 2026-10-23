@@ -279,6 +279,8 @@ public class RecyclerViewPager extends RecyclerView {
      * 用于列表项位置含义发生变化（如切换左右双页显示、向前插入章节）后定位。
      */
     public void resetToPosition(int position) {
+        // 先停掉可能还在进行的翻页动画，避免它把列表拉回旧位置
+        stopScroll();
         mPositionBeforeScroll = position;
         mPositionOnTouchDown = position;
         mSmoothScrollTargetPosition = position;
