@@ -34,6 +34,7 @@ import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,12 +53,16 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private static final int TYPE_IMAGE = 2016101215;
     private static final int TYPE_IMAGE_PAGE = 0;
     private static final int TYPE_IMAGE_STREAM = 1;
+    private static final int TYPE_IMAGE_PAGE_DUAL = 2;
     private static @ReaderMode int reader;
     private PipelineDraweeControllerBuilderSupplier mControllerSupplier;
     private PipelineDraweeControllerBuilderSupplier mLargeControllerSupplier;
     private OnTapGestureListener mTapGestureListener;
     private OnLazyLoadListener mLazyLoadListener;
     private boolean isVertical; // 开页方向
+    private boolean isDualPage; // 大横屏左右双页
+    private boolean isDualPageRtl; // 双页从右往左排列
+    private boolean isDualPageNoGap; // 双页左右两图紧贴中间
     private boolean isPaging;
     private boolean isPagingReverse;
     private boolean isWhiteEdge;
@@ -65,6 +70,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private boolean isDoubleTap;
     private boolean isCloseAutoResizeImage;
     private float mScaleFactor;
+    private int mViewWidth;
+    private int mViewHeight;
 
     // 缓存 ImagePipelineFactory/Supplier 对（按 headers 缓存），减少重复创建开销
     private static final int MAX_SUPPLIER_CACHE = 32;
@@ -136,9 +143,22 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     @Override
     public int getItemViewType(int position) {
 //        return mDataSet.get(position).isLazy() ? TYPE_LOADING : TYPE_IMAGE;
+        if (isDualPage) {
+            int dataPosition = toDataPosition(position);
+            // 同一屏的第二张图如果还在懒加载，整屏先显示加载占位
+            if (isLazy(dataPosition) || isLazy(dataPosition + 1)) {
+                return TYPE_LOADING;
+            }
+            return TYPE_IMAGE_PAGE_DUAL;
+        }
+
         if (mDataSet.get(position).isLazy()) return TYPE_LOADING;
 
         return reader == READER_PAGE ? TYPE_IMAGE_PAGE : TYPE_IMAGE_STREAM;
+    }
+
+    private boolean isLazy(int dataPosition) {
+        return dataPosition >= 0 && dataPosition < mDataSet.size() && mDataSet.get(dataPosition).isLazy();
     }
 
     @NonNull
@@ -161,6 +181,12 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
             return new PageHolder(view); // 👈 用 PhotoDraweeView
         }
 
+        if (viewType == TYPE_IMAGE_PAGE_DUAL) {
+            resId = isWhiteBackground ? R.layout.item_picture_dual_black : R.layout.item_picture_dual;
+            View view = mInflater.inflate(resId, parent, false);
+            return new DualPageHolder(view);
+        }
+
         // TYPE_IMAGE_STREAM
         resId = isWhiteBackground ? R.layout.item_picture_stream_black : R.layout.item_picture_stream;
         View view = mInflater.inflate(resId, parent, false);
@@ -169,47 +195,98 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        final ImageUrl imageUrl = mDataSet.get(position);
+        if (holder instanceof DualPageHolder) {
+            bindDualPage((DualPageHolder) holder, position);
+            return;
+        }
 
         // 处理懒加载占位
-        if (imageUrl.isLazy()) {
-            if (!imageUrl.isLoading() && mLazyLoadListener != null) {
-                imageUrl.setLoading(true);
-                mLazyLoadListener.onLoad(imageUrl);
+        if (holder instanceof LoadingHolder) {
+            int dataPosition = toDataPosition(position);
+            requestLazyLoad(dataPosition);
+            if (isDualPage) {
+                requestLazyLoad(dataPosition + 1);
             }
             return;
         }
 
-        // 根据 holder 类型获取 draweeView
-        DraweeView draweeView;
-        final boolean isPageMode;
+        if (isDualPage) {
+            return;
+        }
 
+        final ImageUrl imageUrl = mDataSet.get(position);
         if (holder instanceof PageHolder) {
             PageHolder pageHolder = (PageHolder) holder;
-            PhotoDraweeView photoView = pageHolder.draweeView;
-            draweeView = photoView;
-            isPageMode = true;
-
             // Page 模式特有配置（仅在首次绑定时设置）
             if (!pageHolder.mConfigured) {
                 pageHolder.mConfigured = true;
-                photoView.setTapListenerListener(mTapGestureListener);
-                photoView.setAlwaysBlockParent(isBanTurn);
-                photoView.setDoubleTap(isDoubleTap);
-                photoView.setScaleFactor(mScaleFactor);
-                photoView.setScrollMode(isVertical ?
-                        PhotoDraweeView.MODE_VERTICAL :
-                        PhotoDraweeView.MODE_HORIZONTAL);
+                configurePageView(pageHolder.draweeView);
             }
-
+            bindImage(pageHolder.draweeView, imageUrl, true);
         } else if (holder instanceof StreamHolder) {
-            draweeView = ((StreamHolder) holder).draweeView;
-            isPageMode = false;
+            bindImage(((StreamHolder) holder).draweeView, imageUrl, false);
+        }
+    }
 
-        } else {
+    private void requestLazyLoad(int dataPosition) {
+        if (dataPosition < 0 || dataPosition >= mDataSet.size()) {
             return;
         }
+        ImageUrl imageUrl = mDataSet.get(dataPosition);
+        if (imageUrl.isLazy() && !imageUrl.isLoading() && mLazyLoadListener != null) {
+            imageUrl.setLoading(true);
+            mLazyLoadListener.onLoad(imageUrl);
+        }
+    }
 
+    private void configurePageView(PhotoDraweeView photoView) {
+        photoView.setTapListenerListener(mTapGestureListener);
+        photoView.setAlwaysBlockParent(isBanTurn);
+        photoView.setDoubleTap(isDoubleTap);
+        photoView.setScaleFactor(mScaleFactor);
+        photoView.setScrollMode(isVertical ?
+                PhotoDraweeView.MODE_VERTICAL :
+                PhotoDraweeView.MODE_HORIZONTAL);
+    }
+
+    /**
+     * 绑定一屏双页：按排列顺序开关决定哪张图在左、哪张图在右。
+     * 一屏按数据顺序固定合并相邻两张图，奇数页时最后一屏按顺序留空一侧。
+     */
+    private void bindDualPage(@NonNull DualPageHolder holder, int position) {
+        int firstPosition = toDataPosition(position);
+        ImageUrl firstImage = mDataSet.get(firstPosition);
+        ImageUrl secondImage = firstPosition + 1 < mDataSet.size()
+                ? mDataSet.get(firstPosition + 1) : null;
+
+        requestLazyLoad(firstPosition);
+        if (secondImage != null) {
+            requestLazyLoad(firstPosition + 1);
+        }
+
+        if (!holder.mConfigured) {
+            holder.mConfigured = true;
+            configurePageView(holder.leftView);
+            configurePageView(holder.rightView);
+        }
+        // 无间隔时两侧图片各自贴向中线，否则居中显示
+        holder.leftView.setHorizontalAlign(isDualPageNoGap ?
+                PhotoDraweeView.ALIGN_RIGHT : PhotoDraweeView.ALIGN_CENTER);
+        holder.rightView.setHorizontalAlign(isDualPageNoGap ?
+                PhotoDraweeView.ALIGN_LEFT : PhotoDraweeView.ALIGN_CENTER);
+
+        PhotoDraweeView firstView = isDualPageRtl ? holder.rightView : holder.leftView;
+        PhotoDraweeView secondView = isDualPageRtl ? holder.leftView : holder.rightView;
+        bindImage(firstView, firstImage, true);
+        if (secondImage != null) {
+            bindImage(secondView, secondImage, true);
+        } else {
+            secondView.setTag(null);
+            secondView.setController(null);
+        }
+    }
+
+    private void bindImage(@NonNull DraweeView draweeView, @NonNull ImageUrl imageUrl, final boolean isPageMode) {
         // 设置 Headers
         Headers currHeaders = imageUrl.getHeaders();
 
@@ -245,15 +322,19 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
         // 预计算 ResizeOptions（仅首次或方向改变时）
         if (mCachedVerticalResize == null) {
-            mCachedVerticalResize = new ResizeOptions(App.mWidthPixels, App.mHeightPixels);
-            mCachedHorizontalResize = new ResizeOptions(App.mHeightPixels, App.mWidthPixels);
+            int width = mViewWidth > 0 ? mViewWidth : App.mWidthPixels;
+            int height = mViewHeight > 0 ? mViewHeight : App.mHeightPixels;
+            // 双页时每页只占半屏宽，按半屏宽解码以节省内存
+            int pageWidth = isDualPage ? width / 2 : width;
+            mCachedVerticalResize = new ResizeOptions(pageWidth, height);
+            mCachedHorizontalResize = new ResizeOptions(height, pageWidth);
         }
         final ResizeOptions resizeOptions = isVertical
                 ? mCachedVerticalResize : mCachedHorizontalResize;
 
         // 预创建 MangaPostprocessor（所有 URL 共享同一个处理器）
         final MangaPostprocessor sharedProcessor = new MangaPostprocessor(
-                imageUrl, isPaging, isPagingReverse, isWhiteEdge);
+                imageUrl, isPaging && !isDualPage, isPagingReverse, isWhiteEdge);
 
         for (int i = 0; i < urls.length; i++) {
             String url = urls[i];
@@ -378,6 +459,129 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         isVertical = vertical;
     }
 
+    /**
+     * 双页排列顺序：true 为从右往左（第一张图在右），false 为从左往右
+     */
+    public void setDualPageRtl(boolean rtl) {
+        isDualPageRtl = rtl;
+    }
+
+    /**
+     * 双页无间隔：左右两张图分别贴向中线，适合跨页长图
+     */
+    public void setDualPageNoGap(boolean noGap) {
+        isDualPageNoGap = noGap;
+    }
+
+    /**
+     * 大横屏左右双页：把相邻的两张图合并到同一个列表项中。
+     * 开启后列表项位置与数据位置不再一致，需通过 {@link #toDataPosition}/{@link #toAdapterPosition} 转换。
+     */
+    public void setDualPage(boolean dualPage) {
+        if (isDualPage == dualPage) {
+            return;
+        }
+        isDualPage = dualPage;
+        mCachedVerticalResize = null;
+        mCachedHorizontalResize = null;
+    }
+
+    public boolean isDualPage() {
+        return isDualPage;
+    }
+
+    /**
+     * 列表项位置 → 数据位置
+     */
+    public int toDataPosition(int position) {
+        return isDualPage && position >= 0 ? position * 2 : position;
+    }
+
+    /**
+     * 数据位置 → 列表项位置
+     */
+    public int toAdapterPosition(int position) {
+        return isDualPage && position >= 0 ? position / 2 : position;
+    }
+
+    /**
+     * 阅读区域尺寸（px），用于按实际屏幕尺寸解码图片
+     */
+    public void setViewSize(int width, int height) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        if (width == mViewWidth && height == mViewHeight) {
+            return;
+        }
+        mViewWidth = width;
+        mViewHeight = height;
+        mCachedVerticalResize = null;
+        mCachedHorizontalResize = null;
+    }
+
+    @Override
+    public int getItemCount() {
+        int size = mDataSet.size();
+        return isDualPage ? (size + 1) / 2 : size;
+    }
+
+    @Override
+    public ImageUrl getItem(int position) {
+        int dataPosition = toDataPosition(position);
+        dataPosition = Math.max(0, Math.min(dataPosition, mDataSet.size() - 1));
+        return mDataSet.get(dataPosition);
+    }
+
+    /**
+     * 双页模式下数据位置与列表项位置不一致，增量通知的下标会错位，需要单独处理
+     */
+    @Override
+    public void add(int location, ImageUrl data) {
+        if (!isDualPage) {
+            super.add(location, data);
+            return;
+        }
+        mDataSet.add(location, data);
+        mOriginalData.add(location, data);
+        notifyDataSetChanged();
+    }
+
+    @Override
+    public void addAll(int location, Collection<ImageUrl> collection) {
+        if (!isDualPage) {
+            super.addAll(location, collection);
+            return;
+        }
+        if (collection == null || collection.isEmpty()) {
+            return;
+        }
+        int oldSize = mDataSet.size();
+        int oldSpreadCount = getItemCount();
+        mDataSet.addAll(location, collection);
+        mOriginalData.addAll(location, collection);
+        if (location >= oldSize) {
+            // 追加不影响已有列表项的位置，只需刷新被补全的最后一屏并插入新屏
+            if (oldSize % 2 == 1) {
+                notifyItemChanged(oldSpreadCount - 1);
+            }
+            notifyItemRangeInserted(oldSpreadCount, getItemCount() - oldSpreadCount);
+        } else {
+            notifyDataSetChanged();
+        }
+    }
+
+    @Override
+    public void remove(int position) {
+        if (!isDualPage) {
+            super.remove(position);
+            return;
+        }
+        mDataSet.remove(position);
+        mOriginalData.remove(position);
+        notifyDataSetChanged();
+    }
+
     public void setPaging(boolean paging) {
         isPaging = paging;
     }
@@ -429,20 +633,25 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     }
 
     /**
-     * 假设一定找得到
+     * 假设一定找得到。
+     * current 为数据位置，返回列表项位置（双页模式下两者不同）。
      */
     public int getPositionByNum(int current, int num, boolean reverse) {
+        int position = current;
         try {
-            while (mDataSet.get(current).getNum() < num) {
-                current = reverse ? current - 1 : current + 2;
+            while (mDataSet.get(position).getNum() < num) {
+                position = reverse ? position - 1 : position + 2;
             }
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            return current;
+            return toAdapterPosition(position);
         }
     }
 
+    /**
+     * 返回数据位置
+     */
     public int getPositionById(Long id) {
         int size = mDataSet.size();
         for (int i = 0; i < size; ++i) {
@@ -464,7 +673,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
                 imageUrl.setUrl(url);
                 imageUrl.setLoading(false);
                 imageUrl.setLazy(false);
-                notifyItemChanged(i);
+                notifyItemChanged(toAdapterPosition(i));
                 break;
             }
         }
@@ -489,6 +698,20 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         public PageHolder(View itemView) {
             super(itemView);
             draweeView = itemView.findViewById(R.id.reader_image_view);
+        }
+    }
+
+    // 👇 Page模式（大横屏左右双页）
+    public static class DualPageHolder extends RecyclerView.ViewHolder {
+        public PhotoDraweeView leftView;
+        public PhotoDraweeView rightView;
+        /** 是否已完成首次配置（避免重复设置） */
+        boolean mConfigured = false;
+
+        public DualPageHolder(View itemView) {
+            super(itemView);
+            leftView = itemView.findViewById(R.id.reader_image_view_left);
+            rightView = itemView.findViewById(R.id.reader_image_view_right);
         }
     }
 

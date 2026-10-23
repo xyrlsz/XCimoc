@@ -25,6 +25,10 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
     public static final float MAX_SCALE = 3.0f;
     public static final int MODE_VERTICAL = 0;
     public static final int MODE_HORIZONTAL = 1;
+    /** 图片小于视图时的水平对齐方式，用于双页紧贴中间 */
+    public static final int ALIGN_CENTER = 0;
+    public static final int ALIGN_LEFT = 1;
+    public static final int ALIGN_RIGHT = 2;
     private static final int EDGE_NONE = -1;
     private static final int EDGE_LEFT = 0;
     private static final int EDGE_RIGHT = 1;
@@ -40,6 +44,8 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
     private boolean mAlwaysBlockParent = false;
     private int mScrollEdge = EDGE_BOTH;
     private int mScrollMode = MODE_HORIZONTAL;
+    private int mHorizontalAlign = ALIGN_CENTER;
+    private boolean mMatrixResetPending = false;
     private float mScaleFactor = 2.0f;
     private boolean isDoubleTap = true;
     private FlingRunnable mCurrentFlingRunnable;
@@ -66,6 +72,24 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         cancelFling();
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        // 图片先于布局就绪时，等布局完成再按对齐方式校正
+        if (mMatrixResetPending) {
+            resetMatrix();
+        }
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        // 尺寸变化后矩阵中的对齐偏移量已失效
+        if (oldw != 0 && oldh != 0 && (w != oldw || h != oldh)) {
+            resetMatrix();
+        }
     }
 
     protected void init() {
@@ -125,7 +149,7 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
 
     public void update(Long id) {
         Object tag = getTag();
-        if (tag == null || !tag.equals(id) ) {
+        if (tag == null || !tag.equals(id) || mMatrixResetPending) {
             setTag(id);
             resetMatrix();
         }
@@ -253,6 +277,17 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
         mScrollMode = mode;
     }
 
+    /**
+     * 设置图片小于视图时的水平对齐方式（默认居中）
+     */
+    public void setHorizontalAlign(int align) {
+        if (mHorizontalAlign == align) {
+            return;
+        }
+        mHorizontalAlign = align;
+        resetMatrix();
+    }
+
     public void setTapListenerListener(OnTapGestureListener listener) {
         mTapGestureListener = listener;
     }
@@ -340,7 +375,17 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
         }
 
         if (width <= viewWidth) {
-            deltaX = (viewWidth - width) / 2 - rect.left;
+            switch (mHorizontalAlign) {
+                case ALIGN_LEFT:
+                    deltaX = -rect.left;
+                    break;
+                case ALIGN_RIGHT:
+                    deltaX = viewWidth - rect.right;
+                    break;
+                default:
+                    deltaX = (viewWidth - width) / 2 - rect.left;
+                    break;
+            }
             mScrollEdge = EDGE_BOTH;
         } else if (rect.left > 0) {
             deltaX = -rect.left;
@@ -358,6 +403,14 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
 
     private void resetMatrix() {
         mMatrix.reset();
+        getHierarchy().getActualImageBounds(mDisplayRect);
+        if (mDisplayRect.width() <= 0 || mDisplayRect.height() <= 0) {
+            // 图片尺寸尚未就绪，等加载完成（update）后再对齐
+            mMatrixResetPending = true;
+            invalidate();
+            return;
+        }
+        mMatrixResetPending = false;
         switch (mScrollMode) {
             case MODE_HORIZONTAL:
                 checkHorizontalBounds();

@@ -194,7 +194,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         mStEngine.bindPreference(getSupportFragmentManager(), PreferenceManager.PREF_ST_ENGINE,
                 PreferenceManager.ST_JCC, R.array.st_engine_items, DIALOG_REQUEST_ST_ENGINE);
 
-        mReaderPagingStreamOff.bindPreference(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, false);
+        mReaderPagingStreamOff.bindPreference(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, true);
         mChapterBookmark.bindPreference(PreferenceManager.PREF_CHAPTER_BOOKMARK, false);
         findViewById(R.id.settings_reader_config).setOnClickListener(v -> onReaderConfigBtnClick());
         findViewById(R.id.settings_other_storage).setOnClickListener(v -> onOtherStorageClick());

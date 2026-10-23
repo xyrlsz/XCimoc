@@ -35,6 +35,9 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
 
     CheckBoxPreference mReaderBanTurn;
     CheckBoxPreference mReaderQuickTurn;
+    CheckBoxPreference mReaderDualPage;
+    CheckBoxPreference mReaderDualPageRtl;
+    CheckBoxPreference mReaderDualPageNoGap;
     ChoicePreference mReaderOrientation;
     ChoicePreference mReaderTurn;
     SliderPreference mReaderTrigger;
@@ -45,6 +48,9 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
     protected void initView() {
         mReaderBanTurn = mRootView.findViewById(R.id.settings_reader_ban_turn);
         mReaderQuickTurn = mRootView.findViewById(R.id.settings_reader_quick_turn);
+        mReaderDualPage = mRootView.findViewById(R.id.settings_reader_dual_page);
+        mReaderDualPageRtl = mRootView.findViewById(R.id.settings_reader_dual_page_rtl);
+        mReaderDualPageNoGap = mRootView.findViewById(R.id.settings_reader_dual_page_no_gap);
         mReaderOrientation = mRootView.findViewById(R.id.settings_reader_orientation);
         mReaderTurn = mRootView.findViewById(R.id.settings_reader_turn);
         mReaderTrigger = mRootView.findViewById(R.id.settings_reader_trigger);
@@ -57,12 +63,24 @@ public class PageConfigFragment extends BaseFragment implements DialogCaller {
 //        }
         mReaderBanTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false);
         mReaderQuickTurn.bindPreference(PreferenceManager.PREF_READER_PAGE_QUICK_TURN, false);
+        mReaderDualPage.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, true);
+        mReaderDualPageRtl.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false);
+        mReaderDualPageNoGap.bindPreference(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false);
+        // 未开启左右双页时，排列顺序/无间隔设置无意义
+        mReaderDualPage.setOnCheckedChangeListener((buttonView, isChecked) -> updateDualPageSubVisibility());
+        updateDualPageSubVisibility();
         mReaderOrientation.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_PAGE_ORIENTATION,
                 PreferenceManager.READER_ORIENTATION_AUTO, R.array.reader_orientation_items, DIALOG_REQUEST_ORIENTATION);
         mReaderTurn.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_PAGE_TURN,
                 PreferenceManager.READER_TURN_LTR, R.array.reader_turn_items, DIALOG_REQUEST_TURN);
         mReaderTrigger.bindPreference(requireActivity().getSupportFragmentManager(), this, PreferenceManager.PREF_READER_PAGE_TRIGGER, 10,
                 R.string.settings_reader_trigger, DIALOG_REQUEST_TRIGGER);
+    }
+
+    private void updateDualPageSubVisibility() {
+        int visibility = mReaderDualPage.isChecked() ? View.VISIBLE : View.GONE;
+        mReaderDualPageRtl.setVisibility(visibility);
+        mReaderDualPageNoGap.setVisibility(visibility);
     }
 
     void onReaderEventClick(View view) {

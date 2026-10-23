@@ -123,8 +123,16 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
 
     @Override
     public void onPrevLoadSuccess(List<ImageUrl> list) {
-        mReaderAdapter.addAll(0, list);
-        ((RecyclerViewPager) mRecyclerView).refreshPosition();
+        if (mDualPage) {
+            // 双页模式下数据位置与列表项位置不同，直接按数据位置重新定位
+            int dataPosition = mReaderAdapter.toDataPosition(Math.max(getCurPosition(), 0));
+            mReaderAdapter.addAll(0, list);
+            ((RecyclerViewPager) mRecyclerView)
+                    .resetToPosition(mReaderAdapter.toAdapterPosition(dataPosition + list.size()));
+        } else {
+            mReaderAdapter.addAll(0, list);
+            ((RecyclerViewPager) mRecyclerView).refreshPosition();
+        }
         HintUtils.showToast(this, R.string.reader_load_success);
     }
 
@@ -132,7 +140,7 @@ public class PageReaderActivity extends ReaderActivity implements OnPageChangedL
     public void onValueChange(@NonNull Slider slider, float value, boolean fromUser) {
         if (fromUser) {
             int intValue = Math.max(Math.round(value), 1);
-            int current = getCurPosition() + intValue - progress;
+            int current = mReaderAdapter.toDataPosition(Math.max(getCurPosition(), 0)) + intValue - progress;
             int pos = mReaderAdapter.getPositionByNum(current, intValue, intValue < progress);
             mRecyclerView.scrollToPosition(pos);
         }

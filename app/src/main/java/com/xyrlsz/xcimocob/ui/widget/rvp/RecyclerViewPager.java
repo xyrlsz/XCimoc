@@ -274,6 +274,20 @@ public class RecyclerViewPager extends RecyclerView {
         mOnPageChangedListener = listener;
     }
 
+    /**
+     * 直接跳转到指定位置并重置内部翻页状态。
+     * 用于列表项位置含义发生变化（如切换左右双页显示、向前插入章节）后定位。
+     */
+    public void resetToPosition(int position) {
+        mPositionBeforeScroll = position;
+        mPositionOnTouchDown = position;
+        mSmoothScrollTargetPosition = position;
+        mHasCalledOnPageChanged = true;
+        mCurView = null;
+        mNeedAdjust = false;
+        super.scrollToPosition(position);
+    }
+
     public void refreshPosition() {
         int pos = getCurrentPosition();
         if (mPositionBeforeScroll != -1) {

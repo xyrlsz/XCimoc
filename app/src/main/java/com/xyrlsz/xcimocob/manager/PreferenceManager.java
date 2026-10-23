@@ -92,6 +92,9 @@ public class PreferenceManager {
     public static final String PREF_READER_PAGE_TRIGGER = "pref_reader_page_trigger";
     public static final String PREF_READER_PAGE_BAN_TURN = "pref_reader_page_ban_turn";
     public static final String PREF_READER_PAGE_QUICK_TURN = "pref_reader_page_quick_turn";
+    public static final String PREF_READER_PAGE_DUAL_PAGE = "pref_reader_page_dual_page";
+    public static final String PREF_READER_PAGE_DUAL_PAGE_RTL = "pref_reader_page_dual_page_rtl";
+    public static final String PREF_READER_PAGE_DUAL_PAGE_NO_GAP = "pref_reader_page_dual_page_no_gap";
 
     public static final String PREF_READER_STREAM_TURN = "pref_reader_stream_turn";
     public static final String PREF_READER_STREAM_ORIENTATION = "pref_reader_stream_orientation";
@@ -223,6 +226,9 @@ public class PreferenceManager {
             PREF_READER_PAGE_TRIGGER,
             PREF_READER_PAGE_BAN_TURN,
             PREF_READER_PAGE_QUICK_TURN,
+            PREF_READER_PAGE_DUAL_PAGE,
+            PREF_READER_PAGE_DUAL_PAGE_RTL,
+            PREF_READER_PAGE_DUAL_PAGE_NO_GAP,
             // ---- 卷纸模式配置 ----
             PREF_READER_STREAM_TURN,
             PREF_READER_STREAM_ORIENTATION,

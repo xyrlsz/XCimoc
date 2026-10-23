@@ -7,6 +7,7 @@ import android.content.res.TypedArray;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.CompoundButton;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 
@@ -90,6 +91,10 @@ public class CheckBoxPreference extends FrameLayout implements View.OnClickListe
                 new int[][]{{-android.R.attr.state_checked}, {android.R.attr.state_checked}},
                 new int[]{unselectedColor, ContextCompat.getColor(getContext(), accent)});
         setColorStateList(stateList);
+    }
+
+    public void setOnCheckedChangeListener(CompoundButton.OnCheckedChangeListener listener) {
+        mCheckBox.setOnCheckedChangeListener(listener);
     }
 
     public boolean isChecked() {

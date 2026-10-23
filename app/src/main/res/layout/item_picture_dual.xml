@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 大横屏双页：一屏左右各显示一张图 -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:fresco="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:baselineAligned="false"
+    android:orientation="horizontal">
+
+    <com.xyrlsz.xcimocob.ui.widget.PhotoDraweeView
+        android:id="@+id/reader_image_view_left"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        fresco:fadeDuration="0"
+        fresco:failureImage="@drawable/materialsymbolsclose"
+        fresco:failureImageScaleType="center"
+        fresco:progressBarImage="@drawable/reader_progress"
+        fresco:progressBarImageScaleType="center"
+        fresco:retryImage="@drawable/raphaelrefresh"
+        fresco:retryImageScaleType="center" />
+
+    <com.xyrlsz.xcimocob.ui.widget.PhotoDraweeView
+        android:id="@+id/reader_image_view_right"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        fresco:fadeDuration="0"
+        fresco:failureImage="@drawable/materialsymbolsclose"
+        fresco:failureImageScaleType="center"
+        fresco:progressBarImage="@drawable/reader_progress"
+        fresco:progressBarImageScaleType="center"
+        fresco:retryImage="@drawable/raphaelrefresh"
+        fresco:retryImageScaleType="center" />
+</LinearLayout>

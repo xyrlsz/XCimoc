@@ -50,6 +50,27 @@
             app:summary="@string/settings_reader_quick_turn_summary"
             app:title="@string/settings_reader_quick_turn" />
 
+        <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
+            android:id="@+id/settings_reader_dual_page"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:summary="@string/settings_reader_dual_page_summary"
+            app:title="@string/settings_reader_dual_page" />
+
+        <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
+            android:id="@+id/settings_reader_dual_page_rtl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:summary="@string/settings_reader_dual_page_rtl_summary"
+            app:title="@string/settings_reader_dual_page_rtl" />
+
+        <com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference
+            android:id="@+id/settings_reader_dual_page_no_gap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:summary="@string/settings_reader_dual_page_no_gap_summary"
+            app:title="@string/settings_reader_dual_page_no_gap" />
+
         <com.xyrlsz.xcimocob.ui.widget.preference.SliderPreference
             android:id="@+id/settings_reader_trigger"
             android:layout_width="match_parent"

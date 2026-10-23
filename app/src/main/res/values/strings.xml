@@ -192,6 +192,12 @@
     <string name="settings_reader_quick_turn_summary">不显示翻页平移效果</string>
     <string name="settings_reader_ban_turn">放大禁止翻页</string>
     <string name="settings_reader_ban_turn_summary">放大状态禁止翻页</string>
+    <string name="settings_reader_dual_page">大横屏左右双页</string>
+    <string name="settings_reader_dual_page_summary">横屏且屏幕足够宽时（折叠屏展开、平板）左右各显示一页</string>
+    <string name="settings_reader_dual_page_rtl">双页从右往左</string>
+    <string name="settings_reader_dual_page_rtl_summary">双页时把后一页排在左侧，适合从右往左阅读的漫画</string>
+    <string name="settings_reader_dual_page_no_gap">左右图片无间隔</string>
+    <string name="settings_reader_dual_page_no_gap_summary">双页时左右两图紧贴中间，适合跨页长图</string>
     <string name="settings_reader_interval">显示图片间隔</string>
     <string name="settings_reader_interval_summary">阅读状态显示图片间隔</string>
     <string name="settings_reader_hide_nav">隐藏导航栏</string>

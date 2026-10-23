@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -70,6 +71,7 @@ import com.xyrlsz.xcimocob.ui.widget.OnTapGestureListener;
 import com.xyrlsz.xcimocob.ui.widget.PreCacheLayoutManager;
 import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
 import com.xyrlsz.xcimocob.ui.widget.SeekBar;
+import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
@@ -128,6 +130,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     protected int turn;
     protected int orientation;
     protected int mode;
+    protected boolean mDualPage; // 大横屏左右双页
     TextView mChapterTitle;
     TextView mChapterPage;
     TextView mBatteryText;
@@ -311,6 +314,12 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mRecyclerView.setAdapter(mReaderAdapter);
 
 
+        mRecyclerView.addOnLayoutChangeListener((v, left, top, right, bottom,
+                                                 oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                mReaderAdapter.setViewSize(right - left, bottom - top);
+            }
+        });
         mRecyclerView.setItemViewCacheSize(2);
         mRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
@@ -406,14 +415,23 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setScaleFactor(mPreference.getNumber(PreferenceManager.PREF_READER_SCALE_FACTOR, 200).intValue() * 0.01f);
         mReaderAdapter.setDoubleTap(!mPreference.getBoolean(PreferenceManager.PREF_READER_BAN_DOUBLE_CLICK, false));
         mReaderAdapter.setVertical(turn == PreferenceManager.READER_TURN_ATB);
+        mReaderAdapter.setDualPageRtl(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false));
+        mReaderAdapter.setDualPageNoGap(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false));
         if (App.getPreferenceManager().getNumber(PreferenceManager.PREF_READER_MODE, PreferenceManager.READER_MODE_PAGE).intValue() == PreferenceManager.READER_MODE_STREAM
                 &&
-                App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, false)) {
+                App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, true)) {
             mReaderAdapter.setPaging(false);
             mReaderAdapter.setPagingReverse(false);
         } else {
             mReaderAdapter.setPaging(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING, false));
             mReaderAdapter.setPagingReverse(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGING_REVERSE, false));
+        }
+        mDualPage = isDualPageEnabled();
+        mReaderAdapter.setDualPage(mDualPage);
+        if (mDualPage) {
+            // 双页本身已是左右两页，不再对单张图做横向拆页
+            mReaderAdapter.setPaging(false);
+            mReaderAdapter.setPagingReverse(false);
         }
         mReaderAdapter.setCloseAutoResizeImage(mPreference.getBoolean(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false));
         mReaderAdapter.setWhiteEdge(mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_EDGE, false));
@@ -426,6 +444,52 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mLayoutManager.setReverseLayout(turn == PreferenceManager.READER_TURN_RTL);
         mLayoutManager.setExtraSpace(2);
 
+    }
+
+    /**
+     * 大横屏（折叠屏展开 / 平板）且开启开关时，左右各显示一页
+     */
+    private boolean isDualPageEnabled() {
+        return mode == PreferenceManager.READER_MODE_PAGE
+                && turn != PreferenceManager.READER_TURN_ATB
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, true)
+                && isLargeLandscape();
+    }
+
+    private boolean isLargeLandscape() {
+        Configuration configuration = getResources().getConfiguration();
+        return configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                && configuration.smallestScreenWidthDp >= 600;
+    }
+
+    /**
+     * 应用大横屏双页（切换开关、屏幕尺寸变化时调用），保持当前阅读位置
+     */
+    protected void applyDualPage() {
+        if (mReaderAdapter == null) {
+            return;
+        }
+        boolean dualPage = isDualPageEnabled();
+        if (dualPage == mDualPage) {
+            return;
+        }
+        int dataPosition = mReaderAdapter.toDataPosition(Math.max(getCurPosition(), 0));
+        mDualPage = dualPage;
+        mReaderAdapter.setDualPage(dualPage);
+        mReaderAdapter.notifyDataSetChanged();
+        int position = mReaderAdapter.toAdapterPosition(dataPosition);
+        if (mRecyclerView instanceof RecyclerViewPager) {
+            ((RecyclerViewPager) mRecyclerView).resetToPosition(position);
+        } else {
+            mRecyclerView.scrollToPosition(position);
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 折叠屏展开 / 旋转都会走到这里，需要重新判断是否使用双页
+        applyDualPage();
     }
 
     @Override
@@ -588,6 +652,10 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
 
     @Override
     public void onPicturePaging(ImageUrl image) {
+        if (mDualPage) {
+            // 双页模式下图片已左右分屏显示，不再拆分单张图片
+            return;
+        }
         int pos = mReaderAdapter.getPositionById(image.getId());
         String[] urls = image.getUrls().toArray(new String[0]);
         mReaderAdapter.add(pos + 1, new ImageUrl(image.getId() + 900, image.getComicChapter(), image.getNum(), urls,
@@ -634,7 +702,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         setReaderAdapter(list, source, local);
         mReaderAdapter.addAll(list);
         if (progress != 1) {
-            mRecyclerView.scrollToPosition(progress - 1);
+            mRecyclerView.scrollToPosition(mReaderAdapter.toAdapterPosition(progress - 1));
         }
         mLoadingLayout.setVisibility(View.GONE);
         mRecyclerView.setVisibility(View.VISIBLE);
@@ -831,6 +899,10 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         // 根据 holder 类型获取 draweeView
         if (holder instanceof ReaderAdapter.PageHolder) {
             draweeView = ((ReaderAdapter.PageHolder) holder).draweeView;
+        } else if (holder instanceof ReaderAdapter.DualPageHolder) {
+            // 双页模式取被点击的那一侧，用于判断是否处于重试状态
+            ReaderAdapter.DualPageHolder dualHolder = (ReaderAdapter.DualPageHolder) holder;
+            draweeView = x < point.x / 2.0f ? dualHolder.leftView : dualHolder.rightView;
         } else if (holder instanceof ReaderAdapter.StreamHolder) {
             draweeView = ((ReaderAdapter.StreamHolder) holder).draweeView;
         }
@@ -1059,6 +1131,9 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         SwitchCompat whiteBgSwitch = view.findViewById(R.id.reader_switch_white_background);
         SwitchCompat keepBrightSwitch = view.findViewById(R.id.reader_switch_keep_bright);
         SwitchCompat hideInfoSwitch = view.findViewById(R.id.reader_switch_hide_info);
+        SwitchCompat dualPageSwitch = view.findViewById(R.id.reader_switch_dual_page);
+        SwitchCompat dualPageRtlSwitch = view.findViewById(R.id.reader_switch_dual_page_rtl);
+        SwitchCompat dualPageNoGapSwitch = view.findViewById(R.id.reader_switch_dual_page_no_gap);
         SwitchCompat volumeKeySwitch = view.findViewById(R.id.reader_switch_volume_key);
         MaterialButton fullSettingsBtn = view.findViewById(R.id.reader_settings_full);
 
@@ -1099,6 +1174,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         whiteBgSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_BACKGROUND, true));
         keepBrightSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_KEEP_BRIGHT, false));
         hideInfoSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_HIDE_INFO, false));
+        // 左右双页仅在分页模式下有效，排列顺序/无间隔仅在开启左右双页后才有效
+        boolean pageMode = mode == PreferenceManager.READER_MODE_PAGE;
+        boolean dualPageOn = mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, true);
+        int dualPageSubVisibility = pageMode && dualPageOn ? View.VISIBLE : View.GONE;
+        dualPageSwitch.setVisibility(pageMode ? View.VISIBLE : View.GONE);
+        dualPageRtlSwitch.setVisibility(dualPageSubVisibility);
+        dualPageNoGapSwitch.setVisibility(dualPageSubVisibility);
+        dualPageSwitch.setChecked(dualPageOn);
+        dualPageRtlSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, false));
+        dualPageNoGapSwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, false));
         volumeKeySwitch.setChecked(mPreference.getBoolean(PreferenceManager.PREF_READER_VOLUME_KEY_CONTROLS_PAGE_TURNING, false));
 
         // 阅读方向
@@ -1149,6 +1234,27 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
             mPreference.putBoolean(PreferenceManager.PREF_READER_HIDE_INFO, isChecked);
             applyHideInfo(isChecked);
         });
+        // 大横屏左右双页
+        dualPageSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, isChecked);
+            int visibility = isChecked && mode == PreferenceManager.READER_MODE_PAGE
+                    ? View.VISIBLE : View.GONE;
+            dualPageRtlSwitch.setVisibility(visibility);
+            dualPageNoGapSwitch.setVisibility(visibility);
+            applyDualPage();
+        });
+        // 双页从右往左排列（只改变左右顺序，不改变分页位置）
+        dualPageRtlSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_RTL, isChecked);
+            mReaderAdapter.setDualPageRtl(isChecked);
+            mReaderAdapter.notifyDataSetChanged();
+        });
+        // 左右图片无间隔
+        dualPageNoGapSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            mPreference.putBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE_NO_GAP, isChecked);
+            mReaderAdapter.setDualPageNoGap(isChecked);
+            mReaderAdapter.notifyDataSetChanged();
+        });
         // 音量键翻页
         volumeKeySwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             mPreference.putBoolean(PreferenceManager.PREF_READER_VOLUME_KEY_CONTROLS_PAGE_TURNING, isChecked);
@@ -1170,6 +1276,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         if (newTurn == turn) {
             return;
         }
+        // 先按当前双页状态换算数据位置，再修改状态
+        int dataPosition = mReaderAdapter.toDataPosition(Math.max(getCurPosition(), 0));
         turn = newTurn;
         String key = mode == PreferenceManager.READER_MODE_PAGE ?
                 PreferenceManager.PREF_READER_PAGE_TURN : PreferenceManager.PREF_READER_STREAM_TURN;
@@ -1180,9 +1288,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setVertical(turn == PreferenceManager.READER_TURN_ATB);
         mSeekBar.setLayoutDirection(turn == PreferenceManager.READER_TURN_RTL ?
                 View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
+        // 上下滚动时不再左右双页
+        mDualPage = isDualPageEnabled();
+        mReaderAdapter.setDualPage(mDualPage);
         mReaderAdapter.notifyDataSetChanged();
-        int pos = getCurPosition();
-        mRecyclerView.scrollToPosition(Math.max(pos, 0));
+        int position = mReaderAdapter.toAdapterPosition(dataPosition);
+        if (mRecyclerView instanceof RecyclerViewPager) {
+            ((RecyclerViewPager) mRecyclerView).resetToPosition(position);
+        } else {
+            mRecyclerView.scrollToPosition(position);
+        }
         updateProgress();
     }
 

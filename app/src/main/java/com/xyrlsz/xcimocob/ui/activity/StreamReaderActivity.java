@@ -33,7 +33,7 @@ public class StreamReaderActivity extends ReaderActivity {
     protected void initView() {
         super.initView();
         mReaderAdapter.setReaderMode(ReaderAdapter.READER_STREAM);
-        if (App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, false)) {
+        if (App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_PAGING_STREAM_OFF, true)) {
             mReaderAdapter.setPaging(false);
             mReaderAdapter.setPagingReverse(false);
         }
