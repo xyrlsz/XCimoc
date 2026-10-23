@@ -168,6 +168,12 @@
         android:text="@string/settings_reader_hide_info" />
 
     <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/reader_switch_volume_key"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/settings_reader_volume_key_controls" />
+
+    <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/reader_switch_dual_page"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -184,12 +190,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/settings_reader_dual_page_no_gap" />
-
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/reader_switch_volume_key"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/settings_reader_volume_key_controls" />
 
     <!-- 完整设置入口 -->
     <com.google.android.material.button.MaterialButton
