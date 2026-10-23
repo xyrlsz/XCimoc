@@ -72,6 +72,7 @@ import com.xyrlsz.xcimocob.ui.widget.OnTapGestureListener;
 import com.xyrlsz.xcimocob.ui.widget.PreCacheLayoutManager;
 import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
 import com.xyrlsz.xcimocob.ui.widget.SeekBar;
+import com.xyrlsz.xcimocob.ui.widget.ZoomableRecyclerView;
 import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
@@ -631,15 +632,36 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     protected void onResume() {
         super.onResume();
         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-        // 完整设置页是直接写偏好的，返回阅读器时需重新应用这些只影响图片解码方式的设置
+        // 完整设置页是直接写偏好的，返回阅读器时需重新应用这些影响图片显示方式的设置
+        boolean turnChanged = applyTurnFromPreference();
         boolean dualPageChanged = applyDualPage();
         boolean pagingChanged = applyPaging();
         boolean resizeChanged = applyCloseAutoResizeImage();
         boolean optionsChanged = applyDualPageOptions();
-        // 双页切换内部已经重建过列表项，其余情况只要解码方式变了也要重建，否则图片会一直是旧尺寸
-        if (!dualPageChanged && (pagingChanged || resizeChanged || optionsChanged)) {
+        // 方向切换、双页切换内部已经重建过列表项，其余情况只要解码方式变了也要重建，
+        // 否则图片会一直是旧尺寸
+        if (!turnChanged && !dualPageChanged && (pagingChanged || resizeChanged || optionsChanged)) {
             rebindAfterLayoutChange(mReaderAdapter.toDataPosition(Math.max(getActionAdapterPosition(), 0)));
         }
+    }
+
+    /**
+     * 完整设置页同样可以改阅读方向，返回阅读器时按偏好重新应用
+     *
+     * @return 是否发生了方向切换（已内部重建列表项）
+     */
+    private boolean applyTurnFromPreference() {
+        if (mReaderAdapter == null) {
+            return false;
+        }
+        String key = mode == PreferenceManager.READER_MODE_PAGE ?
+                PreferenceManager.PREF_READER_PAGE_TURN : PreferenceManager.PREF_READER_STREAM_TURN;
+        int newTurn = mPreference.getNumber(key, PreferenceManager.READER_TURN_LTR).intValue();
+        if (newTurn == turn) {
+            return false;
+        }
+        applyTurn(newTurn);
+        return true;
     }
 
     @Override
@@ -1491,11 +1513,20 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         String key = mode == PreferenceManager.READER_MODE_PAGE ?
                 PreferenceManager.PREF_READER_PAGE_TURN : PreferenceManager.PREF_READER_STREAM_TURN;
         mPreference.putNumber(key, newTurn);
-        mLayoutManager.setOrientation(turn == PreferenceManager.READER_TURN_ATB ?
+        boolean vertical = turn == PreferenceManager.READER_TURN_ATB;
+        boolean reverse = turn == PreferenceManager.READER_TURN_RTL;
+        mLayoutManager.setOrientation(vertical ?
                 LinearLayoutManager.VERTICAL : LinearLayoutManager.HORIZONTAL);
-        mLayoutManager.setReverseLayout(turn == PreferenceManager.READER_TURN_RTL);
-        mReaderAdapter.setVertical(turn == PreferenceManager.READER_TURN_ATB);
-        mSeekBar.setLayoutDirection(turn == PreferenceManager.READER_TURN_RTL ?
+        mLayoutManager.setReverseLayout(reverse);
+        // 翻页器缓存了 reverseLayout、流式阅读的缩放容器缓存了方向，
+        // 直接改 LayoutManager 不会同步过去
+        if (mRecyclerView instanceof RecyclerViewPager) {
+            ((RecyclerViewPager) mRecyclerView).setReverseLayout(reverse);
+        } else if (mRecyclerView instanceof ZoomableRecyclerView) {
+            ((ZoomableRecyclerView) mRecyclerView).setVertical(vertical);
+        }
+        mReaderAdapter.setVertical(vertical);
+        mSeekBar.setLayoutDirection(reverse ?
                 View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
         // 上下滚动时不再左右双页
         mDualPage = isDualPageEnabled();

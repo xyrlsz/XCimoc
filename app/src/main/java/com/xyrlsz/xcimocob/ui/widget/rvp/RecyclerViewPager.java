@@ -270,6 +270,14 @@ public class RecyclerViewPager extends RecyclerView {
         mTriggerOffset = offset;
     }
 
+    /**
+     * 同步缓存的 reverseLayout。直接改 LayoutManager 不会经过 {@link #setLayoutManager}，
+     * 不同步会导致翻页方向与边界判断仍按旧方向计算
+     */
+    public void setReverseLayout(boolean reverse) {
+        reverseLayout = reverse;
+    }
+
     public void setOnPageChangedListener(OnPageChangedListener listener) {
         mOnPageChangedListener = listener;
     }
