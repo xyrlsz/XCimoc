@@ -1072,14 +1072,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         }
         ImageUrl imageUrl = mReaderAdapter.getDateSet().get(getDataPositionForAction(position));
         String[] urls = imageUrl.getUrls().toArray(new String[0]);
+        // 双页时可能保存的是右侧那一页，页码按该图自己的页码而不是当前屏第一页
+        int page = imageUrl.getNum() > 0 ? imageUrl.getNum() : progress;
         try {
             String title = mChapterTitle.getText().toString();
             for (String url : urls) {
                 if (url.startsWith("file")) {
-                    mPresenter.savePicture(new FileInputStream(new File(Objects.requireNonNull(Uri.parse(url).getPath()))), url, title, progress);
+                    mPresenter.savePicture(new FileInputStream(new File(Objects.requireNonNull(Uri.parse(url).getPath()))), url, title, page);
                     return;
                 } else if (url.startsWith("content")) {
-                    mPresenter.savePicture(getContentResolver().openInputStream(Uri.parse(url)), url, title, progress);
+                    mPresenter.savePicture(getContentResolver().openInputStream(Uri.parse(url)), url, title, page);
                     return;
                 } else {
 //                    ImagePipelineFactory factory = imageUrl.getSize() > App.mLargePixels ?
@@ -1093,7 +1095,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
 //                        return;
 //                    }
                     InputStream inputStream = FrescoUtils.getCacheFileInputStream(url);
-                    mPresenter.savePicture(inputStream, url, title, progress);
+                    mPresenter.savePicture(inputStream, url, title, page);
                     return;
                 }
             }
