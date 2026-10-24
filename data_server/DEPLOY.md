@@ -17,22 +17,70 @@ Cimoc 数据同步服务器是 XCimoc 漫画阅读器的配套服务端程序，
 
 #### 方式 A：直接下载编译好的二进制
 
-从项目的 Release 页面下载 `xcimoc-data-server`（或 `xcimoc-data-server.exe`）。
+从项目的 Release 页面下载对应平台的二进制：
+
+| 文件 | 适用平台 | 说明 |
+|------|----------|------|
+| `xcimoc-data-server-linux-amd64` | Linux x86_64 | 动态链接（依赖 glibc） |
+| `xcimoc-data-server-linux-arm64` | Linux arm64 | 动态链接（依赖 glibc） |
+| `xcimoc-data-server-linux-amd64-musl` | Linux x86_64（含 Alpine） | **完全静态**，不依赖任何 C 库 |
+| `xcimoc-data-server-linux-arm64-musl` | Linux arm64（含 Alpine） | **完全静态**，不依赖任何 C 库 |
+| `xcimoc-data-server-windows-amd64.exe` | Windows x86_64 | — |
+
+> `-musl` 版本用 musl libc + `-extldflags=-static` 编译，产物是**完全静态**的可执行文件：
+> 目标机器不需要安装 glibc、musl 或任何其他 C 库，`libc.so` 已经打进二进制里了。
+> Alpine、scratch 容器、BusyBox 系统都能直接运行。
 
 #### 方式 B：自行编译
 
+推荐用自带的构建脚本（会先重新生成 gorm 查询代码，再编译，并可一条命令打出 musl 静态版本）：
+
 ```bash
-# 进入服务端目录
 cd data_server
 
 # 设置国内代理（可选，中国大陆推荐）
 export GOPROXY=https://goproxy.cn,direct
-# 或 Windows PowerShell:
-# $env:GOPROXY="https://goproxy.cn,direct"
 
-# 编译
-go build -o xcimoc-data-server.exe .
+./build.sh                              # 当前平台
+./build.sh --musl                       # 当前平台 + linux/<arch> musl 静态版
+./build.sh --musl --musl-arch all       # 当前平台 + linux amd64/arm64 musl 静态版
+./build.sh --musl-only --musl-arch all  # 只打 musl 静态版（不需要宿主 gcc）
 ```
+
+Windows PowerShell：
+
+```powershell
+cd data_server
+$env:GOPROXY="https://goproxy.cn,direct"   # 可选，中国大陆推荐
+
+.\build.ps1                               # 当前平台
+.\build.ps1 -Musl                         # 当前平台 + linux/amd64 musl 静态版
+.\build.ps1 -Musl -MuslArch all           # 当前平台 + amd64/arm64 musl 静态版
+.\build.ps1 -MuslOnly -MuslArch all       # 只打 musl 静态版（不需要 MinGW gcc）
+```
+
+> musl 目标需要一个 musl 系 C 编译器，脚本会自动探测，按优先级：
+> `musl-gcc` / `x86_64-linux-musl-gcc` / `aarch64-linux-musl-gcc`，都没有时退回 Zig
+> （`zig cc -target <triple>-linux-musl`，自带 musl libc，Windows 上 `scoop install zig` 即可）。
+> 这只影响**编译机**，编译出来的二进制在目标机器上不需要任何额外运行库。
+
+不想用脚本时的手动等价命令：
+
+```bash
+# 普通版本（依赖目标机的 glibc）
+go build -o xcimoc-data-server .
+
+# musl 静态版本（无任何动态库依赖）
+CGO_ENABLED=1 \
+CC="musl-gcc" \
+GOOS=linux GOARCH=amd64 \
+go build -tags "netgo osusergo" -ldflags "-s -w -extldflags=-static" \
+  -o xcimoc-data-server-linux-amd64-musl .
+```
+
+> 两个关键点：`-extldflags=-static` 让外部链接器做静态链接（把 libc 打进去），
+> `-tags "netgo osusergo"` 关掉对 glibc/NSS 的 DNS 与用户查询依赖。
+> 少了任意一个，产物在非 glibc 系统上都可能跑不起来。
 
 ### 2. 运行
 
@@ -279,6 +327,31 @@ sudo systemctl enable --now cimoc-sync
 ### 4. 使用 MySQL / PostgreSQL
 
 生产环境建议使用 MySQL 或 PostgreSQL 替代 SQLite，以获得更好的并发性能和数据可靠性。
+
+### 5. Alpine / 容器部署（musl 静态版）
+
+`-musl` 产物是静态链接的，容器里不需要 `apk add libc6-compat` 之类的兼容层：
+
+```dockerfile
+FROM alpine:3.20
+WORKDIR /app
+COPY xcimoc-data-server-linux-amd64-musl /app/xcimoc-data-server
+COPY config.yaml /app/config.yaml
+RUN chmod +x /app/xcimoc-data-server
+EXPOSE 8080
+CMD ["/app/xcimoc-data-server", "--config", "/app/config.yaml"]
+```
+
+如果代码里没有用到时间/证书以外的系统依赖，也可以直接用 `FROM scratch`：
+
+```dockerfile
+FROM scratch
+WORKDIR /app
+COPY xcimoc-data-server-linux-amd64-musl /app/xcimoc-data-server
+COPY ca-certificates.crt /etc/ssl/certs/ca-certificates.crt   # 只在需要出网访问 HTTPS 时才需要
+EXPOSE 8080
+ENTRYPOINT ["/app/xcimoc-data-server"]
+```
 
 ---
 

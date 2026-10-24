@@ -1,18 +1,27 @@
 ﻿<#
 .SYNOPSIS
-  data_server native-only build script.
-  - Builds ONLY for the current host (GOOS/GOARCH detected via `go env`).
+  data_server build script.
+  - Default: builds ONLY for the current host (GOOS/GOARCH detected via `go env`).
+  - With -Musl: additionally cross-builds fully static musl Linux binaries.
   - CGO is always enabled (gorm.io/driver/sqlite requires mattn/go-sqlite3 via CGO).
   - Regenerates gorm.io/gen query code BEFORE every build.
 
 .DESCRIPTION
   Usage examples:
     .\build.ps1                       # regenerate query + native build -> .\dist\
+    .\build.ps1 -Musl                 # native build + linux/amd64 musl(static) build
+    .\build.ps1 -Musl -MuslArch all   # native build + linux/amd64 + linux/arm64 musl
+    .\build.ps1 -MuslOnly             # only musl(static) build, skip native build
     .\build.ps1 -OutDir .\artifacts   # custom output directory
     .\build.ps1 -Config .\config.yaml # pick DB config used by code-generator
     .\build.ps1 -DryRun               # print commands, do not execute
     .\build.ps1 -BuildVerbose         # verbose (passes -x to go build)
     Get-Help .\build.ps1 -Full        # full help
+
+  Musl builds need a musl-capable C compiler. On Windows the easiest option is
+  Zig (scoop install zig / winget install zig.zig), which is used as
+  `zig cc -target <triple>-linux-musl`. musl-gcc / *-linux-musl-gcc also work
+  when present (e.g. inside WSL or MSYS2).
 #>
 
 [CmdletBinding()]
@@ -21,7 +30,10 @@ param(
   [string]$Config,
   [switch]$DryRun,
   [Alias('VerboseBuild')]
-  [switch]$BuildVerbose
+  [switch]$BuildVerbose,
+  [switch]$Musl,
+  [switch]$MuslOnly,
+  [string]$MuslArch = 'amd64'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -127,6 +139,58 @@ function Require-Command {
   return $found.Source
 }
 
+<#
+.SYNOPSIS
+  Resolves a musl-capable C compiler for linux/<Arch>.
+  Returns the CC value (may contain arguments, e.g. "zig cc -target ...")
+  or $null when nothing usable is installed.
+#>
+function Resolve-MuslCc {
+  param([string]$Arch)
+
+  $names = @()
+  switch ($Arch) {
+    'amd64' { $names = @('musl-gcc', 'x86_64-linux-musl-gcc') }
+    'arm64' { $names = @('aarch64-linux-musl-gcc') }
+  }
+  foreach ($n in $names) {
+    $cmd = Get-Command $n -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+  }
+
+  $zig = Get-Command 'zig' -ErrorAction SilentlyContinue
+  if ($zig) {
+    if ($Arch -eq 'arm64') { return 'zig cc -target aarch64-linux-musl' }
+    return 'zig cc -target x86_64-linux-musl'
+  }
+  return $null
+}
+
+<#
+.SYNOPSIS
+  Normalizes -MuslArch into a GOARCH list (amd64 / arm64).
+#>
+function Resolve-MuslArchs {
+  param([string]$Value)
+
+  if ([string]::IsNullOrWhiteSpace($Value)) { $Value = 'amd64' }
+  $result = @()
+  foreach ($part in ($Value -split ',')) {
+    $a = $part.Trim().ToLowerInvariant()
+    if ($a -eq '') { continue }
+    if ($a -eq 'all') { $result += @('amd64', 'arm64'); continue }
+    switch ($a) {
+      'amd64' { $result += 'amd64' }
+      'x86_64' { $result += 'amd64' }
+      'arm64' { $result += 'arm64' }
+      'aarch64' { $result += 'arm64' }
+      default { throw ('unsupported -MuslArch: ' + $part + ' (use amd64, arm64 or all)') }
+    }
+  }
+  if ($result.Count -eq 0) { throw '-MuslArch resolved to an empty arch list' }
+  return @($result | Select-Object -Unique)
+}
+
 # -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
@@ -157,7 +221,8 @@ $e = Invoke-Native -FilePath go -Arguments $genArgs -Env @{ CGO_ENABLED = '0' }
 if ($e -ne 0) { throw ('code generation failed (exit=' + $e + ')') }
 
 # gcc 只在真正 CGO 编译阶段需要；DryRun 或只生成代码的场景可以没有 gcc。
-if (-not $DryRun) {
+# -MuslOnly 时跳过原生构建，因此也不需要宿主 gcc。
+if (-not $DryRun -and -not $MuslOnly) {
   $gccHint = @(
     'Install a local C compiler (MinGW GCC) for CGO.',
     '  MSYS2 UCRT64: winget install -e --id msys2.msys2',
@@ -180,9 +245,57 @@ $allArgs += '-o'
 $allArgs += $outFile
 $allArgs += '.'
 
-Write-Step ('Build native (' + $hostGoos + '/' + $hostGoarch + ')')
-$e = Invoke-Native -FilePath go -Arguments $allArgs -Env @{ CGO_ENABLED = '1' }
-if ($e -ne 0) { throw ('go build failed (exit=' + $e + ')') }
+if (-not $MuslOnly) {
+  Write-Step ('Build native (' + $hostGoos + '/' + $hostGoarch + ')')
+  $e = Invoke-Native -FilePath go -Arguments $allArgs -Env @{ CGO_ENABLED = '1' }
+  if ($e -ne 0) { throw ('go build failed (exit=' + $e + ')') }
+}
+
+# -----------------------------------------------------------------------------
+# Step 1: musl（静态）构建
+# 说明：
+#   - 目标固定为 linux/<arch>，CC 用 musl 工具链（musl-gcc / *-linux-musl-gcc）
+#     或 zig cc -target <triple>-linux-musl。
+#   - -extldflags=-static 让外部链接器产出完全静态的可执行文件；
+#     netgo/osusergo 去掉 cgo 版的 DNS / 用户查询，避免依赖 NSS。
+#   - 产物可直接跑在 Alpine 等 musl 发行版上，无需任何动态库。
+# -----------------------------------------------------------------------------
+if ($Musl -or $MuslOnly) {
+  $muslArchs = Resolve-MuslArchs -Value $MuslArch
+  foreach ($arch in $muslArchs) {
+    $cc = Resolve-MuslCc -Arch $arch
+    if ([string]::IsNullOrEmpty($cc)) {
+      if ($DryRun) {
+        $cc = 'musl-gcc'
+        Write-Hint ('no musl C compiler detected for linux/' + $arch + '; dry-run uses placeholder CC')
+      } else {
+        $muslHint = @(
+          ('No musl-capable C compiler found for linux/' + $arch + '.'),
+          '  Recommended (works on Windows): scoop install zig   (or: winget install -e --id zig.zig)',
+          '  Linux:  sudo apt-get install musl-tools            (provides musl-gcc)',
+          '  Cross:  download musl.cc aarch64-linux-musl-cross / x86_64-linux-musl-cross toolchains',
+          '  Then re-run: .\build.ps1 -Musl -MuslArch ' + $arch
+        ) -join [Environment]::NewLine
+        Write-Host ('ERROR: ' + $muslHint) -ForegroundColor Red
+        exit 2
+      }
+    }
+
+    $muslOut = Join-Path $OutDir ('xcimoc-data-server-linux-' + $arch + '-musl')
+    $muslArgs = @('build', '-ldflags=-s -w -extldflags=-static', '-tags=netgo,osusergo')
+    if ($BuildVerbose -or ($VerbosePreference -eq 'Continue')) { $muslArgs += '-x' }
+    $muslArgs += @('-o', $muslOut, '.')
+
+    Write-Step ('Build musl static (linux/' + $arch + ') with CC=' + $cc)
+    $e = Invoke-Native -FilePath go -Arguments $muslArgs -Env @{
+      CGO_ENABLED = '1'
+      GOOS        = 'linux'
+      GOARCH      = $arch
+      CC          = $cc
+    }
+    if ($e -ne 0) { throw ('musl go build failed for linux/' + $arch + ' (exit=' + $e + ')') }
+  }
+}
 
 # -----------------------------------------------------------------------------
 # Finalize

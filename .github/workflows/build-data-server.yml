@@ -19,8 +19,10 @@ name: Build data_server (Go, CGO + SQLite)
 # 产物：
 #   xcimoc-data-server-linux-amd64
 #   xcimoc-data-server-linux-arm64   (交叉：gcc-aarch64-linux-gnu)
+#   xcimoc-data-server-linux-amd64-musl   (静态，Zig cc，可跑 Alpine)
+#   xcimoc-data-server-linux-arm64-musl   (静态，Zig cc，可跑 Alpine arm64)
 #   xcimoc-data-server-windows-amd64.exe (MinGW-w64)
-# 以及合并后的 artifact `data-server-binaries`（方便一次下载 3 个 + config 示例）。
+# 以及合并后的 artifact `data-server-binaries`（方便一次下载全部 + config 示例）。
 # ------------------------------------------------------------------
 
 on:
@@ -84,6 +86,39 @@ jobs:
                 build-essential ca-certificates curl \
                 gcc-aarch64-linux-gnu libc6-dev-arm64-cross
 
+          # ---- musl 静态版本（Alpine / 任意发行版可用，无动态库依赖）----
+          # 用 Zig 作为交叉 C 编译器：zig cc -target <triple>-linux-musl 自带 musl libc，
+          # 一条工具链同时覆盖 amd64 / arm64，不需要额外的交叉 sysroot。
+          - label: linux-amd64-musl
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            cc: zig cc -target x86_64-linux-musl
+            ext: ""
+            musl: true
+            ldflags: '-s -w -extldflags=-static'
+            tags: 'netgo osusergo'
+            install: |
+              set -eux
+              sudo apt-get update -y
+              sudo apt-get install -y --no-install-recommends \
+                ca-certificates curl file
+
+          - label: linux-arm64-musl
+            runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            cc: zig cc -target aarch64-linux-musl
+            ext: ""
+            musl: true
+            ldflags: '-s -w -extldflags=-static'
+            tags: 'netgo osusergo'
+            install: |
+              set -eux
+              sudo apt-get update -y
+              sudo apt-get install -y --no-install-recommends \
+                ca-certificates curl file
+
           - label: windows-amd64
             runner: windows-latest
             goos: windows
@@ -134,6 +169,13 @@ jobs:
       - name: Install C toolchain (${{ matrix.label }})
         run: ${{ matrix.install }}
 
+      # musl 目标用 Zig 提供的 musl libc（自带 sysroot，无需交叉 sysroot 安装）
+      - name: Set up Zig (musl C compiler)
+        if: matrix.musl
+        uses: mlugg/setup-zig@v2
+        with:
+          version: '0.14.1'
+
       - name: Sanity go list all packages
         working-directory: data_server
         shell: bash
@@ -143,17 +185,29 @@ jobs:
         working-directory: data_server
         shell: bash
         env:
-          GOOS:   ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CC:     ${{ matrix.cc }}
+          GOOS:    ${{ matrix.goos }}
+          GOARCH:  ${{ matrix.goarch }}
+          CC:      ${{ matrix.cc }}
+          LDFLAGS: ${{ matrix.ldflags || '-s -w' }}
+          TAGS:    ${{ matrix.tags }}
         run: |
           set -eux
           mkdir -p dist
           BIN="dist/xcimoc-data-server-${{ matrix.label }}${{ matrix.ext }}"
-          go build -ldflags="-s -w" -o "$BIN" .
+          go build -tags "$TAGS" -ldflags "$LDFLAGS" -o "$BIN" .
           ls -lh dist/
           echo "BIN=$BIN"                       >> "$GITHUB_ENV"
           echo "BIN_NAME=$(basename "$BIN")"     >> "$GITHUB_ENV"
+
+      # musl 产物必须是完全静态的，否则在 Alpine 上跑不起来
+      - name: Verify static linking (${{ matrix.label }})
+        if: matrix.musl
+        working-directory: data_server
+        shell: bash
+        run: |
+          set -eux
+          file "$BIN"
+          file "$BIN" | grep -q 'statically linked'
 
       - name: Upload per-target artifact
         uses: actions/upload-artifact@v6
@@ -221,5 +275,7 @@ jobs:
       #     files: |
       #       data_server/dist/xcimoc-data-server-linux-amd64
       #       data_server/dist/xcimoc-data-server-linux-arm64
+      #       data_server/dist/xcimoc-data-server-linux-amd64-musl
+      #       data_server/dist/xcimoc-data-server-linux-arm64-musl
       #       data_server/dist/xcimoc-data-server-windows-amd64.exe
       #       data_server/dist/config.example.yaml
