@@ -22,12 +22,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.facebook.imagepipeline.core.ImagePipelineFactory;
 import com.google.common.collect.Lists;
+import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
+import com.xyrlsz.xcimocob.component.DialogCaller;
 import com.xyrlsz.xcimocob.core.WebDavConf;
 import com.xyrlsz.xcimocob.fresco.ControllerBuilderSupplierFactory;
 import com.xyrlsz.xcimocob.fresco.ImagePipelineFactoryBuilder;
 import com.xyrlsz.xcimocob.global.Extra;
-import com.xyrlsz.xcimocob.component.DialogCaller;
 import com.xyrlsz.xcimocob.manager.ChapterBookmarkStore;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
@@ -125,7 +126,13 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
 
     @Override
     protected RecyclerView.LayoutManager initLayoutManager() {
-        return new GridLayoutManager(this, 3);
+        int spanCount = 3;
+        if ((App.mHeightPixels * 16 <= App.mWidthPixels * 9)) {
+            spanCount = 4;
+        }
+        GridLayoutManager manager = new GridLayoutManager(this, spanCount);
+        manager.setRecycleChildrenOnDetach(true);
+        return manager;
     }
 
     @Override

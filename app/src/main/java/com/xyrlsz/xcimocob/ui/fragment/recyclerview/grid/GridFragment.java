@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-
 /**
  * Created by Hiroshi on 2016/9/22.
  */
@@ -78,12 +77,14 @@ public abstract class GridFragment extends RecyclerViewFragment implements GridV
         int spanCount = 3;
         if (App.mHeightPixels * 9 < App.mWidthPixels * 16) {
             spanCount = 4;
+            if ((App.mHeightPixels * 16 <= App.mWidthPixels * 9)) {
+                spanCount = 5;
+            }
         }
         GridLayoutManager manager = new GridLayoutManager(getActivity(), spanCount);
         manager.setRecycleChildrenOnDetach(true);
         return manager;
     }
-
 
 
     @Override
