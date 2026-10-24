@@ -286,9 +286,12 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         // 手动处理系统栏 insets（替代布局里的 fitsSystemWindows）：
         // 状态栏 / 导航栏可见时给 reader_box 留出对应高度的 padding；
         // 隐藏时 insets 归零、padding 归零，避免隐藏导航栏后底部残留一大段空白。
+        // 新系统强制 edge-to-edge，隐藏状态栏后内容仍会画到挖孔区域下面，
+        // 所以要一并扣除挖孔安全区，否则右上角的页码/电量胶囊会被前置摄像头挡住。
         ViewCompat.setOnApplyWindowInsetsListener(mReaderBox, (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(0, systemBars.top, 0, systemBars.bottom);
+            Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars()
+                    | WindowInsetsCompat.Type.displayCutout());
+            v.setPadding(safe.left, safe.top, safe.right, safe.bottom);
             return insets;
         });
         boolean isWhiteBackground = App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_WHITE_BACKGROUND, true);
@@ -440,19 +443,23 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
-     * 大横屏（折叠屏展开 / 平板）且开启开关时，左右各显示一页
+     * 大屏（折叠屏展开 / 平板）且开启开关时，左右各显示一页
      */
     private boolean isDualPageEnabled() {
         return mode == PreferenceManager.READER_MODE_PAGE
                 && turn != PreferenceManager.READER_TURN_ATB
                 && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false)
-                && isLargeLandscape();
+                && isDualPageScreen();
     }
 
-    private boolean isLargeLandscape() {
+    /**
+     * 折叠屏展开后接近正方形，系统可能仍判定为竖屏（阅读器的「屏幕方向」也可能把它固定成竖屏），
+     * 只看 orientation 会让双页永远不生效，因此改为判断屏幕够不够大、横向放不放得下两页。
+     */
+    private boolean isDualPageScreen() {
         Configuration configuration = getResources().getConfiguration();
-        return configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-                && configuration.smallestScreenWidthDp >= 600;
+        return configuration.smallestScreenWidthDp >= 600
+                && configuration.screenWidthDp * 4 >= configuration.screenHeightDp * 3;
     }
 
     /**

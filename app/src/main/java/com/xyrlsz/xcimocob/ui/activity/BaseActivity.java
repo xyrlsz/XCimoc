@@ -137,8 +137,10 @@ public abstract class BaseActivity extends AppCompatActivity implements BaseView
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 ViewCompat.setOnApplyWindowInsetsListener(mToolbar, (v, insets) -> {
-                    Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-                    v.setPadding(0, systemBars.top, 0, v.getPaddingBottom());
+                    // 一并扣除挖孔安全区：横屏时前置摄像头可能在侧边，会盖住标题栏右侧的菜单
+                    Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars()
+                            | WindowInsetsCompat.Type.displayCutout());
+                    v.setPadding(safe.left, safe.top, safe.right, v.getPaddingBottom());
                     return insets;
                 });
             }
