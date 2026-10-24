@@ -62,6 +62,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private PipelineDraweeControllerBuilderSupplier mLargeControllerSupplier;
     private OnTapGestureListener mTapGestureListener;
     private OnLazyLoadListener mLazyLoadListener;
+    private OnImageRatioListener mRatioListener;
     private boolean isVertical; // 开页方向
     private boolean isDualPage; // 大横屏左右双页
     private boolean isDualPageRtl; // 双页从右往左排列
@@ -702,6 +703,30 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     }
 
     /**
+     * 图片的高宽比（height / width），解码前后都可用；尺寸未知时返回 0
+     */
+    public float getRatioAt(int dataPosition) {
+        if (dataPosition < 0 || dataPosition >= mDataSet.size()) {
+            return 0f;
+        }
+        ImageUrl image = mDataSet.get(dataPosition);
+        Float ratio = mImageRatios.get(image.getId());
+        if (ratio != null) {
+            return ratio;
+        }
+        int width = image.getWidth();
+        int height = image.getHeight();
+        return width > 0 && height > 0 ? (float) height / width : 0f;
+    }
+
+    /**
+     * 该数据位置是否需要单独占一屏（超长图 / 超宽图）
+     */
+    public boolean isSinglePageAt(int dataPosition) {
+        return isSinglePageImage(dataPosition);
+    }
+
+    /**
      * 该数据位置的图是否需要单独占一屏显示
      */
     private boolean isSinglePageImage(int dataPosition) {
@@ -737,6 +762,9 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         }
         float ratio = (float) imageInfo.getHeight() / imageInfo.getWidth();
         Float old = mImageRatios.put(image.getId(), ratio);
+        if (!Float.valueOf(ratio).equals(old) && mRatioListener != null) {
+            mRatioListener.onImageRatioChanged();
+        }
         boolean wasSingle = old != null && needsSinglePage(old);
         boolean isSingle = needsSinglePage(ratio);
         if (wasSingle == isSingle) {
@@ -764,6 +792,17 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     public void setOnPageGroupChangedListener(OnPageGroupChangedListener listener) {
         mPageGroupChangedListener = listener;
+    }
+
+    /**
+     * 图片比例（高/宽）记录或更新后回调，调用方据此重新判断图片是否被挖孔挡到
+     */
+    public interface OnImageRatioListener {
+        void onImageRatioChanged();
+    }
+
+    public void setOnImageRatioListener(OnImageRatioListener listener) {
+        mRatioListener = listener;
     }
 
     /**

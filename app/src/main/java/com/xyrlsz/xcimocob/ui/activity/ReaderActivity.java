@@ -39,6 +39,7 @@ import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
+import androidx.core.view.DisplayCutoutCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -72,6 +73,7 @@ import com.xyrlsz.xcimocob.ui.widget.OnTapGestureListener;
 import com.xyrlsz.xcimocob.ui.widget.PreCacheLayoutManager;
 import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
 import com.xyrlsz.xcimocob.ui.widget.SeekBar;
+import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.ui.widget.ZoomableRecyclerView;
 import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
@@ -160,6 +162,15 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     View mProgressLayout;
     View mBackLayout;
     View mInfoLayout;
+    View mBackBtn;
+    /**
+     * 前置摄像头挖孔区域（窗口坐标）。挖孔不影响阅读区大小，
+     * 只有被它挡到的浮层控件才会挪位置，避免屏幕顶部整块留白。
+     */
+    private final List<Rect> mCutoutRects = new ArrayList<>();
+    private Insets mCutoutInsets = Insets.NONE;
+    private int mSystemBarTop = 0;
+    private int mSystemBarBottom = 0;
     SeekBar mSeekBar;
     TextView mLoadingText;
     View mLoadingLayout;
@@ -273,6 +284,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mProgressLayout = findViewById(R.id.reader_progress_layout);
         mBackLayout = findViewById(R.id.reader_back_layout);
         mInfoLayout = findViewById(R.id.reader_info_layout);
+        mBackBtn = findViewById(R.id.reader_back_btn);
         mSeekBar = findViewById(R.id.reader_seek_bar);
         mLoadingText = findViewById(R.id.reader_loading);
         mLoadingLayout = findViewById(R.id.reader_loading_layout);
@@ -286,13 +298,22 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         // 手动处理系统栏 insets（替代布局里的 fitsSystemWindows）：
         // 状态栏 / 导航栏可见时给 reader_box 留出对应高度的 padding；
         // 隐藏时 insets 归零、padding 归零，避免隐藏导航栏后底部残留一大段空白。
-        // 新系统强制 edge-to-edge，隐藏状态栏后内容仍会画到挖孔区域下面，
-        // 所以要一并扣除挖孔安全区，否则右上角的页码/电量胶囊会被前置摄像头挡住。
+        // 挖孔不无条件留白（那样屏幕顶部会空出一大条），
+        // 只有在图片真的会被摄像头挡住时才让出安全边距，见 applyCutoutPadding。
         ViewCompat.setOnApplyWindowInsetsListener(mReaderBox, (v, insets) -> {
-            Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars()
-                    | WindowInsetsCompat.Type.displayCutout());
-            v.setPadding(safe.left, safe.top, safe.right, safe.bottom);
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            mSystemBarTop = systemBars.top;
+            mSystemBarBottom = systemBars.bottom;
+            mCutoutInsets = insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            updateCutoutRects(insets.getDisplayCutout());
+            applyCutoutPadding();
             return insets;
+        });
+        mReaderBox.addOnLayoutChangeListener((v, left, top, right, bottom,
+                                              oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                applyCutoutPadding();
+            }
         });
         boolean isWhiteBackground = App.getPreferenceManager().getBoolean(PreferenceManager.PREF_READER_WHITE_BACKGROUND, true);
         if (isWhiteBackground) {
@@ -335,9 +356,216 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 mLastDx = dx;
                 mLastDy = dy;
             }
+
+            @Override
+            public void onScrollStateChanged(@NotNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    // 翻到新的一页后，按这一页的图片重新判断要不要给挖孔让位
+                    applyCutoutPadding();
+                }
+            }
         });
-        findViewById(R.id.reader_back_btn).setOnClickListener(v -> onBackClick());
+        mBackBtn.setOnClickListener(v -> onBackClick());
+        // 页码/电量胶囊、返回按钮各自避开前置摄像头
+        avoidDisplayCutout(mInfoLayout);
+        avoidDisplayCutout(mBackBtn);
         initSwipeUpSettingsHint();
+    }
+
+    /**
+     * 记录前置摄像头挖孔的位置（窗口坐标），并让浮层控件重新避让一次
+     */
+    private void updateCutoutRects(DisplayCutoutCompat cutout) {
+        List<Rect> rects = cutout != null ? cutout.getBoundingRects() : new ArrayList<>();
+        if (mCutoutRects.equals(rects)) {
+            return;
+        }
+        mCutoutRects.clear();
+        mCutoutRects.addAll(rects);
+        applyCutoutAvoidance(mInfoLayout);
+        applyCutoutAvoidance(mBackBtn);
+    }
+
+    /**
+     * 阅读区要不要给挖孔让位：只有图片真的会被摄像头挡住时才让，
+     * 因为图片是按比例居中缩放的，角落里的小孔绝大多数页面都碰不到，
+     * 无条件留白只会在屏幕顶部空出一大条。
+     */
+    private void applyCutoutPadding() {
+        if (mReaderBox == null) {
+            return;
+        }
+        boolean covered = isImageCoveredByCutout();
+        int left = covered ? mCutoutInsets.left : 0;
+        int top = mSystemBarTop + (covered ? mCutoutInsets.top : 0);
+        int right = covered ? mCutoutInsets.right : 0;
+        int bottom = mSystemBarBottom + (covered ? mCutoutInsets.bottom : 0);
+        if (mReaderBox.getPaddingLeft() == left && mReaderBox.getPaddingTop() == top
+                && mReaderBox.getPaddingRight() == right && mReaderBox.getPaddingBottom() == bottom) {
+            return;
+        }
+        mReaderBox.setPadding(left, top, right, bottom);
+    }
+
+    /**
+     * 当前屏的图片是否会画到挖孔下面。
+     * 用「不留白」时的阅读区尺寸来算，避免让位之后又算出不需要让位、来回抖
+     */
+    private boolean isImageCoveredByCutout() {
+        if (mCutoutRects.isEmpty() || mReaderAdapter == null || mReaderBox == null) {
+            return false;
+        }
+        int width = mReaderBox.getWidth();
+        int height = mReaderBox.getHeight() - mSystemBarTop - mSystemBarBottom;
+        if (width <= 0 || height <= 0) {
+            return false;
+        }
+        int top = mSystemBarTop;
+        int[] positions = getScreenDataPositions(getActionAdapterPosition());
+        for (int i = 0; i < positions.length; ++i) {
+            Rect area = getImageArea(positions[i], i, positions.length, width, height, top);
+            Rect imageRect = getDisplayedImageRect(positions[i], area);
+            if (imageRect == null) {
+                continue;
+            }
+            for (Rect cutout : mCutoutRects) {
+                if (Rect.intersects(imageRect, cutout)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 第 index 张图占用的区域（窗口坐标）：单页整屏，双页各占一半，左右顺序跟随阅读方向。
+     * 双页时单独占屏的长图/宽图仍然按整屏算
+     */
+    private Rect getImageArea(int dataPosition, int index, int count, int width, int height, int top) {
+        if (!mDualPage || (count == 1 && mReaderAdapter.isSinglePageAt(dataPosition))) {
+            return new Rect(0, top, width, top + height);
+        }
+        // 从左往右排列时第一张在左半边，从右往左时第一张在右半边
+        boolean firstOnLeft = !mReaderAdapter.isDualPageRtl();
+        boolean onLeft = (index == 0) == firstOnLeft;
+        int half = width / 2;
+        return onLeft ? new Rect(0, top, half, top + height)
+                : new Rect(half, top, width, top + height);
+    }
+
+    /**
+     * 图片按比例居中缩放（不裁剪）后实际占的位置；比例未知时返回 null
+     */
+    private Rect getDisplayedImageRect(int dataPosition, Rect area) {
+        float ratio = mReaderAdapter.getRatioAt(dataPosition);
+        if (ratio <= 0) {
+            return null;
+        }
+        int width = area.width();
+        int height = area.height();
+        // ratio 是 高 / 宽
+        float drawWidth;
+        float drawHeight;
+        if (ratio >= (float) height / width) {
+            // 图片比阅读区更「竖」，高度受限
+            drawHeight = height;
+            drawWidth = height / ratio;
+        } else {
+            // 宽度受限
+            drawWidth = width;
+            drawHeight = width * ratio;
+        }
+        float left = area.left + (width - drawWidth) / 2f;
+        float top = area.top + (height - drawHeight) / 2f;
+        return new Rect(Math.round(left), Math.round(top),
+                Math.round(left + drawWidth), Math.round(top + drawHeight));
+    }
+
+    /**
+     * 布局完成 / 尺寸变化后重新计算避让位移（此时控件才有真实宽高）
+     */
+    private void avoidDisplayCutout(View overlay) {
+        if (overlay == null) {
+            return;
+        }
+        overlay.addOnLayoutChangeListener((v, left, top, right, bottom,
+                                           oldLeft, oldTop, oldRight, oldBottom) ->
+                applyCutoutAvoidance(v));
+    }
+
+    /**
+     * 把被挖孔挡到的控件挪到挖孔以外。上下左右四个方向里取位移最小的一个
+     * （同距离优先上下，避免横向挪动和中间的章节标题挤在一起），
+     * 并保证控件挪完仍然完整留在父容器内。
+     */
+    private void applyCutoutAvoidance(View view) {
+        if (view == null) {
+            return;
+        }
+        // 位移不触发重新布局，先归零才能拿到控件真实的布局位置
+        view.setTranslationX(0f);
+        view.setTranslationY(0f);
+        int width = view.getWidth();
+        int height = view.getHeight();
+        if (mCutoutRects.isEmpty() || width == 0 || height == 0
+                || !(view.getParent() instanceof View)) {
+            return;
+        }
+        View parent = (View) view.getParent();
+        int parentWidth = parent.getWidth();
+        int parentHeight = parent.getHeight();
+        if (parentWidth == 0 || parentHeight == 0) {
+            return;
+        }
+        int[] location = new int[2];
+        view.getLocationInWindow(location);
+        int[] parentLocation = new int[2];
+        parent.getLocationInWindow(parentLocation);
+        int gap = ViewUtils.dpToPixelInt(6, this);
+        float dx = 0f;
+        float dy = 0f;
+        for (Rect cutout : mCutoutRects) {
+            int left = location[0] + Math.round(dx);
+            int top = location[1] + Math.round(dy);
+            Rect self = new Rect(left, top, left + width, top + height);
+            if (!Rect.intersects(self, cutout)) {
+                continue;
+            }
+            // 依次是：下移、上移、左移、右移，取位移最小的那个
+            float[] shifts = {
+                    (cutout.bottom + gap) - self.top,
+                    (cutout.top - gap) - self.bottom,
+                    (cutout.left - gap) - self.right,
+                    (cutout.right + gap) - self.left,
+            };
+            boolean found = false;
+            float best = 0f;
+            int bestIndex = -1;
+            for (int i = 0; i < shifts.length; ++i) {
+                boolean vertical = i < 2;
+                float nextX = left + (vertical ? 0f : shifts[i]);
+                float nextY = top + (vertical ? shifts[i] : 0f);
+                boolean inside = nextX >= parentLocation[0]
+                        && nextY >= parentLocation[1]
+                        && nextX + width <= parentLocation[0] + parentWidth
+                        && nextY + height <= parentLocation[1] + parentHeight;
+                if (inside && (!found || Math.abs(shifts[i]) < Math.abs(best))) {
+                    found = true;
+                    best = shifts[i];
+                    bestIndex = i;
+                }
+            }
+            if (!found) {
+                continue;
+            }
+            if (bestIndex < 2) {
+                dy += best;
+            } else {
+                dx += best;
+            }
+        }
+        view.setTranslationX(dx);
+        view.setTranslationY(dy);
     }
 
     /**
@@ -422,6 +650,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setLazyLoadListener(this);
         // 图片尺寸只有解码后才知道，识别出需要单独占屏的图后重建列表项
         mReaderAdapter.setOnPageGroupChangedListener(this::onPageGroupChanged);
+        // 解码出图片比例后重新判断图片会不会被摄像头挖孔挡到
+        mReaderAdapter.setOnImageRatioListener(this::applyCutoutPadding);
         mReaderAdapter.setScaleFactor(mPreference.getNumber(PreferenceManager.PREF_READER_SCALE_FACTOR, 200).intValue() * 0.01f);
         mReaderAdapter.setDoubleTap(!mPreference.getBoolean(PreferenceManager.PREF_READER_BAN_DOUBLE_CLICK, false));
         mReaderAdapter.setVertical(turn == PreferenceManager.READER_TURN_ATB);
