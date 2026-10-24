@@ -387,19 +387,52 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
-     * 阅读区要不要给挖孔让位：只有图片真的会被摄像头挡住时才让，
-     * 因为图片是按比例居中缩放的，角落里的小孔绝大多数页面都碰不到，
-     * 无条件留白只会在屏幕顶部空出一大条。
+     * 阅读区要不要给挖孔让位：
+     * 分页模式按图片的实际位置判断（图片是按比例居中缩放的，角落里的小孔大多碰不到）；
+     * 卷纸模式的图片铺满屏幕并随滚动不断经过摄像头，必然被挡，直接让出安全边距。
      */
     private void applyCutoutPadding() {
         if (mReaderBox == null) {
             return;
         }
-        boolean covered = isImageCoveredByCutout();
-        int left = covered ? mCutoutInsets.left : 0;
-        int top = mSystemBarTop + (covered ? mCutoutInsets.top : 0);
-        int right = covered ? mCutoutInsets.right : 0;
-        int bottom = mSystemBarBottom + (covered ? mCutoutInsets.bottom : 0);
+        boolean covered = mode == PreferenceManager.READER_MODE_STREAM || isImageCoveredByCutout();
+        int left = 0;
+        int top = mSystemBarTop;
+        int right = 0;
+        int bottom = mSystemBarBottom;
+        if (covered) {
+            if (mCutoutRects.size() > 1) {
+                // 多个挖孔没法只让一条边，四面都让开
+                left = mCutoutInsets.left;
+                top = Math.max(mSystemBarTop, mCutoutInsets.top);
+                right = mCutoutInsets.right;
+                bottom = Math.max(mSystemBarBottom, mCutoutInsets.bottom);
+            } else {
+                int[] insets = {mCutoutInsets.left, mCutoutInsets.top,
+                        mCutoutInsets.right, mCutoutInsets.bottom};
+                // 单个挖孔（角上的前置摄像头）从上面或侧面让开都行，只让一条边就够；
+                // 卷纸竖向滚动时图片按宽度铺满，让顶部不会让图片变小，优先让顶部，
+                // 横向滚动时优先让侧边
+                int[] order = turn == PreferenceManager.READER_TURN_ATB
+                        ? new int[]{1, 0, 2, 3} : new int[]{0, 2, 1, 3};
+                for (int side : order) {
+                    if (insets[side] <= 0) {
+                        continue;
+                    }
+                    if (side == 0) {
+                        left = insets[0];
+                    } else if (side == 1) {
+                        // 与状态栏高度取较大值，避免两者叠加让顶部空出双倍
+                        top = Math.max(mSystemBarTop, insets[1]);
+                    } else if (side == 2) {
+                        right = insets[2];
+                    } else {
+                        bottom = Math.max(mSystemBarBottom, insets[3]);
+                    }
+                    break;
+                }
+            }
+        }
         if (mReaderBox.getPaddingLeft() == left && mReaderBox.getPaddingTop() == top
                 && mReaderBox.getPaddingRight() == right && mReaderBox.getPaddingBottom() == bottom) {
             return;
