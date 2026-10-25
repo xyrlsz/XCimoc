@@ -254,6 +254,7 @@ public class Manga {
                         if (tags != null && !tags.isEmpty()) {
                             newComic.setTags(tags);
                         }
+                        persistComicInfo(parser, comic, newComic);
                         RxBus.getInstance().post(new RxEvent(RxEvent.EVENT_COMIC_UPDATE_INFO, newComic));
                         Request chapterReq = parser.getChapterRequest(html, comic.getCid());
                         if (chapterReq != null) {
@@ -305,6 +306,39 @@ public class Manga {
                         return Observable.error(e);
                     });
         })).subscribeOn(Schedulers.io());
+    }
+
+    /**
+     * 详情解析成功后立即把漫画落库，并把数据库分配的 ID 回填到内存对象。
+     * 章节/图片的 sourceComic 由漫画 ID 计算（id << 16 | source），必须在解析章节之前完成入库；
+     * 否则首次打开（id 还是 0）时章节会落到「仅源 ID」的不稳定 key 上，
+     * 之后解析失败按真实漫画 ID 回读数据库就查不到旧数据。
+     */
+    private static void persistComicInfo(final MangaParser parser, final Comic comic, final Comic newComic) {
+        if (newComic.getCid() == null) {
+            return;
+        }
+        if (newComic != comic) {
+            // 保证入库记录与正在浏览的漫画一致（部分解析器会新建 Comic 而非复用入参）
+            newComic.setSource(comic.getSource());
+            newComic.setCid(comic.getCid());
+        }
+        try {
+            ComicManager comicManager = ComicManager.getInstance(parser);
+            comicManager.updateOrInsert(newComic);
+            if (newComic.getId() <= 0) {
+                // 并发写入时 updateOrInsert 内的唯一约束异常会被忽略，此时对象拿不到 ID，重新回读一次
+                Comic dbComic = comicManager.load(newComic.getSource(), newComic.getCid());
+                if (dbComic != null) {
+                    newComic.setId(dbComic.getId());
+                }
+            }
+            if (newComic.getId() > 0) {
+                comic.setId(newComic.getId());
+            }
+        } catch (Exception e) {
+            Log.w("Manga", "[Manga] persist comic info failed cid=" + newComic.getCid(), e);
+        }
     }
 
     public static Observable<List<Comic>> getCategoryComic(final Parser parser, final String format,

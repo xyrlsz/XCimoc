@@ -240,8 +240,11 @@ public class DetailPresenter extends BasePresenter<DetailView> {
                     public void accept(List<Chapter> list) {
                         // 数据库写入在 IO 线程完成，不阻塞主线程
                         if (mComic.getId() > 0) {
+                            // 统一改写为「漫画 ID + 源 ID」的主键，避免解析器用 id=0 生成章节 ID
+                            // 导致章节落到不稳定 key（解析失败后按真实 ID 回读会查不到）
                             Long sourceComic = IdCreator.createSourceComic(mComic);
                             for (Chapter chapter : list) {
+                                chapter.setId(IdCreator.recreateChapterId(sourceComic, chapter.getId()));
                                 chapter.setSourceComic(sourceComic);
                             }
                         }
