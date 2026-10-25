@@ -20,157 +20,159 @@ name: Android CI (preview tag)
 # ---------------------------------------------------------------------
 
 on:
-    push:
-        tags:
-            - "v*-preview*"
-            - "v*-beta*"
+  push:
+    tags:
+      - "v*-preview*"
+      - "v*-beta*"
 
 jobs:
-    # ============================================================
-    # 1) Go 服务器（跨平台交叉编译，统一在 ubuntu-latest 上做，
-    #    避免重复正式版里那套 Windows MinGW 环境搭建）
-    #    sqlite 走 mattn/go-sqlite3 需 CGO，用对应交叉编译器。
-    # ============================================================
-    build-data-server:
-        name: "Data Server · ${{ matrix.label }}"
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - label: linux-amd64
-                      goos: linux
-                      goarch: amd64
-                      cc: gcc
-                      install: "build-essential ca-certificates curl"
-                      ext: ""
+  # ============================================================
+  # 1) Go 服务器（跨平台交叉编译，统一在 ubuntu-latest 上做，
+  #    避免重复正式版里那套 Windows MinGW 环境搭建）
+  #    sqlite 走 mattn/go-sqlite3 需 CGO，用对应交叉编译器。
+  # ============================================================
+  build-data-server:
+    name: "Data Server · ${{ matrix.label }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux-amd64
+            goos: linux
+            goarch: amd64
+            cc: gcc
+            install: "build-essential ca-certificates curl"
+            ext: ""
 
-                    - label: linux-arm64
-                      goos: linux
-                      goarch: arm64
-                      cc: aarch64-linux-gnu-gcc
-                      install: "build-essential ca-certificates curl gcc-aarch64-linux-gnu libc6-dev-arm64-cross"
-                      ext: ""
+          - label: linux-arm64
+            goos: linux
+            goarch: arm64
+            cc: aarch64-linux-gnu-gcc
+            install: "build-essential ca-certificates curl gcc-aarch64-linux-gnu libc6-dev-arm64-cross"
+            ext: ""
 
-                    - label: windows-amd64
-                      goos: windows
-                      goarch: amd64
-                      cc: x86_64-w64-mingw32-gcc
-                      install: "build-essential ca-certificates curl gcc-mingw-w64-x86-64"
-                      ext: ".exe"
+          - label: windows-amd64
+            goos: windows
+            goarch: amd64
+            cc: x86_64-w64-mingw32-gcc
+            install: "build-essential ca-certificates curl gcc-mingw-w64-x86-64"
+            ext: ".exe"
 
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  fetch-depth: 1
-                  submodules: recursive
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+          submodules: recursive
 
-            - name: Set up Go
-              uses: actions/setup-go@v6
-              with:
-                  go-version: ">=1.25"
-                  cache-dependency-path: data_server/go.sum
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ">=1.25"
+          cache-dependency-path: data_server/go.sum
 
-            - name: Install cross toolchain (${{ matrix.label }})
-              run: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends ${{ matrix.install }}
+      - name: Install cross toolchain (${{ matrix.label }})
+        run: sudo apt-get update -y && sudo apt-get install -y --no-install-recommends ${{ matrix.install }}
 
-            - name: Build data_server (${{ matrix.label }})
-              working-directory: data_server
-              shell: bash
-              env:
-                  CGO_ENABLED: "1"
-                  GOOS: ${{ matrix.goos }}
-                  GOARCH: ${{ matrix.goarch }}
-                  CC: ${{ matrix.cc }}
-              run: |
-                  set -eux
-                  mkdir -p dist
-                  go build -ldflags="-s -w" -o "dist/xcimoc-data-server-${{ matrix.label }}${{ matrix.ext }}" .
-                  ls -lh dist/
+      - name: Build data_server (${{ matrix.label }})
+        working-directory: data_server
+        shell: bash
+        env:
+          CGO_ENABLED: "1"
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
+        run: |
+          set -eux
+          mkdir -p dist
+          go build -ldflags="-s -w" -o "dist/xcimoc-data-server-${{ matrix.label }}${{ matrix.ext }}" .
+          ls -lh dist/
 
-            - name: Upload artifact ${{ matrix.label }}
-              uses: actions/upload-artifact@v6
-              with:
-                  name: data-server-${{ matrix.label }}
-                  path: data_server/dist/xcimoc-data-server-${{ matrix.label }}${{ matrix.ext }}
+      - name: Upload artifact ${{ matrix.label }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: data-server-${{ matrix.label }}
+          path: data_server/dist/xcimoc-data-server-${{ matrix.label }}${{ matrix.ext }}
 
-    # ============================================================
-    # 2) APK 构建 + 收集 data_server 产物 + 创建 Pre-release
-    # ============================================================
-    build-and-preview-release:
-        runs-on: ubuntu-latest
-        needs: build-data-server
+  # ============================================================
+  # 2) APK 构建 + 收集 data_server 产物 + 创建 Pre-release
+  # ============================================================
+  build-and-preview-release:
+    runs-on: ubuntu-latest
+    needs: build-data-server
 
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  fetch-depth: 0
-                  submodules: recursive
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: recursive
 
-            - name: Set up JDK 25
-              uses: actions/setup-java@v5
-              with:
-                  java-version: "25"
-                  distribution: "zulu"
-                  cache: gradle
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "zulu"
+          cache: gradle
 
-            - name: Collect Go server artifacts
-              uses: actions/download-artifact@v8
-              with:
-                  pattern: data-server-*
-                  path: data_server/dist_raw/
-                  merge-multiple: true
+      - name: Collect Go server artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: data-server-*
+          path: data_server/dist_raw/
+          merge-multiple: true
 
-            - name: Stage data_server/dist for release
-              run: |
-                  set -eux
-                  cd data_server
-                  mkdir -p dist
-                  if [ -d dist_raw ]; then
-                    find dist_raw -maxdepth 2 -type f -exec cp -f {} dist/ \;
-                  fi
-                  cp -f config.example.yaml dist/
-                  ls -lh dist/
+      - name: Stage data_server/dist for release
+        run: |
+          set -eux
+          cd data_server
+          mkdir -p dist
+          if [ -d dist_raw ]; then
+            find dist_raw -maxdepth 2 -type f -exec cp -f {} dist/ \;
+          fi
+          cp -f config.example.yaml dist/
+          ls -lh dist/
 
-            - name: Create keystore file from secret
-              env:
-                  KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-              run: |
-                  echo "$KEYSTORE_BASE64" | base64 -d > ${{ github.workspace }}/xcimoc.jks
+      - name: Create keystore file from secret
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > ${{ github.workspace }}/xcimoc.jks
 
-            - name: Grant execute permission for build.sh
-              run: chmod +x build.sh
+      - name: Grant execute permission for build.sh
+        run: chmod +x build.sh
 
-            - name: Build APK with build.sh
-              env:
-                  KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-                  KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-                  KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-              run: ./build.sh
+      - name: Build APK with build.sh
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: ./build.sh
 
-            # 预览版：直接创建 Pre-release（prerelease: true）。
-            # App 端 /releases/latest 不会返回它，因此不会触发 App 更新提示。
-            - name: Create GitHub Pre-release (APK + Go binaries)
-              uses: softprops/action-gh-release@v3
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  name: "Preview ${{ github.ref_name }}"
-                  tag_name: ${{ github.ref }}
-                  prerelease: true
-                  body: |
-                      🧪 **预览版（Preview）**：${{ github.ref_name }}
+      # 预览版：直接创建 Pre-release（prerelease: true）。
+      # App 端 /releases/latest 不会返回它，因此不会触发 App 更新提示。
+      - name: Create GitHub Pre-release (APK + Go binaries)
+        uses: softprops/action-gh-release@v3
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          name: "Preview ${{ github.ref_name }}"
+          tag_name: ${{ github.ref }}
+          prerelease: true
+          body: |
+            🧪 **预览版（Preview）**：${{ github.ref_name }}
 
-                      - 构建于 commit：`${{ github.sha }}`
-                      - 此版本为 **Pre-release**，App 自动更新**不会**提示此版本。
-                      - 请仅在测试时安装。正式版请以普通 `v*` Release 为准。
-                  files: |
-                      app/build/outputs/apk/release/app-arm64-v8a-release.apk
-                      app/build/outputs/apk/release/app-armeabi-v7a-release.apk
-                      app/build/outputs/apk/release/app-universal-release.apk
-                      app/build/outputs/apk/release/app-x86_64-release.apk
-                      app/build/outputs/apk/release/app-x86-release.apk
-                      data_server/dist/xcimoc-data-server-linux-amd64
-                      data_server/dist/xcimoc-data-server-linux-arm64
-                      data_server/dist/xcimoc-data-server-windows-amd64.exe
-                      data_server/dist/config.example.yaml
+            - 构建于 commit：`${{ github.sha }}`
+            - 此版本为 **Pre-release**，App 自动更新**不会**提示此版本。
+            - 请仅在测试时安装。正式版请以普通 `v*` Release 为准。
+          files: |
+            app/build/outputs/apk/release/app-arm64-v8a-release.apk
+            app/build/outputs/apk/release/app-armeabi-v7a-release.apk
+            app/build/outputs/apk/release/app-universal-release.apk
+            app/build/outputs/apk/release/app-x86_64-release.apk
+            app/build/outputs/apk/release/app-x86-release.apk
+            data_server/dist/xcimoc-data-server-linux-amd64
+            data_server/dist/xcimoc-data-server-linux-arm64
+            data_server/dist/xcimoc-data-server-linux-amd64-musl
+            data_server/dist/xcimoc-data-server-linux-arm64-musl
+            data_server/dist/xcimoc-data-server-windows-amd64.exe
+            data_server/dist/config.example.yaml

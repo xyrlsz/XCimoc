@@ -262,6 +262,8 @@ jobs:
             app/build/outputs/apk/release/app-x86-release.apk
             data_server/dist/xcimoc-data-server-linux-amd64
             data_server/dist/xcimoc-data-server-linux-arm64
+            data_server/dist/xcimoc-data-server-linux-amd64-musl
+            data_server/dist/xcimoc-data-server-linux-arm64-musl
             data_server/dist/xcimoc-data-server-windows-amd64.exe
             data_server/dist/config.example.yaml
 

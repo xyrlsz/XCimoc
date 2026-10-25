@@ -36,15 +36,15 @@ on:
         default: false
         type: boolean
       go_version:
-        description: 'Go toolchain version (passed to setup-go). Defaults to >=1.25 (same as go.mod).'
+        description: "Go toolchain version (passed to setup-go). Defaults to >=1.25 (same as go.mod)."
         required: false
-        default: '>=1.25'
+        default: ">=1.25"
         type: string
   # push:
   #   tags: ["v*"]
 
 permissions:
-  contents: write   # 为了能往 Release 追加二进制（action-gh-release 需要）
+  contents: write # 为了能往 Release 追加二进制（action-gh-release 需要）
 
 env:
   # SQLite 现在就是 mattn/go-sqlite3，必 CGO
@@ -96,8 +96,8 @@ jobs:
             cc: zig cc -target x86_64-linux-musl
             ext: ""
             musl: true
-            ldflags: '-s -w -extldflags=-static'
-            tags: 'netgo osusergo'
+            ldflags: "-s -w -extldflags=-static"
+            tags: "netgo osusergo"
             install: |
               set -eux
               sudo apt-get update -y
@@ -111,8 +111,8 @@ jobs:
             cc: zig cc -target aarch64-linux-musl
             ext: ""
             musl: true
-            ldflags: '-s -w -extldflags=-static'
-            tags: 'netgo osusergo'
+            ldflags: "-s -w -extldflags=-static"
+            tags: "netgo osusergo"
             install: |
               set -eux
               sudo apt-get update -y
@@ -174,7 +174,7 @@ jobs:
         if: matrix.musl
         uses: mlugg/setup-zig@v2
         with:
-          version: '0.14.1'
+          version: "0.14.1"
 
       - name: Sanity go list all packages
         working-directory: data_server
@@ -185,11 +185,11 @@ jobs:
         working-directory: data_server
         shell: bash
         env:
-          GOOS:    ${{ matrix.goos }}
-          GOARCH:  ${{ matrix.goarch }}
-          CC:      ${{ matrix.cc }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CC: ${{ matrix.cc }}
           LDFLAGS: ${{ matrix.ldflags || '-s -w' }}
-          TAGS:    ${{ matrix.tags }}
+          TAGS: ${{ matrix.tags }}
         run: |
           set -eux
           mkdir -p dist
