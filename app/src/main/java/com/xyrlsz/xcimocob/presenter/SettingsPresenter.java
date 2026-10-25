@@ -14,6 +14,7 @@ import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.view.SettingsView;
+import com.xyrlsz.xcimocob.upscale.MangaUpscalerCompat;
 
 import java.util.List;
 
@@ -37,6 +38,7 @@ public class SettingsPresenter extends BasePresenter<SettingsView> {
 
     public void clearCache() {
         Fresco.getImagePipeline().clearDiskCaches();
+        MangaUpscalerCompat.clearDiskCacheAsync();
     }
 
     public void moveFiles(CimocDocumentFile dst) {

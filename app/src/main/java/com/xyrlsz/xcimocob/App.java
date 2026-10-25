@@ -488,6 +488,15 @@ public class App extends Application implements AppGetter, Thread.UncaughtExcept
         return mCimocDocumentFile;
     }
 
+    @Override
+    public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+                && level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN) {
+            com.xyrlsz.xcimocob.upscale.MangaUpscalerCompat.releaseAsync();
+        }
+    }
+
     public BoxStore getBoxStore() {
         return mBoxStore;
     }

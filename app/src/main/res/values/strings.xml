@@ -203,6 +203,8 @@
     <string name="settings_reader_paging">自动切割大图</string>
     <string name="settings_reader_closeautoresizeimage">关闭自动调整图像大小</string>
     <string name="settings_reader_paging_reverse">反向切割大图</string>
+    <string name="settings_reader_super_resolution">漫画图片超分辨率</string>
+    <string name="settings_reader_super_resolution_summary">使用 RealCUGAN 将阅读图片放大 2 倍；仅 Android 7.0 及以上可用，会增加处理时间和内存占用</string>
     <string name="settings_reader_paging_stream_off">卷纸模式取消切割大图</string>
     <string name="settings_reader_paging_summary">阅读状态自动切割大图</string>
     <string name="settings_reader_closeautoresizeimage_summary">阅读状态关闭自动调整图像大小\n(提升速度，但是图片可能模糊)</string>

@@ -65,6 +65,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
     CheckBoxPreference mReaderBanDoubleClick;
     CheckBoxPreference mReaderPaging;
     CheckBoxPreference mReaderCloseAutoResizeImage;
+    CheckBoxPreference mReaderSuperResolution;
     CheckBoxPreference mReaderPagingReverse;
     CheckBoxPreference mReaderWhiteEdge;
     CheckBoxPreference mReaderWhiteBackground;
@@ -109,6 +110,7 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         mReaderBanDoubleClick = findViewById(R.id.settings_reader_ban_double_click);
         mReaderPaging = findViewById(R.id.settings_reader_paging);
         mReaderCloseAutoResizeImage = findViewById(R.id.settings_reader_closeautoresizeimage);
+        mReaderSuperResolution = findViewById(R.id.settings_reader_super_resolution);
         mReaderPagingReverse = findViewById(R.id.settings_reader_paging_reverse);
         mReaderWhiteEdge = findViewById(R.id.settings_reader_white_edge);
         mReaderWhiteBackground = findViewById(R.id.settings_reader_white_background);
@@ -157,6 +159,10 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         mReaderBanDoubleClick.bindPreference(PreferenceManager.PREF_READER_BAN_DOUBLE_CLICK, false);
         mReaderPaging.bindPreference(PreferenceManager.PREF_READER_PAGING, false);
         mReaderCloseAutoResizeImage.bindPreference(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false);
+        mReaderSuperResolution.bindPreference(PreferenceManager.PREF_READER_SUPER_RESOLUTION, false);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            mReaderSuperResolution.setVisibility(View.GONE);
+        }
         mReaderPagingReverse.bindPreference(PreferenceManager.PREF_READER_PAGING_REVERSE, false);
         mReaderWhiteEdge.bindPreference(PreferenceManager.PREF_READER_WHITE_EDGE, false);
         mReaderWhiteBackground.bindPreference(PreferenceManager.PREF_READER_WHITE_BACKGROUND, true);

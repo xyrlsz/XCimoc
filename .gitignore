@@ -42,6 +42,9 @@ google-services.json
 # ============ Java class files ============
 *.class
 
+# ============ Kotlin incremental build state ============
+.kotlin/
+
 # ============ 项目特有 ============
 /app/src/main/BrowserFilter-data.xml
 /app/debug/

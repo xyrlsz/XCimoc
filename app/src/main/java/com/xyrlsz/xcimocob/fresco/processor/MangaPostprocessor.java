@@ -1,6 +1,7 @@
 package com.xyrlsz.xcimocob.fresco.processor;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
@@ -12,6 +13,7 @@ import com.facebook.imagepipeline.request.BasePostprocessor;
 import com.xyrlsz.xcimocob.model.ImageUrl;
 import com.xyrlsz.xcimocob.rx.RxBus;
 import com.xyrlsz.xcimocob.rx.RxEvent;
+import com.xyrlsz.xcimocob.upscale.MangaUpscalerCompat;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 
 import java.util.Objects;
@@ -26,22 +28,49 @@ public class MangaPostprocessor extends BasePostprocessor {
     private boolean isPaging;
     private boolean isPagingReverse;
     private boolean isWhiteEdge;
+    private boolean isSuperResolution;
+    /** 该图在阅读界面上的显示宽度（px），0 表示未知；用于跳过已经足够清晰的图 */
+    private int mTargetWidth;
 
     private int mWidth, mHeight;
     private int mPosX, mPosY;
     private boolean isDone = false;
     private boolean jmttIsDone = false;
 
-    public MangaPostprocessor(ImageUrl image, boolean paging, boolean pagingReverse, boolean whiteEdge) {
+    public MangaPostprocessor(ImageUrl image, boolean paging, boolean pagingReverse,
+                              boolean whiteEdge, boolean superResolution, int targetWidth) {
         mImage = image;
         isPaging = paging;
         isPagingReverse = pagingReverse;
         isWhiteEdge = whiteEdge;
+        isSuperResolution = superResolution;
+        mTargetWidth = targetWidth;
     }
 
     @NonNull
     @Override
     public CloseableReference<Bitmap> process(Bitmap sourceBitmap, PlatformBitmapFactory bitmapFactory) {
+        Bitmap enhancedBitmap = null;
+        if (isSuperResolution) {
+            try {
+                enhancedBitmap = MangaUpscalerCompat.upscale(sourceBitmap, mTargetWidth, getUpscaleCacheKey());
+            } catch (Exception | LinkageError | OutOfMemoryError error) {
+                Log.e("MangaPostprocessor", "漫画图片超分失败，回退到原图", error);
+            }
+        }
+
+        Bitmap bitmap = enhancedBitmap == null ? sourceBitmap : enhancedBitmap;
+        try {
+            return processBitmap(bitmap, bitmapFactory);
+        } finally {
+            if (enhancedBitmap != null && !enhancedBitmap.isRecycled()) {
+                enhancedBitmap.recycle();
+            }
+        }
+    }
+
+    private CloseableReference<Bitmap> processBitmap(Bitmap sourceBitmap,
+                                                      PlatformBitmapFactory bitmapFactory) {
         mWidth = sourceBitmap.getWidth();
         mHeight = sourceBitmap.getHeight();
 
@@ -194,7 +223,25 @@ public class MangaPostprocessor extends BasePostprocessor {
         // 处理方式（是否切割大图 / 切割方向 / 裁白边）会改变输出内容，必须进入缓存键，
         // 否则切换「大横屏左右双页」（会同时关掉切割大图）后会直接命中上一次切好的半张图
         return new SimpleCacheKey(StringUtils.format("%s-post-%d-%d-%d-%d", mImage.getUrl(),
-                mImage.getId(), isPaging ? 1 : 0, isPagingReverse ? 1 : 0, isWhiteEdge ? 1 : 0));
+                mImage.getId(), isPaging ? 1 : 0, isPagingReverse ? 1 : 0, isWhiteEdge ? 1 : 0)
+                + "-" + (isSuperResolution ? "1-" + mTargetWidth : "0"));
+    }
+
+    /**
+     * 超分结果磁盘缓存的标识：同一张图在同一显示宽度下只推理一次。
+     * 去掉 URL 的查询参数，避免带签名的链接每次变化导致缓存全部失效。
+     */
+    public static String upscaleCacheSource(String url) {
+        if (url == null) {
+            return null;
+        }
+        int query = url.indexOf('?');
+        return query > 0 ? url.substring(0, query) : url;
+    }
+
+    private String getUpscaleCacheKey() {
+        String source = upscaleCacheSource(mImage.getUrl());
+        return source != null ? source : String.valueOf(mImage.getId());
     }
 
     /**

@@ -24,6 +24,7 @@ forked from https://github.com/Haleydu/Cimoc
 
 - 翻页阅读（Page Reader）
 - 卷纸阅读（Scroll Reader）
+- 可选使用 RealCUGAN（ncnn + Vulkan）对漫画阅读图片进行本地超分辨率处理（Android 7.0 及以上），放大 2 倍并将结果缓存到磁盘；阅读当前页时后台线程会提前超分下一页，翻页直接命中缓存
 - 检查漫画更新（Check Manga For Update）
 - 下载漫画（Download Manga）
 - 本地漫画（Local Reader）
@@ -86,4 +87,3 @@ forked from https://github.com/Haleydu/Cimoc
 - 本软件仅用于学习交流，不得用于商业用途
 - 本软件不对因使用本软件而导致的任何损失或损害承担责任
 - 所有漫画均来自用户在第三方网站上的手动搜索
-

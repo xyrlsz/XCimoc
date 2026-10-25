@@ -33,6 +33,7 @@ import com.xyrlsz.xcimocob.model.ImageUrl;
 import com.xyrlsz.xcimocob.ui.widget.OnTapGestureListener;
 import com.xyrlsz.xcimocob.ui.widget.PhotoDraweeView;
 import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
+import com.xyrlsz.xcimocob.upscale.UpscalePrefetcher;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -60,6 +61,8 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private static @ReaderMode int reader;
     private PipelineDraweeControllerBuilderSupplier mControllerSupplier;
     private PipelineDraweeControllerBuilderSupplier mLargeControllerSupplier;
+    /** 预取超分用的图片管线：只取编码数据，与显示用的后处理链路无关 */
+    private ImagePipelineFactory mPrefetchPipeline;
     private OnTapGestureListener mTapGestureListener;
     private OnLazyLoadListener mLazyLoadListener;
     private OnImageRatioListener mRatioListener;
@@ -70,6 +73,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private boolean isPaging;
     private boolean isPagingReverse;
     private boolean isWhiteEdge;
+    private boolean isSuperResolution;
     private boolean isBanTurn;
     private boolean isDoubleTap;
     private boolean isCloseAutoResizeImage;
@@ -402,8 +406,10 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         }
 
         // 预创建 MangaPostprocessor（所有 URL 共享同一个处理器）
+        // targetWidth 用于判断原图是否已经足够清晰（关闭自动调整图片大小时原图往往远大于屏幕）
         final MangaPostprocessor sharedProcessor = new MangaPostprocessor(
-                imageUrl, isPaging && !isDualPage, isPagingReverse, isWhiteEdge);
+                imageUrl, isPaging && !isDualPage, isPagingReverse, isWhiteEdge, isSuperResolution,
+                resizeOptions.width);
 
         for (int i = 0; i < urls.length; i++) {
             String url = urls[i];
@@ -498,6 +504,36 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         draweeView.setController(
                 builder.setFirstAvailableImageRequests(requests).build()
         );
+
+        prefetchNextSuperResolution(imageUrl, resizeOptions.width);
+    }
+
+    /**
+     * 后台预取下一张图的超分结果：当前页显示的同时把下一页算好，翻页时直接命中磁盘缓存。
+     * 只在单页/条漫模式做，双页模式下两张图同屏，没有「下一页」可提前。
+     */
+    private void prefetchNextSuperResolution(ImageUrl imageUrl, int targetWidth) {
+        if (!isSuperResolution || isDualPage || mPrefetchPipeline == null) {
+            return;
+        }
+        int index = mDataSet.indexOf(imageUrl);
+        if (index < 0 || index + 1 >= mDataSet.size()) {
+            return;
+        }
+        ImageUrl next = mDataSet.get(index + 1);
+        if (next == null) {
+            return;
+        }
+        String url = next.getUrl();
+        if (url == null) {
+            return;
+        }
+        UpscalePrefetcher.prefetch(mPrefetchPipeline, url, targetWidth,
+                MangaPostprocessor.upscaleCacheSource(url));
+    }
+
+    public void setPrefetchPipeline(ImagePipelineFactory factory) {
+        mPrefetchPipeline = factory;
     }
 
     public void setControllerSupplier(PipelineDraweeControllerBuilderSupplier normal,
@@ -924,6 +960,14 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     public void setWhiteEdge(boolean whiteEdge) {
         isWhiteEdge = whiteEdge;
+    }
+
+    public void setSuperResolution(boolean superResolution) {
+        isSuperResolution = superResolution;
+    }
+
+    public boolean isSuperResolution() {
+        return isSuperResolution;
     }
 
     public void setReaderMode(@ReaderMode int reader) {

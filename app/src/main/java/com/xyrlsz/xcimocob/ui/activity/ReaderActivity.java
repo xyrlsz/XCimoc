@@ -76,6 +76,7 @@ import com.xyrlsz.xcimocob.ui.widget.SeekBar;
 import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.ui.widget.ZoomableRecyclerView;
 import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager;
+import com.xyrlsz.xcimocob.upscale.MangaUpscalerCompat;
 import com.xyrlsz.xcimocob.utils.FrescoUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
@@ -694,6 +695,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         applyPaging();
         applyCloseAutoResizeImage();
         mReaderAdapter.setWhiteEdge(mPreference.getBoolean(PreferenceManager.PREF_READER_WHITE_EDGE, false));
+        applySuperResolution();
         mReaderAdapter.setBanTurn(mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_BAN_TURN, false));
     }
 
@@ -775,6 +777,18 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         boolean close = mPreference.getBoolean(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false);
         boolean changed = close != mReaderAdapter.isCloseAutoResizeImage();
         mReaderAdapter.setCloseAutoResizeImage(close);
+        return changed;
+    }
+
+    private boolean applySuperResolution() {
+        boolean enabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+                && mPreference.getBoolean(PreferenceManager.PREF_READER_SUPER_RESOLUTION, false);
+        boolean changed = enabled != mReaderAdapter.isSuperResolution();
+        mReaderAdapter.setSuperResolution(enabled);
+        if (enabled) {
+            // 引擎首次创建要拷贝模型并初始化 Vulkan，提前在后台准备，避免第一张图等待
+            MangaUpscalerCompat.warmUpAsync();
+        }
         return changed;
     }
 
@@ -919,10 +933,12 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         boolean dualPageChanged = applyDualPage();
         boolean pagingChanged = applyPaging();
         boolean resizeChanged = applyCloseAutoResizeImage();
+        boolean superResolutionChanged = applySuperResolution();
         boolean optionsChanged = applyDualPageOptions();
         // 方向切换、双页切换内部已经重建过列表项，其余情况只要解码方式变了也要重建，
         // 否则图片会一直是旧尺寸
-        if (!turnChanged && !dualPageChanged && (pagingChanged || resizeChanged || optionsChanged)) {
+        if (!turnChanged && !dualPageChanged
+                && (pagingChanged || resizeChanged || superResolutionChanged || optionsChanged)) {
             rebindAfterLayoutChange(mReaderAdapter.toDataPosition(Math.max(getActionAdapterPosition(), 0)));
         }
     }
@@ -1108,6 +1124,8 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 .build(this, local ? null : headers, true);
         mReaderAdapter.setControllerSupplier(ControllerBuilderSupplierFactory.get(this, mImagePipelineFactory),
                 ControllerBuilderSupplierFactory.get(this, mLargeImagePipelineFactory));
+        // 超分预取只需要编码数据，用章节级管线和它带上的 headers 就够
+        mReaderAdapter.setPrefetchPipeline(mImagePipelineFactory);
     }
 
     @Override

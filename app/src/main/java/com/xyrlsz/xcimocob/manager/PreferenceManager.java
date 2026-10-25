@@ -60,6 +60,7 @@ public class PreferenceManager {
     public static final String PREF_READER_PAGING_REVERSE = "pref_reader_paging_reverse";
     public static final String PREF_READER_PAGING_STREAM_OFF = "pref_reader_paging_stream_off";
     public static final String PREF_READER_WHITE_EDGE = "pref_reader_white_edge";
+    public static final String PREF_READER_SUPER_RESOLUTION = "pref_reader_super_resolution";
     public static final String PREF_READER_WHITE_BACKGROUND = "pref_reader_white_background";
     public static final String PREF_READER_SCALE_FACTOR = "pref_reader_scale_factor";
     public static final String PREF_READER_CONTROLLER_TRIG_THRESHOLD = "pref_reader_controller_trig_threshold";
@@ -193,6 +194,7 @@ public class PreferenceManager {
             PREF_READER_PAGING_REVERSE,
             PREF_READER_PAGING_STREAM_OFF,
             PREF_READER_WHITE_EDGE,
+            PREF_READER_SUPER_RESOLUTION,
             PREF_READER_WHITE_BACKGROUND,
             PREF_READER_SCALE_FACTOR,
             PREF_READER_CONTROLLER_TRIG_THRESHOLD,
