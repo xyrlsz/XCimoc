@@ -126,9 +126,18 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
 
     @Override
     protected RecyclerView.LayoutManager initLayoutManager() {
+        int width = mRecyclerView.getRootView().getWidth();
+        int height = mRecyclerView.getRootView().getHeight();
+        if (width <= 0 || height <= 0) {
+            width = App.mWidthPixels;
+            height = App.mHeightPixels;
+        }
         int spanCount = 3;
-        if ((App.mHeightPixels * 16 <= App.mWidthPixels * 9)) {
+        if (height * 9 < width * 16) {
             spanCount = 4;
+            if (height * 16 <= width * 9) {
+                spanCount = 5;
+            }
         }
         GridLayoutManager manager = new GridLayoutManager(this, spanCount);
         manager.setRecycleChildrenOnDetach(true);

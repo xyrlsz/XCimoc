@@ -301,6 +301,12 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.setLayoutManager(initLayoutManager());
+        mRecyclerView.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                 oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                updateGridSpanCount();
+            }
+        });
 
         // 加载蒙层（含居中 ProgressBar）与内容容器：初始仅显示进度条，加载完成后显示内容
         mProgressOverlay = mRootView.findViewById(R.id.category_progress_overlay);
@@ -428,13 +434,34 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
     }
 
     protected RecyclerView.LayoutManager initLayoutManager() {
+        int width = mRecyclerView.getRootView().getWidth();
+        int height = mRecyclerView.getRootView().getHeight();
+        if (width <= 0 || height <= 0) {
+            width = App.mWidthPixels;
+            height = App.mHeightPixels;
+        }
         int spanCount = 3;
-        if (App.mHeightPixels * 9 < App.mWidthPixels * 16) {
+        if (height * 9 < width * 16) {
             spanCount = 4;
         }
         GridLayoutManager manager = new GridLayoutManager(getActivity(), spanCount);
         manager.setRecycleChildrenOnDetach(true);
         return manager;
+    }
+
+    private void updateGridSpanCount() {
+        RecyclerView.LayoutManager current = mRecyclerView.getLayoutManager();
+        if (!(current instanceof GridLayoutManager)) {
+            return;
+        }
+        RecyclerView.LayoutManager updated = initLayoutManager();
+        if (updated instanceof GridLayoutManager) {
+            int spanCount = ((GridLayoutManager) updated).getSpanCount();
+            GridLayoutManager currentGrid = (GridLayoutManager) current;
+            if (currentGrid.getSpanCount() != spanCount) {
+                currentGrid.setSpanCount(spanCount);
+            }
+        }
     }
 
 

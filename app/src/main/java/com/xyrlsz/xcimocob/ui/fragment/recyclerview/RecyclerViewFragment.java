@@ -1,5 +1,6 @@
 package com.xyrlsz.xcimocob.ui.fragment.recyclerview;
 
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.view.View;
 
@@ -22,6 +23,12 @@ public abstract class RecyclerViewFragment extends BaseFragment implements BaseA
         mRecyclerView = mRootView.findViewById(R.id.recycler_view_content);
         mRecyclerView.setItemAnimator(null);
         mRecyclerView.setLayoutManager(initLayoutManager());
+        mRecyclerView.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                 oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                updateGridSpanCount();
+            }
+        });
         BaseAdapter adapter = initAdapter();
         if (adapter != null) {
             adapter.setOnItemClickListener(this);
@@ -34,6 +41,21 @@ public abstract class RecyclerViewFragment extends BaseFragment implements BaseA
     abstract protected BaseAdapter initAdapter();
 
     protected abstract RecyclerView.LayoutManager initLayoutManager();
+
+    private void updateGridSpanCount() {
+        RecyclerView.LayoutManager current = mRecyclerView.getLayoutManager();
+        if (!(current instanceof GridLayoutManager)) {
+            return;
+        }
+        RecyclerView.LayoutManager updated = initLayoutManager();
+        if (updated instanceof GridLayoutManager) {
+            int spanCount = ((GridLayoutManager) updated).getSpanCount();
+            GridLayoutManager currentGrid = (GridLayoutManager) current;
+            if (currentGrid.getSpanCount() != spanCount) {
+                currentGrid.setSpanCount(spanCount);
+            }
+        }
+    }
 
     @Override
     public void onItemClick(View view, int position) {

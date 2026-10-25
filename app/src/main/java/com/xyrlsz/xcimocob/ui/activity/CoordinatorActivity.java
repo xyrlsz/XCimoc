@@ -7,6 +7,7 @@ import androidx.coordinatorlayout.widget.CoordinatorLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -47,6 +48,12 @@ public abstract class CoordinatorActivity extends BackActivity implements
     protected void initView() {
         super.initView();
         mRecyclerView.setLayoutManager(initLayoutManager());
+        mRecyclerView.addOnLayoutChangeListener((view, left, top, right, bottom,
+                                                 oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                updateGridSpanCount();
+            }
+        });
         mRecyclerView.setHasFixedSize(true);
         mRecyclerView.setItemAnimator(null);
         BaseAdapter adapter = initAdapter();
@@ -77,6 +84,21 @@ public abstract class CoordinatorActivity extends BackActivity implements
 
     protected RecyclerView.LayoutManager initLayoutManager() {
         return new LinearLayoutManager(this);
+    }
+
+    private void updateGridSpanCount() {
+        RecyclerView.LayoutManager current = mRecyclerView.getLayoutManager();
+        if (!(current instanceof GridLayoutManager)) {
+            return;
+        }
+        RecyclerView.LayoutManager updated = initLayoutManager();
+        if (updated instanceof GridLayoutManager) {
+            int spanCount = ((GridLayoutManager) updated).getSpanCount();
+            GridLayoutManager currentGrid = (GridLayoutManager) current;
+            if (currentGrid.getSpanCount() != spanCount) {
+                currentGrid.setSpanCount(spanCount);
+            }
+        }
     }
 
     @Override
