@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- RealCUGAN SDK 自身 minSdk 24，这里放开合并检查；实际调用处由 MangaUpscalerCompat 做 API 判断 -->
+    <uses-sdk tools:overrideLibrary="io.github.aoihoshino.realcugan_android_sdk" />
+
+</manifest>

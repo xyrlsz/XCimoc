@@ -40,32 +40,62 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./build.sh
 
-      - name: Upload APK (arm64-v8a)
+      - name: Upload APK (full arm64-v8a)
         uses: actions/upload-artifact@v6
         with:
-          name: app-arm64-v8a-release
-          path: app/build/outputs/apk/release/app-arm64-v8a-release.apk
+          name: app-full-arm64-v8a-release
+          path: app/build/outputs/apk/full/release/app-full-arm64-v8a-release.apk
 
-      - name: Upload APK (armeabi-v7a)
+      - name: Upload APK (full armeabi-v7a)
         uses: actions/upload-artifact@v6
         with:
-          name: app-armeabi-v7a-release
-          path: app/build/outputs/apk/release/app-armeabi-v7a-release.apk
+          name: app-full-armeabi-v7a-release
+          path: app/build/outputs/apk/full/release/app-full-armeabi-v7a-release.apk
 
-      - name: Upload APK (universal)
+      - name: Upload APK (full universal)
         uses: actions/upload-artifact@v6
         with:
-          name: app-universal-release
-          path: app/build/outputs/apk/release/app-universal-release.apk
+          name: app-full-universal-release
+          path: app/build/outputs/apk/full/release/app-full-universal-release.apk
 
-      - name: Upload APK (x86_64)
+      - name: Upload APK (full x86_64)
         uses: actions/upload-artifact@v6
         with:
-          name: app-x86_64-release
-          path: app/build/outputs/apk/release/app-x86_64-release.apk
+          name: app-full-x86_64-release
+          path: app/build/outputs/apk/full/release/app-full-x86_64-release.apk
 
-      - name: Upload APK (x86)
+      - name: Upload APK (full x86)
         uses: actions/upload-artifact@v6
         with:
-          name: app-x86-release
-          path: app/build/outputs/apk/release/app-x86-release.apk
+          name: app-full-x86-release
+          path: app/build/outputs/apk/full/release/app-full-x86-release.apk
+
+      - name: Upload APK (lite arm64-v8a)
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-lite-arm64-v8a-release
+          path: app/build/outputs/apk/lite/release/app-lite-arm64-v8a-release.apk
+
+      - name: Upload APK (lite armeabi-v7a)
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-lite-armeabi-v7a-release
+          path: app/build/outputs/apk/lite/release/app-lite-armeabi-v7a-release.apk
+
+      - name: Upload APK (lite universal)
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-lite-universal-release
+          path: app/build/outputs/apk/lite/release/app-lite-universal-release.apk
+
+      - name: Upload APK (lite x86_64)
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-lite-x86_64-release
+          path: app/build/outputs/apk/lite/release/app-lite-x86_64-release.apk
+
+      - name: Upload APK (lite x86)
+        uses: actions/upload-artifact@v6
+        with:
+          name: app-lite-x86-release
+          path: app/build/outputs/apk/lite/release/app-lite-x86-release.apk

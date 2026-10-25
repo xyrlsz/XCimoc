@@ -165,11 +165,16 @@ jobs:
             - 此版本为 **Pre-release**，App 自动更新**不会**提示此版本。
             - 请仅在测试时安装。正式版请以普通 `v*` Release 为准。
           files: |
-            app/build/outputs/apk/release/app-arm64-v8a-release.apk
-            app/build/outputs/apk/release/app-armeabi-v7a-release.apk
-            app/build/outputs/apk/release/app-universal-release.apk
-            app/build/outputs/apk/release/app-x86_64-release.apk
-            app/build/outputs/apk/release/app-x86-release.apk
+            app/build/outputs/apk/full/release/app-full-arm64-v8a-release.apk
+            app/build/outputs/apk/full/release/app-full-armeabi-v7a-release.apk
+            app/build/outputs/apk/full/release/app-full-universal-release.apk
+            app/build/outputs/apk/full/release/app-full-x86_64-release.apk
+            app/build/outputs/apk/full/release/app-full-x86-release.apk
+            app/build/outputs/apk/lite/release/app-lite-arm64-v8a-release.apk
+            app/build/outputs/apk/lite/release/app-lite-armeabi-v7a-release.apk
+            app/build/outputs/apk/lite/release/app-lite-universal-release.apk
+            app/build/outputs/apk/lite/release/app-lite-x86_64-release.apk
+            app/build/outputs/apk/lite/release/app-lite-x86-release.apk
             data_server/dist/xcimoc-data-server-linux-amd64
             data_server/dist/xcimoc-data-server-linux-arm64
             data_server/dist/xcimoc-data-server-linux-amd64-musl

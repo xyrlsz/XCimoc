@@ -1,40 +1,40 @@
-name: Android CI (tag)
+﻿name: Android CI (tag)
 
 on:
   push:
     tags:
-      # 正式版：普通 v* tag（排除预览后缀，预览版走
-      # build_when_add_preview_tag.yml 发布为 Pre-release）
+      # 姝ｅ紡鐗堬細鏅€?v* tag锛堟帓闄ら瑙堝悗缂€锛岄瑙堢増璧?
+      # build_when_add_preview_tag.yml 鍙戝竷涓?Pre-release锛?
       - "v*"
       - "!v*-preview*"
       - "!v*-beta*"
     # branches: ["main"]
 
 # ---------------------------------------------------------------------
-# Go 服务器打包策略
+# Go 鏈嶅姟鍣ㄦ墦鍖呯瓥鐣?
 #
-# · 默认 SQLite 驱动是 gorm.io/driver/sqlite（底层 mattn/go-sqlite3），必 CGO。
-# · 直接一套二进制：CGO_ENABLED=1 + go build（不使用 ObjectBox）。
-# · database.type 配置项可选：sqlite / mysql / postgres。
+# 路 榛樿 SQLite 椹卞姩鏄?gorm.io/driver/sqlite锛堝簳灞?mattn/go-sqlite3锛夛紝蹇?CGO銆?
+# 路 鐩存帴涓€濂椾簩杩涘埗锛欳GO_ENABLED=1 + go build锛堜笉浣跨敤 ObjectBox锛夈€?
+# 路 database.type 閰嶇疆椤瑰彲閫夛細sqlite / mysql / postgres銆?
 #
-# 平台范围（仅 Linux + Windows）：
-#   linux/amd64     ubuntu-latest + 原生 gcc
-#   linux/arm64     ubuntu-latest + gcc-aarch64-linux-gnu 交叉工具链
+# 骞冲彴鑼冨洿锛堜粎 Linux + Windows锛夛細
+#   linux/amd64     ubuntu-latest + 鍘熺敓 gcc
+#   linux/arm64     ubuntu-latest + gcc-aarch64-linux-gnu 浜ゅ弶宸ュ叿閾?
 #   windows/amd64   windows-latest + MinGW-w64
 #
-# macOS 用户若需要二进制，按仓库 README 的指引用 data_server/build.sh 本地构建即可
-# （Darwin 原生：brew install go gcc ; ./build.sh），CI 不再打 darwin 以避免
-# osxcross/ld64 维护成本。
+# macOS 鐢ㄦ埛鑻ラ渶瑕佷簩杩涘埗锛屾寜浠撳簱 README 鐨勬寚寮曠敤 data_server/build.sh 鏈湴鏋勫缓鍗冲彲
+# 锛圖arwin 鍘熺敓锛歜rew install go gcc ; ./build.sh锛夛紝CI 涓嶅啀鎵?darwin 浠ラ伩鍏?
+# osxcross/ld64 缁存姢鎴愭湰銆?
 # ---------------------------------------------------------------------
 
 jobs:
   # ============================================================
-  # 1) Go 服务器（统一构建）
-  #    独立 job、独立 runner，不与 APK/Keystore/gradlew 混，
-  #    这样即便 APK 构建卡住，Go 二进制仍能单独出来。
+  # 1) Go 鏈嶅姟鍣紙缁熶竴鏋勫缓锛?
+  #    鐙珛 job銆佺嫭绔?runner锛屼笉涓?APK/Keystore/gradlew 娣凤紝
+  #    杩欐牱鍗充究 APK 鏋勫缓鍗′綇锛孏o 浜岃繘鍒朵粛鑳藉崟鐙嚭鏉ャ€?
   # ============================================================
   build-data-server:
-    name: "Data Server · ${{ matrix.label }}"
+    name: "Data Server 路 ${{ matrix.label }}"
     runs-on: ${{ matrix.runner }}
     if: startsWith(github.ref, 'refs/tags/v')
     strategy:
@@ -78,7 +78,7 @@ jobs:
             cc: gcc
             install_cmd: |
               $ErrorActionPreference = "Continue"
-              # 1) MinGW-w64 gcc：依次尝试常见安装路径（runner 可能预装 msys2）
+              # 1) MinGW-w64 gcc锛氫緷娆″皾璇曞父瑙佸畨瑁呰矾寰勶紙runner 鍙兘棰勮 msys2锛?
               $candidates = @(
                 "C:\ProgramData\mingw64\bin",
                 "C:\Program Files\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0\mingw64\bin",
@@ -152,13 +152,13 @@ jobs:
           path: ${{ env.BIN_PATH }}
 
   # ============================================================
-  # 2) APK 构建 + 上传默认产物（config.example.yaml 等）
-  #    这部分与原逻辑保持一致，只是不再混打 Go 二进制。
+  # 2) APK 鏋勫缓 + 涓婁紶榛樿浜х墿锛坈onfig.example.yaml 绛夛級
+  #    杩欓儴鍒嗕笌鍘熼€昏緫淇濇寔涓€鑷达紝鍙槸涓嶅啀娣锋墦 Go 浜岃繘鍒躲€?
   # ============================================================
   build-and-github-release:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build-data-server # 先确认 Go 3 个目标都 OK，再建 Release（避免空 Release）
+    needs: build-data-server # 鍏堢‘璁?Go 3 涓洰鏍囬兘 OK锛屽啀寤?Release锛堥伩鍏嶇┖ Release锛?
 
     steps:
       - uses: actions/checkout@v5
@@ -190,8 +190,8 @@ jobs:
           go-version: ">=1.25"
           cache-dependency-path: data_server/go.sum
 
-      # 只负责把 data_server 的配置示例和 3 个二进制（从 artifact 下载回来）
-      # 放进 data_server/dist/ 目录，供最终 action-gh-release 一次性上传。
+      # 鍙礋璐ｆ妸 data_server 鐨勯厤缃ず渚嬪拰 3 涓簩杩涘埗锛堜粠 artifact 涓嬭浇鍥炴潵锛?
+      # 鏀捐繘 data_server/dist/ 鐩綍锛屼緵鏈€缁?action-gh-release 涓€娆℃€т笂浼犮€?
       - name: Collect Go server artifacts
         uses: actions/download-artifact@v8
         with:
@@ -204,7 +204,7 @@ jobs:
           set -eux
           cd data_server
           mkdir -p dist
-          # 把各 artifact 扁平化到 dist/
+          # 鎶婂悇 artifact 鎵佸钩鍖栧埌 dist/
           if [ -d dist_raw ]; then
             find dist_raw -maxdepth 2 -type f -exec cp -f {} dist/ \;
           fi
@@ -237,15 +237,17 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: app-universal-release
-          path: app/build/outputs/apk/release/app-universal-release.apk
+          path: |
+            app/build/outputs/apk/full/release/app-full-universal-release.apk
+            app/build/outputs/apk/lite/release/app-lite-universal-release.apk
 
       - name: Extract latest changelog
         run: python3 scripts/extract_changelog.py
 
-      # 这里一次性把 APK + Go 二进制 + config 示例 挂到 Release 上。
-      # 注意：data_server/dist/* 已在 build-data-server job 中通过 append release
-      #       单独追加过一次；这里再写一次文件清单是为了兼容「某些标签先出
-      #       APK 后出 Go 二进制」的 case，并保证 config.example.yaml 一定进 Release。
+      # 杩欓噷涓€娆℃€ф妸 APK + Go 浜岃繘鍒?+ config 绀轰緥 鎸傚埌 Release 涓娿€?
+      # 娉ㄦ剰锛歞ata_server/dist/* 宸插湪 build-data-server job 涓€氳繃 append release
+      #       鍗曠嫭杩藉姞杩囦竴娆★紱杩欓噷鍐嶅啓涓€娆℃枃浠舵竻鍗曟槸涓轰簡鍏煎銆屾煇浜涙爣绛惧厛鍑?
+      #       APK 鍚庡嚭 Go 浜岃繘鍒躲€嶇殑 case锛屽苟淇濊瘉 config.example.yaml 涓€瀹氳繘 Release銆?
       - name: Create GitHub Release (APK + Go binaries batch)
         uses: softprops/action-gh-release@v3
         env:
@@ -255,11 +257,16 @@ jobs:
           prerelease: false
           body_path: release_body.md
           files: |
-            app/build/outputs/apk/release/app-arm64-v8a-release.apk
-            app/build/outputs/apk/release/app-armeabi-v7a-release.apk
-            app/build/outputs/apk/release/app-universal-release.apk
-            app/build/outputs/apk/release/app-x86_64-release.apk
-            app/build/outputs/apk/release/app-x86-release.apk
+            app/build/outputs/apk/full/release/app-full-arm64-v8a-release.apk
+            app/build/outputs/apk/full/release/app-full-armeabi-v7a-release.apk
+            app/build/outputs/apk/full/release/app-full-universal-release.apk
+            app/build/outputs/apk/full/release/app-full-x86_64-release.apk
+            app/build/outputs/apk/full/release/app-full-x86-release.apk
+            app/build/outputs/apk/lite/release/app-lite-arm64-v8a-release.apk
+            app/build/outputs/apk/lite/release/app-lite-armeabi-v7a-release.apk
+            app/build/outputs/apk/lite/release/app-lite-universal-release.apk
+            app/build/outputs/apk/lite/release/app-lite-x86_64-release.apk
+            app/build/outputs/apk/lite/release/app-lite-x86-release.apk
             data_server/dist/xcimoc-data-server-linux-amd64
             data_server/dist/xcimoc-data-server-linux-arm64
             data_server/dist/xcimoc-data-server-linux-amd64-musl
@@ -268,7 +275,7 @@ jobs:
             data_server/dist/config.example.yaml
 
   # ============================================================
-  # 3) Gitee 同步 + 上传 app-universal
+  # 3) Gitee 鍚屾 + 涓婁紶 app-universal
   # ============================================================
   gitee-sync-and-release:
     runs-on: ubuntu-latest
@@ -295,7 +302,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: app-universal-release
-          path: app/build/outputs/apk/release/
+          path: app/build/outputs/apk/
 
       - name: Sync Github Repos To Gitee
         uses: Yikun/hub-mirror-action@master
@@ -329,6 +336,8 @@ jobs:
 
       - name: Upload APK to Gitee
         run: |
+          for apk in app/build/outputs/apk/full/release/app-full-universal-release.apk app/build/outputs/apk/lite/release/app-lite-universal-release.apk; do
           curl -X POST "https://gitee.com/api/v5/repos/${{ env.GIT_REPO_OWNER }}/${{ env.GIT_REPO_NAME }}/releases/${{ env.GITEE_RELEASE_ID }}/attach_files" \
             -H "Authorization: Bearer ${{ secrets.GITEE_TOKEN }}" \
-            -F "file=@app/build/outputs/apk/release/app-universal-release.apk"
+            -F "file=@${apk}"
+          done

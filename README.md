@@ -16,6 +16,24 @@ forked from https://github.com/Haleydu/Cimoc
 
 可以前往项目的[Release](https://github.com/xyrlsz/Cimoc/releases)处或者[Action](https://github.com/xyrlsz/Cimoc/actions)处下载（不建议从Action下载）。
 
+每个架构提供两个版本（applicationId 相同，二选一安装）：
+
+- `app-full-*`：完整版，包含 RealCUGAN 超分（额外打包 ncnn/Vulkan 原生库与模型，APK 大一些）
+- `app-lite-*`：精简版，不含超分，其余功能一致，APK 明显更小
+
+# 自己编译
+
+```bash
+# 两个版本一起编译
+./build.sh
+
+# 或者只编其中一个版本
+./gradlew :app:assembleFullRelease   # 含超分
+./gradlew :app:assembleLiteRelease   # 不含超分
+```
+
+输出在 `app/build/outputs/apk/full/release/` 与 `app/build/outputs/apk/lite/release/`。
+
 # 漫画源
 
 > - 各位大佬们提交漫画源相关issue请按照[模板](.github/ISSUE_TEMPLATE/comic-source-issues.md)填写，方便检查问题。
@@ -24,7 +42,7 @@ forked from https://github.com/Haleydu/Cimoc
 
 - 翻页阅读（Page Reader）
 - 卷纸阅读（Scroll Reader）
-- 可选使用 RealCUGAN（ncnn + Vulkan）对漫画阅读图片进行本地超分辨率处理（Android 7.0 及以上），放大 2 倍并将结果缓存到磁盘；阅读当前页时后台线程会提前超分下一页，翻页直接命中缓存
+- 可选使用 RealCUGAN（ncnn + Vulkan）对漫画阅读图片进行本地超分辨率处理（仅 `full` 版本提供，Android 7.0 及以上），放大 2 倍并将结果缓存到磁盘；阅读当前页时后台线程会提前超分下一页，翻页直接命中缓存
 - 检查漫画更新（Check Manga For Update）
 - 下载漫画（Download Manga）
 - 本地漫画（Local Reader）

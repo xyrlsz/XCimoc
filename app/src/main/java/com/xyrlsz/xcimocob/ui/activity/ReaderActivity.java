@@ -781,7 +781,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     private boolean applySuperResolution() {
-        boolean enabled = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N
+        boolean enabled = MangaUpscalerCompat.isSupported()
                 && mPreference.getBoolean(PreferenceManager.PREF_READER_SUPER_RESOLUTION, false);
         boolean changed = enabled != mReaderAdapter.isSuperResolution();
         mReaderAdapter.setSuperResolution(enabled);

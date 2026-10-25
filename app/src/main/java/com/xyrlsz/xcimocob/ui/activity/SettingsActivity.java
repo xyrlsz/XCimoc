@@ -26,6 +26,7 @@ import com.xyrlsz.xcimocob.ui.view.SettingsView;
 import com.xyrlsz.xcimocob.ui.widget.preference.CheckBoxPreference;
 import com.xyrlsz.xcimocob.ui.widget.preference.ChoicePreference;
 import com.xyrlsz.xcimocob.ui.widget.preference.SliderPreference;
+import com.xyrlsz.xcimocob.upscale.MangaUpscalerCompat;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.PermissionUtils;
 import com.xyrlsz.xcimocob.utils.ServiceUtils;
@@ -160,7 +161,8 @@ public class SettingsActivity extends BackActivity implements SettingsView {
         mReaderPaging.bindPreference(PreferenceManager.PREF_READER_PAGING, false);
         mReaderCloseAutoResizeImage.bindPreference(PreferenceManager.PREF_READER_CLOSEAUTORESIZEIMAGE, false);
         mReaderSuperResolution.bindPreference(PreferenceManager.PREF_READER_SUPER_RESOLUTION, false);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+        // lite 版本不打包超分 SDK，Android 7.0 以下同样不支持，直接隐藏这一项
+        if (!MangaUpscalerCompat.isSupported()) {
             mReaderSuperResolution.setVisibility(View.GONE);
         }
         mReaderPagingReverse.bindPreference(PreferenceManager.PREF_READER_PAGING_REVERSE, false);

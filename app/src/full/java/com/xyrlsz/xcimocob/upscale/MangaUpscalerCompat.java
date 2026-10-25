@@ -8,6 +8,11 @@ public final class MangaUpscalerCompat {
     private MangaUpscalerCompat() {
     }
 
+    /** full 版本才打包了超分 SDK；SDK 自身要求 Android 7.0 及以上 */
+    public static boolean isSupported() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;
+    }
+
     public static Bitmap upscale(Bitmap bitmap, int targetWidth, String cacheKey) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
             return null;
