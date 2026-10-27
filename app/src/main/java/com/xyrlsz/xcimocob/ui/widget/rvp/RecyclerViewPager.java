@@ -307,6 +307,32 @@ public class RecyclerViewPager extends RecyclerView {
         mSmoothScrollTargetPosition += pos;
     }
 
+    /**
+     * 列表项增删后同步内部记录的翻页位置。
+     * 在 fromPosition 之前插入/删掉 count 项时，正在翻向的那一页整体后移/前移，
+     * 不同步的话翻页会停在上一页上（看起来像同一页重复出现）。
+     */
+    public void shiftPositions(int fromPosition, int count) {
+        if (count == 0) {
+            return;
+        }
+        if (mPositionBeforeScroll >= fromPosition) {
+            mPositionBeforeScroll += count;
+        }
+        if (mPositionOnTouchDown >= fromPosition) {
+            mPositionOnTouchDown += count;
+        }
+        if (mSmoothScrollTargetPosition >= fromPosition) {
+            mSmoothScrollTargetPosition += count;
+            // 翻页动画（松手后的吸附/惯性）还在进行：改指到换算后的位置，
+            // 否则动画会停在原来的下标上，落到上一页。拖动过程中不动，
+            // 松手时会用已换算的 mPositionOnTouchDown 重新计算目标
+            if (getScrollState() == SCROLL_STATE_SETTLING) {
+                startSmoothScroll(safeTargetPosition(mSmoothScrollTargetPosition, getItemCount()));
+            }
+        }
+    }
+
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
         if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {

@@ -4,8 +4,6 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.drawable.Animatable;
 import android.net.Uri;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -33,14 +31,17 @@ import com.xyrlsz.xcimocob.model.ImageUrl;
 import com.xyrlsz.xcimocob.ui.widget.OnTapGestureListener;
 import com.xyrlsz.xcimocob.ui.widget.PhotoDraweeView;
 import com.xyrlsz.xcimocob.ui.widget.RetryDraweeView;
+import com.xyrlsz.xcimocob.ui.widget.rvp.RecyclerViewPager;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import okhttp3.Headers;
 
@@ -103,10 +104,20 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
 
     /** 已解码图片的高宽比（height / width），图片尺寸只有解码后才知道，不持久化 */
     private final Map<Long, Float> mImageRatios = new HashMap<>();
+    /**
+     * 被迫单独占一屏的图片：和它并排的另一张被判定为超长/超宽后，它自己搬去独占一屏。
+     * 不这样做的话它会和后面的图重新配对，后面每一屏的内容都跟着变，
+     * 阅读中会突然换页、同一页重复出现
+     */
+    private final Set<Long> mSoloImageIds = new HashSet<>();
     /** 比例信息版本号，用于让双页分组失效 */
     private int mRatioVersion;
     /** 数据集版本号，数据增删后自增 */
     private int mDataVersion;
+    /** 分组待刷新：解码回调可能发生在布局中，改列表项必须等这一轮布局结束 */
+    private boolean mGroupRefreshPosted;
+    /** 宿主列表：布局过程中不能改列表项，需要据此判断能否立即刷新 */
+    private RecyclerView mHostRecyclerView;
 
     /** 双页分组缓存：每个列表项对应的起始数据位置与张数（1 = 独占一屏，2 = 并排） */
     private int[] mGroupStarts = new int[0];
@@ -114,15 +125,6 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     private int mGroupedDataVersion = -1;
     private int mGroupedRatioVersion = -1;
     private int mGroupedSize = -1;
-
-    private final Handler mMainHandler = new Handler(Looper.getMainLooper());
-    private OnPageGroupChangedListener mPageGroupChangedListener;
-    private boolean mGroupChangeNotified;
-
-    /** 双页分组因图片尺寸信息更新而变化时的回调 */
-    public interface OnPageGroupChangedListener {
-        void onPageGroupChanged();
-    }
 
     /** 页面模式图片加载成功监听器（复用实例） */
     private final BaseControllerListener<ImageInfo> mPageSuccessListener =
@@ -734,6 +736,9 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
             return false;
         }
         ImageUrl image = mDataSet.get(dataPosition);
+        if (mSoloImageIds.contains(image.getId())) {
+            return true;
+        }
         Float ratio = mImageRatios.get(image.getId());
         if (ratio == null) {
             int width = image.getWidth();
@@ -754,7 +759,7 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
     }
 
     /**
-     * 记录解码后的图片比例；判定结果发生变化时通知调用方刷新列表
+     * 记录解码后的图片比例；会让「是否需要单独占屏」的判定发生变化时重建分组
      */
     private void recordImageRatio(ImageUrl image, ImageInfo imageInfo) {
         if (imageInfo == null || imageInfo.getWidth() <= 0 || imageInfo.getHeight() <= 0) {
@@ -771,27 +776,135 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
             // 是否单独占屏的判定没有变化，分组不受影响（普通图首次解码也走这里）
             return;
         }
-        mRatioVersion++;
+        if (isSingle) {
+            markSplitPartner(image.getId());
+        }
         if (isDualPage) {
-            notifyPageGroupChanged();
+            postGroupLayoutRefresh();
+        } else {
+            mRatioVersion++;
         }
     }
 
-    private void notifyPageGroupChanged() {
-        if (mPageGroupChangedListener == null || mGroupChangeNotified) {
+    /**
+     * 图片刚从「并排」变成「独占一屏」时，把原来和它并排的那张也固定成独占一屏。
+     * 这样分组只会在它后面多出一屏，后面每一屏的内容和顺序都不变，
+     * 正在翻的那一页不会被换成别的图
+     */
+    private void markSplitPartner(Long imageId) {
+        boolean cached = mGroupedDataVersion == mDataVersion
+                && mGroupedRatioVersion == mRatioVersion
+                && mGroupedSize == mDataSet.size();
+        if (!cached) {
             return;
         }
-        mGroupChangeNotified = true;
-        mMainHandler.post(() -> {
-            mGroupChangeNotified = false;
-            if (mPageGroupChangedListener != null) {
-                mPageGroupChangedListener.onPageGroupChanged();
+        int dataPosition = getPositionById(imageId);
+        if (dataPosition < 0) {
+            return;
+        }
+        int low = 0;
+        int high = mGroupStarts.length - 1;
+        int group = -1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            if (mGroupStarts[mid] <= dataPosition) {
+                group = mid;
+                low = mid + 1;
+            } else {
+                high = mid - 1;
             }
+        }
+        if (group < 0 || mGroupCounts[group] != 2) {
+            return;
+        }
+        int start = mGroupStarts[group];
+        int partner = start == dataPosition ? start + 1 : start;
+        if (partner >= 0 && partner < mDataSet.size()) {
+            mSoloImageIds.add(mDataSet.get(partner).getId());
+        }
+    }
+
+    private void postGroupLayoutRefresh() {
+        // 布局过程中不能改列表项（RecyclerView 会抛异常），等这一轮布局结束后再改；
+        // 其余情况立即生效，避免长图要多等一帧才变成独占一屏
+        if (mHostRecyclerView == null || !mHostRecyclerView.isComputingLayout()) {
+            refreshGroupLayout();
+            return;
+        }
+        if (mGroupRefreshPosted) {
+            return;
+        }
+        mGroupRefreshPosted = true;
+        mHostRecyclerView.post(() -> {
+            mGroupRefreshPosted = false;
+            refreshGroupLayout();
         });
     }
 
-    public void setOnPageGroupChangedListener(OnPageGroupChangedListener listener) {
-        mPageGroupChangedListener = listener;
+    public void setHostRecyclerView(RecyclerView recyclerView) {
+        mHostRecyclerView = recyclerView;
+    }
+
+    /**
+     * 单独占屏的判定变化后重算双页分组，并且只刷新受影响的那部分列表项。
+     * 每张长图首次解码都会走到这里，若每次都重挂 adapter 并重新定位，
+     * 还在进行的翻页会被拉回上一页、当前页也会被重新加载，看起来像同一页重复出现。
+     * 判定只会让分组在该图之后多出一屏，前面的列表项内容不变，保持原样即可
+     */
+    private void refreshGroupLayout() {
+        if (!isDualPage) {
+            // 双页已关闭：列表项位置不再按分组计算，改版本号让它失效即可
+            mRatioVersion++;
+            return;
+        }
+        boolean cached = mGroupedDataVersion == mDataVersion
+                && mGroupedRatioVersion == mRatioVersion
+                && mGroupedSize == mDataSet.size();
+        if (!cached) {
+            mRatioVersion++;
+            notifyDataSetChanged();
+            return;
+        }
+        int[] oldStarts = mGroupStarts.clone();
+        int[] oldCounts = mGroupCounts.clone();
+        mRatioVersion++;
+        ensureGroups();
+
+        int oldCount = oldStarts.length;
+        int newCount = mGroupStarts.length;
+        // 起始位置没变的列表项仍然是同一张图开头，不能插入，否则当前这屏会被挤到下一个位置
+        int firstDiff = 0;
+        int common = Math.min(oldCount, newCount);
+        while (firstDiff < common && oldStarts[firstDiff] == mGroupStarts[firstDiff]) {
+            firstDiff++;
+        }
+        // 这些位置少了一张或多了半屏，需要重新绑定（否则残留的并排图会一直留在屏幕上）
+        for (int i = 0; i < firstDiff; ++i) {
+            if (oldCounts[i] != mGroupCounts[i]) {
+                notifyItemChanged(i);
+            }
+        }
+        if (newCount > oldCount) {
+            int inserted = newCount - oldCount;
+            notifyItemRangeInserted(firstDiff, inserted);
+            shiftPagerPositions(firstDiff, inserted);
+        } else if (newCount < oldCount) {
+            int removed = oldCount - newCount;
+            notifyItemRangeRemoved(firstDiff, removed);
+            shiftPagerPositions(firstDiff, -removed);
+        }
+        if (firstDiff < newCount) {
+            notifyItemRangeChanged(firstDiff, newCount - firstDiff);
+        }
+    }
+
+    /**
+     * 列表项增删后同步翻页器记录的当前页/目标页，避免插入的屏把正在翻向的那一页挤走
+     */
+    private void shiftPagerPositions(int fromPosition, int count) {
+        if (mHostRecyclerView instanceof RecyclerViewPager) {
+            ((RecyclerViewPager) mHostRecyclerView).shiftPositions(fromPosition, count);
+        }
     }
 
     /**
@@ -886,15 +999,119 @@ public class ReaderAdapter extends BaseAdapter<ImageUrl> {
         notifyDataSetChanged();
     }
 
+    /**
+     * 在数据位置 {@code dataPosition} 的原图后面插入自动切割大图的另一半。
+     * 原图与后半张必须相邻，才能按「先上下半张、再下一张」的顺序阅读
+     */
+    public void addSplitHalf(int dataPosition, ImageUrl image) {
+        mDataVersion++;
+        ImageUrl half = createSplitHalf(image);
+        if (!isDualPage) {
+            super.add(dataPosition + 1, half);
+            return;
+        }
+        mDataSet.add(dataPosition + 1, half);
+        mOriginalData.add(dataPosition + 1, half);
+        notifyDataSetChanged();
+    }
+
+    /**
+     * 删除自动切割大图插入的后半张。切割不再生效（双页模式、关闭切割）时，
+     * 这半张会和整张图一起把同一页重复显示一次。
+     * 数据发生了变化，调用方需要重建列表项。
+     *
+     * @param anchorDataPosition 需要保持阅读的数据位置
+     * @return 换算到删除之后的数据位置
+     */
+    public int removeSplitHalves(int anchorDataPosition) {
+        int size = mDataSet.size();
+        if (size == 0) {
+            return anchorDataPosition;
+        }
+        int anchor = Math.max(0, Math.min(anchorDataPosition, size - 1));
+        boolean anchorIsHalf = mDataSet.get(anchor).isSplitHalf();
+        int removedBeforeAnchor = 0;
+        boolean removed = false;
+        for (int i = size - 1; i >= 0; --i) {
+            if (!mDataSet.get(i).isSplitHalf()) {
+                continue;
+            }
+            mDataSet.remove(i);
+            mOriginalData.remove(i);
+            removed = true;
+            if (i < anchor) {
+                removedBeforeAnchor++;
+            }
+        }
+        if (!removed) {
+            return anchorDataPosition;
+        }
+        mDataVersion++;
+        // 阅读位置落在后半张上时退回到它对应的整张图
+        int adjusted = anchor - removedBeforeAnchor - (anchorIsHalf ? 1 : 0);
+        return Math.max(0, adjusted);
+    }
+
+    /**
+     * 重新开启切割时补回被删除的后半张。
+     * 原图已经处于切割状态（{@link ImageUrl#STATE_PAGE_1}），解码时会直接命中半张的缓存，
+     * 不会再触发切割事件，因此这半张必须由这里补回，否则后半张永远显示不出来。
+     * 数据发生了变化，调用方需要重建列表项。
+     *
+     * @param anchorDataPosition 需要保持阅读的数据位置
+     * @return 换算到插入之后的数据位置
+     */
+    public int restoreSplitHalves(int anchorDataPosition) {
+        int size = mDataSet.size();
+        if (size == 0) {
+            return anchorDataPosition;
+        }
+        int anchor = Math.max(0, Math.min(anchorDataPosition, size - 1));
+        int insertedBeforeAnchor = 0;
+        boolean inserted = false;
+        for (int i = size - 1; i >= 0; --i) {
+            ImageUrl image = mDataSet.get(i);
+            if (image.getState() != ImageUrl.STATE_PAGE_1) {
+                continue;
+            }
+            int next = i + 1;
+            if (next < mDataSet.size() && mDataSet.get(next).isSplitHalf()) {
+                continue;
+            }
+            ImageUrl half = createSplitHalf(image);
+            mDataSet.add(next, half);
+            mOriginalData.add(next, half);
+            inserted = true;
+            if (i < anchor) {
+                insertedBeforeAnchor++;
+            }
+        }
+        if (!inserted) {
+            return anchorDataPosition;
+        }
+        mDataVersion++;
+        return anchor + insertedBeforeAnchor;
+    }
+
+    private ImageUrl createSplitHalf(ImageUrl image) {
+        ImageUrl half = new ImageUrl(image.getId() + 900, image.getComicChapter(), image.getNum(),
+                image.getUrls().toArray(new String[0]), image.getChapter(),
+                ImageUrl.STATE_PAGE_2, false);
+        half.setSplitHalf(true);
+        return half;
+    }
+
     @Override
     public void setData(Collection<ImageUrl> collection) {
         mDataVersion++;
+        mSoloImageIds.clear();
         super.setData(collection);
     }
 
     @Override
     public void clear() {
         mDataVersion++;
+        mSoloImageIds.clear();
         super.clear();
     }
 

@@ -679,10 +679,9 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
 
     private void initReaderAdapter() {
         mReaderAdapter = new ReaderAdapter(this, new LinkedList<>());
+        mReaderAdapter.setHostRecyclerView(mRecyclerView);
         mReaderAdapter.setTapGestureListener(this);
         mReaderAdapter.setLazyLoadListener(this);
-        // 图片尺寸只有解码后才知道，识别出需要单独占屏的图后重建列表项
-        mReaderAdapter.setOnPageGroupChangedListener(this::onPageGroupChanged);
         // 解码出图片比例后重新判断图片会不会被摄像头挖孔挡到
         mReaderAdapter.setOnImageRatioListener(this::applyCutoutPadding);
         mReaderAdapter.setScaleFactor(mPreference.getNumber(PreferenceManager.PREF_READER_SCALE_FACTOR, 200).intValue() * 0.01f);
@@ -706,11 +705,12 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
     }
 
     /**
-     * 大屏（折叠屏展开 / 平板）且开启开关时，左右各显示一页
+     * 大屏（折叠屏展开 / 平板）且开启开关时，左右各显示一页。
+     * 翻页方向只决定一屏在屏幕上怎么切换：从上到下翻页时同样左右各显示一页，
+     * 只是整屏改为上下切换
      */
     private boolean isDualPageEnabled() {
         return mode == PreferenceManager.READER_MODE_PAGE
-                && turn != PreferenceManager.READER_TURN_ATB
                 && mPreference.getBoolean(PreferenceManager.PREF_READER_PAGE_DUAL_PAGE, false)
                 && isDualPageScreen();
     }
@@ -808,6 +808,11 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
      * @param dataPosition 需要保持可见的数据位置
      */
     private void rebindAfterLayoutChange(int dataPosition) {
+        // 切割不生效时删掉列表里残留的后半张，否则同一页会被重复显示一次；
+        // 重新生效时补回，原图已处于切割状态，解码不会再触发切割事件
+        dataPosition = mReaderAdapter.isPaging()
+                ? mReaderAdapter.restoreSplitHalves(dataPosition)
+                : mReaderAdapter.removeSplitHalves(dataPosition);
         // 先停掉进行中的惯性/平滑滚动，避免重建后被旧动画拉回旧位置
         mRecyclerView.stopScroll();
         // 解码尺寸按当前阅读区重新计算：单页与双页每页占的宽度不同，
@@ -840,16 +845,6 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
                 mReaderAdapter.notifyItemRangeChanged(0, itemCount);
             }
         });
-    }
-
-    /**
-     * 双页分组随图片尺寸信息更新而变化（识别出需要单独占屏的图）后重建列表项，保持当前阅读位置
-     */
-    private void onPageGroupChanged() {
-        if (mReaderAdapter == null || !mDualPage || isFinishing() || isDestroyed()) {
-            return;
-        }
-        rebindAfterLayoutChange(mReaderAdapter.toDataPosition(Math.max(getActionAdapterPosition(), 0)));
     }
 
     /**
@@ -1079,14 +1074,16 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
 
     @Override
     public void onPicturePaging(ImageUrl image) {
-        if (mDualPage) {
-            // 双页模式下图片已左右分屏显示，不再拆分单张图片
+        if (mDualPage || !mReaderAdapter.isPaging()) {
+            // 双页模式下一整张图占满一屏，关闭切割时也不再拆分；
+            // 原图已处于切割状态，重新开启切割时会由 restoreSplitHalves 补回后半张
             return;
         }
         int pos = mReaderAdapter.getPositionById(image.getId());
-        String[] urls = image.getUrls().toArray(new String[0]);
-        mReaderAdapter.add(pos + 1, new ImageUrl(image.getId() + 900, image.getComicChapter(), image.getNum(), urls,
-                image.getChapter(), ImageUrl.STATE_PAGE_2, false));
+        if (pos < 0) {
+            return;
+        }
+        mReaderAdapter.addSplitHalf(pos, image);
     }
 
     @Override
@@ -1805,7 +1802,7 @@ public abstract class ReaderActivity extends BaseActivity implements OnTapGestur
         mReaderAdapter.setVertical(vertical);
         mSeekBar.setLayoutDirection(reverse ?
                 View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
-        // 上下滚动时不再左右双页
+        // 阅读方向变化后重新应用双页：排列顺序跟随方向，屏幕是否够宽也会影响判定
         mDualPage = isDualPageEnabled();
         mReaderAdapter.setDualPage(mDualPage);
         applyDualPageOptions();

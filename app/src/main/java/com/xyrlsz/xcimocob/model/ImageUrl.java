@@ -39,6 +39,8 @@ public class ImageUrl {
     private boolean success; // 图片显示成功
     private boolean download; // 下载的图片
     @Transient
+    private boolean splitHalf; // 单页模式下自动切割大图时插入的后半张，仅在内存中存在
+    @Transient
     private Headers headers;
 
     public ImageUrl(long id, long comicChapter, int num, String[] urls, String chapter, int state,
@@ -233,6 +235,14 @@ public class ImageUrl {
 
     public boolean getDownload() {
         return this.download;
+    }
+
+    public boolean isSplitHalf() {
+        return splitHalf;
+    }
+
+    public void setSplitHalf(boolean splitHalf) {
+        this.splitHalf = splitHalf;
     }
 
     public void setDownload(boolean download) {
