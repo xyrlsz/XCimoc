@@ -1,8 +1,10 @@
 package com.xyrlsz.xcimocob.ui.activity;
 
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
 
@@ -11,7 +13,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.R;
@@ -42,6 +46,8 @@ public abstract class BaseActivity extends AppCompatActivity implements BaseView
     TextView mToolbarTitle;
     private ProgressDialogFragment mProgressDialog;
     private BasePresenter mBasePresenter;
+    /** 是否已把内容绘制到系统导航栏下方（见 {@link #applyTranslucentNavigationBar()}） */
+    private boolean mEdgeToEdgeNavigationBar = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,17 +118,43 @@ public abstract class BaseActivity extends AppCompatActivity implements BaseView
     protected void initTheme() {
         int theme = ThemeUtils.getThemeId();
         setTheme(ThemeUtils.getThemeById(theme));
-        if (isNavTranslation() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+        if (isNavTranslation()) {
+            applyTranslucentNavigationBar();
+        }
+    }
+
+    /**
+     * 内容延伸到系统导航栏下方，并关闭系统自动叠加的深色遮罩。
+     * 不再使用已废弃的 FLAG_TRANSLUCENT_NAVIGATION：从 Android 10 起，系统会为半透明的
+     * 导航栏再绘制一层半透明黑色遮罩，导致页面底部多出一条灰黑色横条。
+     */
+    protected void applyTranslucentNavigationBar() {
+        Window window = getWindow();
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            // Android 8.0 以下不支持深色导航栏图标，此时浅色背景下会看不见手势条，沿用旧行为
+            window.addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+            return;
+        }
+        mEdgeToEdgeNavigationBar = true;
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+        window.setNavigationBarColor(Color.TRANSPARENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.setNavigationBarContrastEnforced(false);
         }
     }
 
     protected void initNight() {
+        boolean night = mPreference.getBoolean(PreferenceManager.PREF_NIGHT, false);
         if (mNightMask != null) {
-            boolean night = mPreference.getBoolean(PreferenceManager.PREF_NIGHT, false);
             int color = mPreference.getNumber(PreferenceManager.PREF_OTHER_NIGHT_ALPHA, 0xB0).intValue() << 24;
             mNightMask.setBackgroundColor(color);
             mNightMask.setVisibility(night ? View.VISIBLE : View.INVISIBLE);
+        }
+        if (mEdgeToEdgeNavigationBar) {
+            WindowInsetsControllerCompat controller =
+                    WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+            // 导航栏已透明，图标颜色需跟随明暗模式，否则浅色背景下看不到手势条
+            controller.setAppearanceLightNavigationBars(!night);
         }
     }
 
