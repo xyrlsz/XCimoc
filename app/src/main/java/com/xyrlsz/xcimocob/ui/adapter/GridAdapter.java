@@ -59,18 +59,17 @@ public class GridAdapter extends BaseAdapter<Object> {
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = mInflater.inflate(R.layout.item_grid, parent, false);
         GridHolder holder = new GridHolder(view);
-        // 使用 OnPreDrawListener（仅执行一次）替代 OnDrawListener（每帧触发）
+        // 使用 OnPreDrawListener（仅在宽度变化时执行）替代 OnDrawListener（每帧触发）
         holder.rlItemGrid.getViewTreeObserver().addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
-                if (!holder.mHasMeasured) {
-                    int width = holder.rlItemGrid.getWidth();
-                    if (width > 0) {
-                        ViewGroup.LayoutParams params = holder.rlItemGrid.getLayoutParams();
-                        params.height = (int) (width * (4 / 3.0));
-                        holder.rlItemGrid.setLayoutParams(params);
-                        holder.mHasMeasured = true;
-                    }
+                // 列数按屏幕宽度计算，转屏或改变窗口大小后卡片宽度会变，高度需要跟着重算
+                int width = holder.rlItemGrid.getWidth();
+                if (width > 0 && width != holder.mMeasuredWidth) {
+                    ViewGroup.LayoutParams params = holder.rlItemGrid.getLayoutParams();
+                    params.height = (int) (width * (4 / 3.0));
+                    holder.rlItemGrid.setLayoutParams(params);
+                    holder.mMeasuredWidth = width;
                 }
                 return true;
             }
@@ -275,7 +274,7 @@ public class GridAdapter extends BaseAdapter<Object> {
         TextView comicSource;
         View comicHighlight;
         RelativeLayout rlItemGrid;
-        boolean mHasMeasured = false; // 防止 OnPreDrawListener 重复计算布局
+        int mMeasuredWidth = 0; // 记录上次计算高度时用的宽度，宽度没变就不重复计算布局
 
         GridHolder(View view) {
             super(view);

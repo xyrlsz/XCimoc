@@ -44,6 +44,7 @@ import com.xyrlsz.xcimocob.ui.adapter.BaseAdapter;
 import com.xyrlsz.xcimocob.ui.adapter.DetailAdapter;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.EditorDialogFragment;
 import com.xyrlsz.xcimocob.ui.view.DetailView;
+import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.utils.IdCreator;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
@@ -127,18 +128,10 @@ public class DetailActivity extends CoordinatorActivity implements DetailView, D
     @Override
     protected RecyclerView.LayoutManager initLayoutManager() {
         int width = mRecyclerView.getRootView().getWidth();
-        int height = mRecyclerView.getRootView().getHeight();
-        if (width <= 0 || height <= 0) {
+        if (width <= 0) {
             width = App.mWidthPixels;
-            height = App.mHeightPixels;
         }
-        int spanCount = 3;
-        if (height * 9 < width * 16) {
-            spanCount = 4;
-            if (height * 16 <= width * 9) {
-                spanCount = 5;
-            }
-        }
+        int spanCount = ViewUtils.calcGridSpanCount(this, width);
         GridLayoutManager manager = new GridLayoutManager(this, spanCount);
         manager.setRecycleChildrenOnDetach(true);
         return manager;

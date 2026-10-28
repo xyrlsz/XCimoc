@@ -22,6 +22,7 @@ import com.xyrlsz.xcimocob.ui.fragment.dialog.ItemDialogFragment;
 import com.xyrlsz.xcimocob.ui.fragment.dialog.MessageDialogFragment;
 import com.xyrlsz.xcimocob.ui.fragment.recyclerview.RecyclerViewFragment;
 import com.xyrlsz.xcimocob.ui.view.GridView;
+import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 
@@ -69,24 +70,11 @@ public abstract class GridFragment extends RecyclerViewFragment implements GridV
 
     @Override
     protected RecyclerView.LayoutManager initLayoutManager() {
-//        double rate = (double) App.mWidthPixels / App.mHeightPixels;
-//        int spanCount = 3;
-//        if (rate > 9.0 / 16) {
-//            spanCount = 4;
-//        }
         int width = mRecyclerView.getRootView().getWidth();
-        int height = mRecyclerView.getRootView().getHeight();
-        if (width <= 0 || height <= 0) {
+        if (width <= 0) {
             width = App.mWidthPixels;
-            height = App.mHeightPixels;
         }
-        int spanCount = 3;
-        if (height * 9 < width * 16) {
-            spanCount = 4;
-            if (height * 16 <= width * 9) {
-                spanCount = 5;
-            }
-        }
+        int spanCount = ViewUtils.calcGridSpanCount(getActivity(), width);
         GridLayoutManager manager = new GridLayoutManager(getActivity(), spanCount);
         manager.setRecycleChildrenOnDetach(true);
         return manager;

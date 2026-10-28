@@ -33,6 +33,7 @@ import com.xyrlsz.xcimocob.ui.activity.DetailActivity;
 import com.xyrlsz.xcimocob.ui.adapter.CategoryAdapter;
 import com.xyrlsz.xcimocob.ui.adapter.CategoryGridAdapter;
 import com.xyrlsz.xcimocob.ui.view.CategoryView;
+import com.xyrlsz.xcimocob.ui.widget.ViewUtils;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.STConvertUtils;
 import com.xyrlsz.xcimocob.utils.ThemeUtils;
@@ -435,15 +436,10 @@ public class CategoryFragment extends BaseFragment implements CategoryView, Adap
 
     protected RecyclerView.LayoutManager initLayoutManager() {
         int width = mRecyclerView.getRootView().getWidth();
-        int height = mRecyclerView.getRootView().getHeight();
-        if (width <= 0 || height <= 0) {
+        if (width <= 0) {
             width = App.mWidthPixels;
-            height = App.mHeightPixels;
         }
-        int spanCount = 3;
-        if (height * 9 < width * 16) {
-            spanCount = 4;
-        }
+        int spanCount = ViewUtils.calcGridSpanCount(getContext(), width);
         GridLayoutManager manager = new GridLayoutManager(getActivity(), spanCount);
         manager.setRecycleChildrenOnDetach(true);
         return manager;
