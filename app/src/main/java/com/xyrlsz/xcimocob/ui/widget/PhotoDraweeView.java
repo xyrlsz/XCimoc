@@ -140,6 +140,7 @@ public class PhotoDraweeView extends RetryDraweeView implements OnScaleDragGestu
         mBlockParentIntercept = noScale && noDrag;
 
         mGestureDetector.onTouchEvent(event);
+        super.onTouchEvent(event);
 
         return true;
     }
