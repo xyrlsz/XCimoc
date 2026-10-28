@@ -22,14 +22,15 @@ forked from https://github.com/Haleydu/Cimoc
 > - 部分漫画源可能**中国大陆网络下无法访问**，需要使用**代理**（魔法上网），具体请自行搜索。
 # 功能简介
 
-- 翻页阅读（Page Reader）
-- 卷纸阅读（Scroll Reader）
-- 检查漫画更新（Check Manga For Update）
-- 下载漫画（Download Manga）
-- 本地漫画（Local Reader）
-- 本地备份恢复（Local Backup）
-- WebDav云备份功能(WebDav Backup)
-- 下载漫画后导出漫画（Export Manga）
+- 翻页阅读
+- 卷纸阅读
+- 检查漫画更新
+- 下载漫画
+- 本地漫画
+- 本地备份恢复
+- WebDav云备份功能
+- 下载漫画后导出漫画
+- 适配长横屏/折叠屏
 
 # 软件使用说明
 
@@ -51,9 +52,18 @@ forked from https://github.com/Haleydu/Cimoc
 
 # 应用截图
 
-|                   收藏页                    |
+|                   收藏页                    |                   详情页                    |
+| :-----------------------------------------: | :-----------------------------------------: |
+| <img src="./screenshot/03.png" width="260"> | <img src="./screenshot/04.png" width="260"> |
+
+|                   漫画页                    |
 | :-----------------------------------------: |
-| <img src="./screenshot/03.png" width="260"> |
+| <img src="./screenshot/05.png" width="260"> |
+
+|                  双页模式                   |
+| :-----------------------------------------: |
+| <img src="./screenshot/07.png" width="520"> |
+
 
 # 增加图源
 
