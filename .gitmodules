@@ -1,6 +1,3 @@
-[submodule "xyropencc/opencc"]
-	path = xyropencc/opencc
-	url = https://github.com/longbridge/opencc.git
 [submodule "quickjs/src/main/cpp/quickjs"]
 	path = quickjs/src/main/cpp/quickjs
 	url = https://github.com/quickjs-ng/quickjs.git

@@ -6,7 +6,6 @@ import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
 
 import taobe.tec.jcc.JChineseConvertor;
-//import xyropencc.Xyropencc;
 
 public class STConvertUtils {
     public static String T2S(String s) {
@@ -18,8 +17,6 @@ public class STConvertUtils {
                 case PreferenceManager.ST_OPENCC:
 //                    return ZhConverterUtil.toSimple(s);
                     return ChineseConverter.convert(s, ConversionType.T2S);
-//                case PreferenceManager.ST_OPENCCGO:
-//                    return Xyropencc.t2S(s);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -37,8 +34,6 @@ public class STConvertUtils {
                 case PreferenceManager.ST_OPENCC:
 //                    return ZhConverterUtil.toTraditional(s);
                     return ChineseConverter.convert(s, ConversionType.S2T);
-//                case PreferenceManager.ST_OPENCCGO:
-//                    return Xyropencc.s2T(s);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -59,8 +54,6 @@ public class STConvertUtils {
                         case PreferenceManager.ST_OPENCC:
 //                            return ZhConverterUtil.toSimple(s);
                             return ChineseConverter.convert(s, ConversionType.T2S);
-//                        case PreferenceManager.ST_OPENCCGO:
-//                            return Xyropencc.t2S(s);
                     }
 
                 } catch (Exception e) {
@@ -75,8 +68,6 @@ public class STConvertUtils {
                         case PreferenceManager.ST_OPENCC:
 //                            return ZhConverterUtil.toTraditional(s);
                             return ChineseConverter.convert(s, ConversionType.S2T);
-//                        case PreferenceManager.ST_OPENCCGO:
-//                            return Xyropencc.s2T(s);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -89,8 +80,6 @@ public class STConvertUtils {
 //                            return JChineseConvertor.getInstance().s2t(s);
 //                        case PreferenceManager.ST_OPENCC4J:
 //                            return ZhTwConverterUtil.toTraditional(s);
-//                        case PreferenceManager.ST_OPENCCGO:
-//                            return Xyropencc.s2TWP(s);
 //                    }
 //                } catch (Exception e) {
 //                    e.printStackTrace();

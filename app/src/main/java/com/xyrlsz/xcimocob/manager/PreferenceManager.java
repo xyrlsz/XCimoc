@@ -39,7 +39,6 @@ public class PreferenceManager {
 
     public static final int ST_JCC = 0;
     public static final int ST_OPENCC = 1;
-//    public static final int ST_OPENCCGO = 2;
 
     public static final int DARK_MODE_FALLOW_SYSTEM = 0;
     public static final int DARK_MODE_ALWAYS_DARK = 1;

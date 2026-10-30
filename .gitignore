@@ -45,8 +45,6 @@ google-services.json
 # ============ 项目特有 ============
 /app/src/main/BrowserFilter-data.xml
 /app/debug/
-app/libs/xyropencc-sources.jar
-app/libs/xyropencc.aar
 data_server/xcimoc-data-server.exe
 data_server/xcimoc-data-server.exe~
 data_server/data/cimoc.db
