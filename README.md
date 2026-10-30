@@ -4,8 +4,8 @@
 
 # 应用简介
 
-[![release](https://img.shields.io/github/downloads/xyrlsz/XCimoc/total.svg?style=for-the-badge&logo=github)](https://github.com/xyrlsz/XCimoc/releases) [![](https://img.shields.io/badge/platform-Android-blue?style=for-the-badge)]() [![](https://img.shields.io/badge/Android_Version-5.0+-red?style=for-the-badge)]()
-
+<img src="https://img.shields.io/badge/platform-Android-blue?style=for-the-badge"> <img src="https://img.shields.io/badge/Android_Version-5.0+-red?style=for-the-badge">
+[![release](https://img.shields.io/github/downloads/xyrlsz/XCimoc/total.svg?style=for-the-badge&logo=github)](https://github.com/xyrlsz/XCimoc/releases)
 
 Android 平台在线漫画阅读器\
 Online manga reader based on Android
@@ -20,6 +20,7 @@ forked from https://github.com/Haleydu/Cimoc
 
 > - 各位大佬们提交漫画源相关issue请按照[模板](.github/ISSUE_TEMPLATE/comic-source-issues.md)填写，方便检查问题。
 > - 部分漫画源可能**中国大陆网络下无法访问**，需要使用**代理**（魔法上网），具体请自行搜索。
+
 # 功能简介
 
 - 翻页阅读
@@ -96,4 +97,5 @@ forked from https://github.com/Haleydu/Cimoc
 - 本软件仅用于学习交流，不得用于商业用途
 - 本软件不对因使用本软件而导致的任何损失或损害承担责任
 - 所有漫画均来自用户在第三方网站上的手动搜索
+- 第三方网站的漫画可能未经审查，本软件对漫画内容概不负责
 
