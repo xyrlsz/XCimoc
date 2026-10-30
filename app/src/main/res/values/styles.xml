@@ -77,11 +77,15 @@
         <item name="alertDialogTheme">@style/DialogThemeBlue</item>
     </style>
 
-    <style name="BaseDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
-        <!-- 统一对话框外观：圆角卡片、留白与最小宽度 -->
-        <item name="android:windowBackground">@drawable/dialog_background</item>
+    <!-- 对话框窗口宽度：竖屏按屏幕宽度比例；横屏改用固定宽度，见 values-land/styles.xml -->
+    <style name="DialogWindowSize" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
         <item name="android:windowMinWidthMajor">86%</item>
         <item name="android:windowMinWidthMinor">90%</item>
+    </style>
+
+    <style name="BaseDialogTheme" parent="DialogWindowSize">
+        <!-- 统一对话框外观：圆角卡片与留白（窗口宽度见 DialogWindowSize） -->
+        <item name="android:windowBackground">@drawable/dialog_background</item>
     </style>
 
     <style name="DialogThemeBlue" parent="BaseDialogTheme">

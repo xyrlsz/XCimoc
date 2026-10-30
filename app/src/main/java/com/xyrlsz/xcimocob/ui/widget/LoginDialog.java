@@ -98,7 +98,7 @@ public class LoginDialog extends Dialog {
     }
 
     /**
-     * 设置对话框窗口宽度为屏幕宽度的约 85%，避免过宽/贴边显示异常。
+     * 设置对话框窗口宽度为屏幕宽度的约 85%（不超过 dialog_max_width），避免过宽/贴边显示异常。
      * 同时清除宿主 Activity 继承来的沉浸式 flag（windowTranslucentStatus），
      * 否则 SOFT_INPUT_ADJUST_RESIZE 不生效，键盘会遮挡底部按钮。
      */
@@ -124,7 +124,9 @@ public class LoginDialog extends Dialog {
             } else {
                 wm.getDefaultDisplay().getSize(size);
             }
-            window.setLayout((int) (size.x * 0.85f), WindowManager.LayoutParams.WRAP_CONTENT);
+            window.setLayout(Math.min((int) (size.x * 0.85f),
+                    mContext.getResources().getDimensionPixelSize(R.dimen.dialog_max_width)),
+                    WindowManager.LayoutParams.WRAP_CONTENT);
         }
     }
 

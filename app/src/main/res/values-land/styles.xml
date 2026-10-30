@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+        横屏时屏幕宽度远大于竖屏，若继续按屏幕宽度比例设置最小宽度，
+        对话框会被拉到接近满屏宽度（文字行过长），因此横屏改为固定宽度。
+    -->
+    <style name="DialogWindowSize" parent="Theme.MaterialComponents.DayNight.Dialog.Alert">
+        <item name="android:windowMinWidthMajor">@dimen/dialog_max_width</item>
+        <item name="android:windowMinWidthMinor">90%</item>
+    </style>
+
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 对话框宽度上限：避免横屏或大屏下按屏幕比例被拉得过长 -->
+    <dimen name="dialog_max_width">420dp</dimen>
+
+</resources>
