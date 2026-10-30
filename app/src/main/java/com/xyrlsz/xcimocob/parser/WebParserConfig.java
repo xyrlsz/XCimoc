@@ -54,7 +54,8 @@ public class WebParserConfig {
 
     /**
      * 是否处理 Cloudflare 认证，默认 {@code true}。仅在页面命中 Cloudflare 挑战页时生效：
-     * 纯 JS 挑战会自动等待其通过（最长 {@link #cloudflareTimeoutMs}），交互式验证则直接报错。
+     * 先自动等待挑战通过（最长 {@link #cloudflareTimeoutMs}，交互式验证至少 3 分钟）；
+     * 仍不通过时，{@link #interactiveChallenge} 为 {@code true} 则挂出验证界面，否则报错。
      */
     private boolean handleCloudflare = true;
 

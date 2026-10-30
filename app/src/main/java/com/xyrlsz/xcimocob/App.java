@@ -35,6 +35,8 @@ import com.xyrlsz.xcimocob.manager.PreferenceManager;
 import com.xyrlsz.xcimocob.manager.SourceManager;
 import com.xyrlsz.xcimocob.misc.ActivityLifecycle;
 import com.xyrlsz.xcimocob.model.MyObjectBox;
+import com.xyrlsz.xcimocob.network.DefaultUserAgentInterceptor;
+import com.xyrlsz.xcimocob.network.WebViewCookieInterceptor;
 import com.xyrlsz.xcimocob.network.sync.DataSyncManager;
 import com.xyrlsz.xcimocob.saf.CimocDocumentFile;
 import com.xyrlsz.xcimocob.ui.activity.MainActivity;
@@ -150,6 +152,10 @@ public class App extends Application implements AppGetter, Thread.UncaughtExcept
                             .connectionPool(connectionPool)
                             .dispatcher(dispatcher)
                             .cache(httpCache)
+                            // 复用 WebView 的 Cookie（Cloudflare 的 cf_clearance 等），避免重复验证
+                            .addInterceptor(new WebViewCookieInterceptor())
+                            // OkHttp 默认不带 User-Agent，补上与 WebView 一致的 UA，保证 cf_clearance 有效
+                            .addInterceptor(new DefaultUserAgentInterceptor())
                             .addNetworkInterceptor(chain -> {
                                 Response response = chain.proceed(chain.request());
                                 // 有缓存头（Cache-Control/ETag/Last-Modified/Expires）→ 走标准缓存（含条件更新）

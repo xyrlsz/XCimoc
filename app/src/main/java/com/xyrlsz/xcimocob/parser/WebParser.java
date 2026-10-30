@@ -3,12 +3,14 @@ package com.xyrlsz.xcimocob.parser;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.ViewGroup;
+import android.webkit.CookieManager;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -21,6 +23,7 @@ import android.widget.Toast;
 
 import com.xyrlsz.xcimocob.App;
 import com.xyrlsz.xcimocob.manager.PreferenceManager;
+import com.xyrlsz.xcimocob.network.WebViewCookieInterceptor;
 import com.xyrlsz.xcimocob.utils.HintUtils;
 import com.xyrlsz.xcimocob.utils.StringUtils;
 
@@ -28,6 +31,7 @@ import org.json.JSONObject;
 
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.rxjava3.core.Observable;
@@ -52,28 +56,49 @@ public class WebParser {
     private static final long CLOUDFLARE_POLL_MS = 500;
 
     /**
+     * 同一站点同时只允许一个实例挂出交互式 Cloudflare 验证，其余实例等待并复用其 Cookie。
+     * value 为取得验证权的时间戳，用于清理僵死锁（实例异常结束未释放时允许接管）。
+     */
+    private static final Map<String, Long> ACTIVE_CHALLENGE_HOSTS = new ConcurrentHashMap<>();
+
+    /**
+     * 交互式验证权的僵死超时：超过该时间未释放则允许其他实例接管
+     */
+    private static final long CHALLENGE_LOCK_STALE_MS = 5 * 60_000L;
+
+    /**
+     * 交互式验证需要用户手动操作，默认的 30 秒往往不够（超时会直接撤掉验证界面），
+     * 因此交互式验证至少等待 3 分钟
+     */
+    private static final long INTERACTIVE_MIN_TIMEOUT_MS = 3 * 60_000L;
+
+    /**
+     * 挑战页等待超过该时间仍未通过时才请求人工验证：
+     * 多数 Cloudflare JS 挑战会在几秒内自动通过，过早弹出验证界面会造成「反复验证」的体验
+     */
+    private static final long CLOUDFLARE_INTERACTIVE_AFTER_MS = 10_000;
+
+    /**
      * 检测当前页面是否处于 Cloudflare 挑战页。
-     * 返回：'0' 非挑战页；'1' 纯 JS 挑战（可自动通过）；'2' 交互式验证 / 被拦截（需人工）。
+     * 返回：'0' 非挑战页；'1' 挑战页（先自动等待，多数 JS 挑战会自动通过）；
+     * '2' 「Attention Required」拦截页（通常必须人工点击）。
+     *
+     * <p>注意：不能用 {@code outerHTML} 里是否出现 {@code challenge-platform} / {@code turnstile} 判断，
+     * 正常页面也会被 Cloudflare 注入这些脚本，会把正常内容误判成挑战页，导致反复要求验证。
      */
     private static final String CF_DETECT_JS = "(function(){"
             + "try{"
             + "var t=(document.title||'').toLowerCase();"
-            + "var h=document.documentElement.outerHTML||'';"
             + "var u=location.href||'';"
-            + "var isCf=(t.indexOf('just a moment')!==-1)"
+            + "var titleCf=(t.indexOf('just a moment')!==-1)"
             + "||(t.indexOf('attention required')!==-1)"
-            + "||(typeof window._cf_chl_opt!=='undefined')"
-            + "||(h.indexOf('challenge-platform')!==-1)"
-            + "||(h.indexOf('cf-chl')!==-1)"
-            + "||(h.indexOf('cf_chl_opt')!==-1)"
-            + "||(u.indexOf('/cdn-cgi/challenge-platform/')!==-1);"
-            + "if(!isCf){return '0';}"
-            + "var interactive=(t.indexOf('attention required')!==-1)"
-            + "||(h.indexOf('turnstile')!==-1)"
-            + "||(h.indexOf('hcaptcha')!==-1)"
-            + "||(h.indexOf('cf_captcha')!==-1)"
-            + "||(typeof window.turnstile!=='undefined');"
-            + "return interactive?'2':'1';"
+            + "||(t.indexOf('checking your browser')!==-1);"
+            + "var optCf=(typeof window._cf_chl_opt!=='undefined');"
+            + "var urlCf=(u.indexOf('/cdn-cgi/challenge-platform/')!==-1);"
+            + "var domCf=!!document.querySelector('#challenge-stage, #challenge-form,"
+            + " #cf-challenge-running, .cf-browser-verification, #cf-please-wait, #challenge-body-text');"
+            + "if(!(titleCf||optCf||urlCf||domCf)){return '0';}"
+            + "return (t.indexOf('attention required')!==-1)?'2':'1';"
             + "}catch(e){return '0';}"
             + "})()";
 
@@ -128,6 +153,22 @@ public class WebParser {
     private ViewGroup mChallengeContainer;
     private boolean cfNotified = false;
     private boolean disable = false;
+    /**
+     * 当前实例是否持有该站点的交互式验证权
+     */
+    private boolean holdsChallengeLock = false;
+    /**
+     * 是否正在等待同站点其他实例完成交互式验证
+     */
+    private boolean waitingForOtherChallenge = false;
+    /**
+     * 发现 CookieManager 已有 cf_clearance 时是否已重新加载过页面（避免反复重载）
+     */
+    private boolean reloadedForCookie = false;
+    /**
+     * 是否已尝试挂出验证界面但失败（当前没有可见 Activity），避免每个轮询周期重复尝试
+     */
+    private boolean interactiveAttemptFailed = false;
 
     public WebParser(Context context, String url, Headers headers) {
         this(context, url, headers, "", new WebParserConfig());
@@ -197,6 +238,8 @@ public class WebParser {
     private void destroyWebView() {
         if (destroyed) return;
         destroyed = true;
+        releaseChallengeLock();
+        waitingForOtherChallenge = false;
         hideChallengeOverlay();
         if (mWebView != null) {
             new Handler(Looper.getMainLooper()).post(() -> {
@@ -224,6 +267,10 @@ public class WebParser {
         wv.getSettings().setJavaScriptEnabled(true);
         wv.getSettings().setDomStorageEnabled(true);
         wv.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_DEFAULT);
+        // Cloudflare 的 cf_clearance 依赖 Cookie，且 Turnstile 组件会用到第三方 Cookie
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(wv, true);
     }
 
     /**
@@ -245,6 +292,9 @@ public class WebParser {
                 mWebView.getSettings().setUserAgentString(headersMap.get("User-Agent"));
             }
         }
+        // loadUrl 的附加头不能可靠地携带 Cookie，改为写入 CookieManager，
+        // 这样 WebView 与后续 OkHttp 请求都能复用同一份 Cookie（含 cf_clearance / 登录态）
+        applyRequestCookies(headersMap.remove("Cookie"));
 
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
@@ -261,6 +311,26 @@ public class WebParser {
         });
 
         mWebView.loadUrl(url, headersMap);
+    }
+
+    /**
+     * 把请求头里的 Cookie 写入 CookieManager，让 WebView 首次加载就带上登录态，
+     * 同时也能被后续 OkHttp 请求复用。
+     */
+    private void applyRequestCookies(String cookieHeader) {
+        if (StringUtils.isEmpty(cookieHeader)) return;
+        try {
+            CookieManager cookieManager = CookieManager.getInstance();
+            for (String pair : cookieHeader.split(";")) {
+                String item = pair.trim();
+                if (!item.isEmpty()) {
+                    cookieManager.setCookie(url, item + "; Path=/");
+                }
+            }
+            WebViewCookieInterceptor.flushAsync();
+        } catch (Exception e) {
+            Log.w("WebParser", "apply request cookies failed", e);
+        }
     }
 
     /**
@@ -317,40 +387,40 @@ public class WebParser {
             int cf = parseCfResult(value);
             if (cf == 0) {
                 startRender();
-            } else if (cf == 2) {
-                if (interactiveChallenge) {
-                    // 交互式验证：把 WebView 挂到前台由用户手动点击完成
-                    notifyCloudflare("「" + sourceDisplay() + "」需要完成 Cloudflare 真人验证");
-                    cloudflareWaiting = true;
-                    cloudflareStartTime = System.currentTimeMillis();
-                    showChallengeOverlay();
-                    waitAndRecheckCloudflare();
-                } else {
-                    // 交互式验证（勾选验证码）或 Attention Required 拦截无法在后台 WebView 自动完成
-                    emitError(new Exception("「" + sourceDisplay() + "」启用了 Cloudflare 交互式验证，无法自动解析"));
-                }
-            } else {
-                // 纯 JS 挑战：页面 JS 会自动计算并通过，轮询等待
-                notifyCloudflare("「" + sourceDisplay() + "」正在通过 Cloudflare 验证，请稍候");
-                cloudflareWaiting = true;
-                cloudflareStartTime = System.currentTimeMillis();
-                waitAndRecheckCloudflare();
+                return;
             }
+
+            // 命中挑战页：先自动等待（多数 JS 挑战会自动通过），久未通过再请求人工验证
+            notifyCloudflare("「" + sourceDisplay() + "」正在通过 Cloudflare 验证，请稍候");
+            cloudflareWaiting = true;
+            cloudflareStartTime = System.currentTimeMillis();
+            reloadedForCookie = false;
+            interactiveAttemptFailed = false;
+            if (cf == 2) {
+                // 「Attention Required」拦截页通常必须人工点击，直接给出验证界面
+                showInteractiveChallengeIfPossible();
+            }
+            waitAndRecheckCloudflare();
         });
     }
 
     /**
-     * 轮询等待 Cloudflare JS 挑战通过；挑战通过后（可能已重定向）重新等待 DOM 再渲染。
+     * 轮询等待 Cloudflare 挑战通过；挑战通过后（可能已重定向）重新等待 DOM 再渲染。
      */
     private void waitAndRecheckCloudflare() {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (destroyed || mWebView == null) return;
 
             long elapsed = System.currentTimeMillis() - cloudflareStartTime;
-            if (elapsed >= cloudflareTimeoutMs) {
+            long timeout = (interactiveChallenge || holdsChallengeLock)
+                    ? Math.max(cloudflareTimeoutMs, INTERACTIVE_MIN_TIMEOUT_MS)
+                    : cloudflareTimeoutMs;
+            if (elapsed >= timeout) {
                 cloudflareWaiting = false;
                 hideChallengeOverlay();
-                emitError(new Exception("「" + sourceDisplay() + "」Cloudflare 验证超时"));
+                emitError(new Exception(interactiveChallenge
+                        ? "「" + sourceDisplay() + "」Cloudflare 验证超时"
+                        : "「" + sourceDisplay() + "」需要完成 Cloudflare 验证，但该图源未开启交互式验证"));
                 return;
             }
 
@@ -360,23 +430,147 @@ public class WebParser {
                 int cf = parseCfResult(value);
                 if (cf == 0) {
                     // 挑战通过：可能已重定向到目标页，重新等待 DOM 就绪后开始渲染
-                    cloudflareWaiting = false;
-                    hideChallengeOverlay();
-                    waitForDomReady();
-                } else if (cf == 2) {
-                    if (interactiveChallenge) {
-                        // 交互式验证：继续等待用户操作
-                        waitAndRecheckCloudflare();
-                    } else {
-                        cloudflareWaiting = false;
-                        hideChallengeOverlay();
-                        emitError(new Exception("「" + sourceDisplay() + "」启用了 Cloudflare 交互式验证，无法自动解析"));
-                    }
-                } else {
-                    waitAndRecheckCloudflare();
+                    completeCloudflareChallenge();
+                    return;
                 }
+
+                // 仍在挑战页：若同站点其他实例正在验证，等待它把 cf_clearance 写进 CookieManager
+                if (waitingForOtherChallenge) {
+                    if (isChallengeHostLocked()) {
+                        if (!hasCookie("cf_clearance")) {
+                            // 用户可能正在完成验证，等待期间不计入本实例超时
+                            cloudflareStartTime = System.currentTimeMillis();
+                        }
+                    } else {
+                        waitingForOtherChallenge = false;
+                    }
+                }
+
+                long waited = System.currentTimeMillis() - cloudflareStartTime;
+                if (waited >= CLOUDFLARE_INTERACTIVE_AFTER_MS && !waitingForOtherChallenge) {
+                    if (hasCookie("cf_clearance")) {
+                        // 其他实例已完成验证：重新加载让新 Cookie 生效（只重载一次）
+                        if (!reloadedForCookie) {
+                            reloadedForCookie = true;
+                            cloudflareWaiting = false;
+                            mWebView.reload();
+                            return;
+                        }
+                    } else if (interactiveChallenge && mChallengeContainer == null
+                            && !interactiveAttemptFailed) {
+                        // 自动等待仍未通过，请求用户手动完成验证
+                        showInteractiveChallengeIfPossible();
+                    }
+                }
+
+                waitAndRecheckCloudflare();
             });
         }, CLOUDFLARE_POLL_MS);
+    }
+
+    /**
+     * 挑战已通过：释放验证权、把 Cookie 落盘，然后重新等待 DOM 再渲染。
+     */
+    private void completeCloudflareChallenge() {
+        cloudflareWaiting = false;
+        waitingForOtherChallenge = false;
+        reloadedForCookie = false;
+        hideChallengeOverlay();
+        releaseChallengeLock();
+        // cf_clearance 立即落盘，避免下次启动又重新验证
+        WebViewCookieInterceptor.flushAsync();
+        waitForDomReady();
+    }
+
+    /**
+     * 请求人工完成验证：同一站点同时只允许一个实例挂出验证界面，其余实例等待并复用其结果。
+     */
+    private void showInteractiveChallengeIfPossible() {
+        if (!interactiveChallenge || mChallengeContainer != null || waitingForOtherChallenge) {
+            return;
+        }
+        if (!acquireChallengeLock()) {
+            waitingForOtherChallenge = true;
+            return;
+        }
+        cfNotified = false;
+        notifyCloudflare("「" + sourceDisplay() + "」需要完成 Cloudflare 真人验证");
+        // 交给用户操作后重新计时，避免操作过程中被判超时
+        cloudflareStartTime = System.currentTimeMillis();
+        reloadedForCookie = false;
+        showChallengeOverlay();
+        if (mChallengeContainer == null) {
+            // 当前没有可见界面可挂载验证页：退化为自动等待，避免反复尝试
+            interactiveAttemptFailed = true;
+            releaseChallengeLock();
+        }
+    }
+
+    /**
+     * 站点标识（主机名），用于交互式验证的去重
+     */
+    private String challengeHost() {
+        try {
+            String host = Uri.parse(url).getHost();
+            return host == null ? "" : host;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /**
+     * 同站点是否已有实例持有交互式验证权（未过期）。
+     */
+    private boolean isChallengeHostLocked() {
+        String host = challengeHost();
+        if (StringUtils.isEmpty(host)) return false;
+        Long acquiredAt = ACTIVE_CHALLENGE_HOSTS.get(host);
+        return acquiredAt != null && System.currentTimeMillis() - acquiredAt < CHALLENGE_LOCK_STALE_MS;
+    }
+
+    /**
+     * 尝试取得该站点的交互式验证权；已持有则直接返回 true。
+     */
+    private boolean acquireChallengeLock() {
+        if (holdsChallengeLock) return true;
+        String host = challengeHost();
+        if (StringUtils.isEmpty(host)) {
+            // 无法解析站点时退化为各实例自行验证
+            holdsChallengeLock = true;
+            return true;
+        }
+        long now = System.currentTimeMillis();
+        Long acquiredAt = ACTIVE_CHALLENGE_HOSTS.get(host);
+        if (acquiredAt != null && now - acquiredAt < CHALLENGE_LOCK_STALE_MS) {
+            return false;
+        }
+        ACTIVE_CHALLENGE_HOSTS.put(host, now);
+        holdsChallengeLock = true;
+        return true;
+    }
+
+    /**
+     * 释放交互式验证权（幂等）。
+     */
+    private void releaseChallengeLock() {
+        if (!holdsChallengeLock) return;
+        holdsChallengeLock = false;
+        String host = challengeHost();
+        if (!StringUtils.isEmpty(host)) {
+            ACTIVE_CHALLENGE_HOSTS.remove(host);
+        }
+    }
+
+    /**
+     * 当前 URL 的 CookieManager 中是否已有指定 Cookie。
+     */
+    private boolean hasCookie(String name) {
+        try {
+            String cookies = CookieManager.getInstance().getCookie(url);
+            return cookies != null && cookies.contains(name + "=");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
