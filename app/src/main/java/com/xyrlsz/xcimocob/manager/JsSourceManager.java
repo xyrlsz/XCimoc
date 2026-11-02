@@ -2,6 +2,8 @@ package com.xyrlsz.xcimocob.manager;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.os.Build;
 import android.util.Log;
 
 import com.xyrlsz.quickjs.QuickJSEngine;
@@ -113,10 +115,15 @@ public class JsSourceManager {
     /**
      * 当前 APK 版本号（versionCode）；异常返回 0。用于 APK 更新时强制覆盖打包 JS 源。
      */
-    private static int appVersionCode() {
+    @SuppressWarnings("deprecation") // versionCode 在 API 28 起才被 longVersionCode 取代，低版本仍需回退
+    private static long appVersionCode() {
         try {
-            return App.getAppContext().getPackageManager()
-                    .getPackageInfo(App.getAppContext().getPackageName(), 0).versionCode;
+            PackageInfo info = App.getAppContext().getPackageManager()
+                    .getPackageInfo(App.getAppContext().getPackageName(), 0);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                return info.getLongVersionCode();
+            }
+            return info.versionCode;
         } catch (Exception e) {
             return 0;
         }
@@ -416,7 +423,7 @@ public class JsSourceManager {
         // release 仍只在 APK 更新时强制覆盖。
         boolean force = BuildConfig.DEBUG
                 || (getRepoUrl().contains("xyrlsz/xcimoc-js-sources")
-                && appVersionCode() != prefs().getInt(KEY_APP_VERSION, -1));
+                && appVersionCode() != prefs().getLong(KEY_APP_VERSION, -1));
         Log.d("JsSource", "seedFromAssets: start, existing count=" + mBox.count()
                 + ", force=" + force + " (debug=" + BuildConfig.DEBUG + ")");
         try {
@@ -475,7 +482,7 @@ public class JsSourceManager {
         if (added > 0) {
             prefs().edit()
                     .putBoolean(KEY_SEEDED, true)
-                    .putInt(KEY_APP_VERSION, appVersionCode())
+                    .putLong(KEY_APP_VERSION, appVersionCode())
                     .apply();
         }
         Log.d("JsSource", "seedFromAssets: done, added=" + added
