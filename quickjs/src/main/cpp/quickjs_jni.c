@@ -48,7 +48,7 @@ static int64_t now_ms(void) {
 }
 
 /* 执行超时中断回调：返回非 0 时引擎中止执行 */
-static int qjs_interrupt_handler(JSRuntime *rt, void *opaque) {
+static int qjs_interrupt_handler(JSContext *ctx, void *opaque) {
     QJSRuntimeData *data = (QJSRuntimeData *) opaque;
     return now_ms() >= data->deadline_ms;
 }
