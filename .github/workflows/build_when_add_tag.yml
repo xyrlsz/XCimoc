@@ -20,6 +20,7 @@ on:
 # 平台范围（仅 Linux + Windows）：
 #   linux/amd64     ubuntu-latest + 原生 gcc
 #   linux/arm64     ubuntu-latest + gcc-aarch64-linux-gnu 交叉工具链
+#   linux/*-musl    ubuntu-latest + Zig（静态链接）
 #   windows/amd64   windows-latest + MinGW-w64
 #
 # macOS 用户若需要二进制，按仓库 README 的指引用 data_server/build.sh 本地构建即可
@@ -70,6 +71,40 @@ jobs:
                 gcc-aarch64-linux-gnu \
                 libc6-dev-arm64-cross
             ext: ""
+
+          - label: linux-amd64-musl
+            runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            cc: zig cc -target x86_64-linux-musl
+            install_cmd: |
+              set -eux
+              sudo apt-get update -y
+              sudo apt-get install -y --no-install-recommends \
+                ca-certificates \
+                curl \
+                file
+            ext: ""
+            musl: true
+            ldflags: "-s -w -extldflags=-static"
+            tags: "netgo osusergo"
+
+          - label: linux-arm64-musl
+            runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            cc: zig cc -target aarch64-linux-musl
+            install_cmd: |
+              set -eux
+              sudo apt-get update -y
+              sudo apt-get install -y --no-install-recommends \
+                ca-certificates \
+                curl \
+                file
+            ext: ""
+            musl: true
+            ldflags: "-s -w -extldflags=-static"
+            tags: "netgo osusergo"
 
           - label: windows-amd64
             runner: windows-latest
@@ -122,6 +157,12 @@ jobs:
         working-directory: data_server
         run: ${{ matrix.install_cmd }}
 
+      - name: Set up Zig (musl C compiler)
+        if: matrix.musl
+        uses: mlugg/setup-zig@v2
+        with:
+          version: "0.14.1"
+
       - name: Sanity go list packages
         working-directory: data_server
         shell: bash
@@ -137,13 +178,24 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CC: ${{ matrix.cc }}
+          LDFLAGS: ${{ matrix.ldflags || '-s -w' }}
+          TAGS: ${{ matrix.tags }}
         run: |
           set -eux
           mkdir -p dist
           BIN="dist/xcimoc-data-server-${{ matrix.label }}${{ matrix.ext }}"
-          go build -ldflags="-s -w" -o "$BIN" .
+          go build -tags "$TAGS" -ldflags "$LDFLAGS" -o "$BIN" .
           ls -lh dist/
           echo "BIN_PATH=data_server/$BIN" >> "$GITHUB_ENV"
+
+      - name: Verify static linking (${{ matrix.label }})
+        if: matrix.musl
+        working-directory: data_server
+        shell: bash
+        run: |
+          set -eux
+          file "dist/xcimoc-data-server-${{ matrix.label }}"
+          file "dist/xcimoc-data-server-${{ matrix.label }}" | grep -q 'statically linked'
 
       - name: Upload artifact ${{ matrix.label }}
         uses: actions/upload-artifact@v6
