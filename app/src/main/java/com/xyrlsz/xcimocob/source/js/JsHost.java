@@ -22,7 +22,9 @@ import org.jsoup.nodes.Element;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,6 +44,7 @@ import okhttp3.ResponseBody;
 public final class JsHost implements QuickJSEngine.HostBridge {
 
     public static final JsHost INSTANCE = new JsHost();
+
     private static final String PREFS = "js_source";
     private static final String TAG = "JsHost";
     private static final long NODE_LIFETIME_MS = 30_000L;
@@ -54,43 +57,53 @@ public final class JsHost implements QuickJSEngine.HostBridge {
     private final ConcurrentHashMap<Integer, NodeEntry> mNodeMap = new ConcurrentHashMap<>();
     private final AtomicInteger mNodeSeq = new AtomicInteger(1);
     private final ConcurrentHashMap<String, String> mState = new ConcurrentHashMap<>();
+    private final Map<String, HostCallHandler> mHostCalls;
 
     private JsHost() {
+        Map<String, HostCallHandler> handlers = new HashMap<>();
+        handlers.put("dom", this::handleDom);
+        handlers.put("md5", args -> quoteStr(SourceCodec.md5(arg(args, "data"))));
+        handlers.put("lz64", args -> quoteStr(SourceCodec.lz64Decrypt(arg(args, "data"))));
+        handlers.put("base64", this::handleBase64);
+        handlers.put("aes_cbc", this::handleAesCbc);
+        handlers.put("state", this::handleState);
+        handlers.put("setting", this::handleSetting);
+        handlers.put("login", this::handleLogin);
+        handlers.put("fetch", this::handleFetch);
+        handlers.put("log", args -> {
+            Log.d("JsSource", "[" + arg(args, "type") + "] " + arg(args, "data"));
+            return "null";
+        });
+        handlers.put("toast", args -> {
+            HintUtils.showToast(arg(args, "data"));
+            return "null";
+        });
+        handlers.put("dialog", args -> {
+            handleDialog(args);
+            return "null";
+        });
+        handlers.put("urlencode", args -> quoteStr(SourceCodec.urlEncode(arg(args, "data"))));
+        handlers.put("urldecode", args -> quoteStr(SourceCodec.urlDecode(arg(args, "data"))));
+        mHostCalls = Collections.unmodifiableMap(handlers);
     }
 
     @Override
     public String onHostCall(String name, String argsJson) {
+        HostCallHandler handler = mHostCalls.get(name);
+        if (handler == null) {
+            return "null";
+        }
         try {
-            return switch (name) {
-                case "dom" -> handleDom(argsJson);
-                case "md5" -> quoteStr(SourceCodec.md5(arg(argsJson, "data")));
-                case "lz64" -> quoteStr(SourceCodec.lz64Decrypt(arg(argsJson, "data")));
-                case "base64" -> handleBase64(argsJson);
-                case "aes_cbc" -> handleAesCbc(argsJson);
-                case "state" -> handleState(argsJson);
-                case "setting" -> handleSetting(argsJson);
-                case "login" -> handleLogin(argsJson);
-                case "fetch" -> handleFetch(argsJson);
-                case "log" -> {
-                    Log.d("JsSource", "[" + arg(argsJson, "type") + "] " + arg(argsJson, "data"));
-                    yield "null";
-                }
-                case "toast" -> {
-                    HintUtils.showToast(arg(argsJson, "data"));
-                    yield "null";
-                }
-                case "dialog" -> {
-                    handleDialog(argsJson);
-                    yield "null";
-                }
-                case "urlencode" -> quoteStr(SourceCodec.urlEncode(arg(argsJson, "data")));
-                case "urldecode" -> quoteStr(SourceCodec.urlDecode(arg(argsJson, "data")));
-                default -> "null";
-            };
+            return handler.handle(argsJson);
         } catch (Exception e) {
             Log.e(TAG, "onHostCall(" + name + ") error", e);
             return "null";
         }
+    }
+
+    @FunctionalInterface
+    private interface HostCallHandler {
+        String handle(String argsJson) throws Exception;
     }
 
     private void handleDialog(String argsJson) throws JSONException {

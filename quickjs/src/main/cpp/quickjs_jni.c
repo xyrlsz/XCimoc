@@ -19,7 +19,7 @@
 #include <android/log.h>
 
 #include "quickjs.h"
-#include "utf8to16.h"
+#include "utf8_codec.h"
 #include "codec_native.h"
 
 #define LOG_TAG "QuickJS"
@@ -162,9 +162,8 @@ static const char qjs_helpers_js[] =
 
 /* ---------------- hostCall 桥（JS → Java） ---------------- */
 
-/* JS 侧调用 hostCall(name, argsJson) 回调到 Java 的
- * QuickJSEngine.onHostCall(String, String) -> String。
- * 返回值以 JS 字符串形式返回；失败/异常时返回 "null"。 */
+/* JS 侧调用 hostCall(name, argsJson)。内置 codec 优先由 C 处理，
+ * 其余调用通过 JNI 转发到 QuickJSEngine.onHostCall。 */
 static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
                             int argc, JSValueConst *argv) {
     JNIEnv *env = NULL;
@@ -172,13 +171,10 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
     jclass clazz = NULL;
     jmethodID mid = NULL;
     const char *name_str = NULL, *args_str = NULL;
-    const char *r = NULL;
     char *native_result = NULL;
     JSValue ret = JS_NULL;
-
-    if (g_vm == NULL ||
-        (*g_vm)->GetEnv(g_vm, (void **) &env, JNI_VERSION_1_6) != JNI_OK)
-        return JS_NULL;
+    jint get_env_status;
+    int attached = 0;
 
     if (argc >= 1)
         name_str = JS_ToCString(ctx, argv[0]);
@@ -194,6 +190,18 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
         goto done;
     }
 
+    if (g_vm == NULL)
+        goto done;
+
+    get_env_status = (*g_vm)->GetEnv(g_vm, (void **) &env, JNI_VERSION_1_6);
+    if (get_env_status == JNI_EDETACHED) {
+        if ((*g_vm)->AttachCurrentThread(g_vm, &env, NULL) != JNI_OK)
+            goto done;
+        attached = 1;
+    } else if (get_env_status != JNI_OK) {
+        goto done;
+    }
+
     jname = (*env)->NewStringUTF(env, name_str);
     jargs = (*env)->NewStringUTF(env, args_str ? args_str : "[]");
 
@@ -206,10 +214,11 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
         goto done;
     jresult = (jstring) (*env)->CallStaticObjectMethod(env, clazz, mid, jname, jargs);
     if (jresult) {
-        r = (*env)->GetStringUTFChars(env, jresult, NULL);
-        if (r) {
-            ret = JS_NewString(ctx, r);
-            (*env)->ReleaseStringUTFChars(env, jresult, r);
+        size_t out_len = 0;
+        char *utf8 = utf16_to_utf8(env, jresult, &out_len);
+        if (utf8) {
+            ret = JS_NewStringLen(ctx, utf8, out_len);
+            free(utf8);
         }
         (*env)->DeleteLocalRef(env, jresult);
     }
@@ -217,6 +226,7 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
         (*env)->ExceptionClear(env);
 
     done:
+    free(native_result);
     if (name_str)
         JS_FreeCString(ctx, name_str);
     if (args_str)
@@ -227,6 +237,8 @@ static JSValue js_host_call(JSContext *ctx, JSValueConst this_val,
         (*env)->DeleteLocalRef(env, jargs);
     if (clazz)
         (*env)->DeleteLocalRef(env, clazz);
+    if (attached)
+        (*g_vm)->DetachCurrentThread(g_vm);
     return ret;
 }
 
@@ -773,8 +785,10 @@ static jstring native_call_function(JNIEnv *env, jclass clazz, jlong ctx_ptr,
 
     if (args_str) {
         argc = qjs_parse_json_args(ctx, args_str, strlen(args_str), &argv);
-        if (argc < 0)
-            argc = 0; /* 参数 JSON 解析失败按无参处理 */
+        if (argc < 0) {
+            LOGE("callFunction: invalid args JSON for '%s'", name_str);
+            goto done;
+        }
     }
 
     result = JS_Call(ctx, func, global, argc, argv);

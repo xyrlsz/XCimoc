@@ -44,7 +44,7 @@ target_compile_options(quickjs PRIVATE
 add_library(quickjs_jni SHARED
         quickjs_jni.c
         codec_native.c
-        utf8to16.c
+        utf8_codec.c
 )
 
 target_include_directories(quickjs_jni PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/quickjs)
